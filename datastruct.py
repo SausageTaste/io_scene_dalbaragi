@@ -1,7 +1,8 @@
 import base64
 
-import zlib
 import numpy as np
+
+from . import byteutils as byt
 
 
 class Material:
@@ -32,14 +33,16 @@ class Material:
             self.__roughness, self.__metallic, self.__diffuseMap, self.__roughnessMap, self.__metallicMap
         )
 
-    def makeJson(self):
-        return {
-            "roughness" : self.__roughness,
-            "metallic" : self.__metallic,
-            "diffuse_map" : self.__diffuseMap,
-            "roughness_map" : self.__roughnessMap,
-            "metallic_map" : self.__metallicMap,
-        }
+    def makeBinary(self) -> bytearray:
+        data = bytearray()
+
+        data += byt.to_float32(self.__roughness)
+        data += byt.to_float32(self.__metallic)
+        data += byt.to_nullTerminated(self.__diffuseMap)
+        data += byt.to_nullTerminated(self.__roughnessMap)
+        data += byt.to_nullTerminated(self.__metallicMap)
+
+        return data
 
     @property
     def m_roughness(self):
@@ -92,11 +95,26 @@ class RenderUnit:
         self.__texcoords += [ float(xTex ), float(yTex )               ]
         self.__normals +=   [ float(xNorm), float(yNorm), float(zNorm) ]
 
-    def getVertexArrays(self):
+    def makeBinary(self) -> bytearray:
+        data = bytearray()
+
+        data += byt.to_nullTerminated(self.__name)
+        data += self.__material.makeBinary()
+
         v = np.array(self.__vertices, dtype=np.float32)
         t = np.array(self.__texcoords, dtype=np.float32)
         n = np.array(self.__normals, dtype=np.float32)
-        return v, t, n
+
+        assert 2*len(v) == 3*len(t) == 2*len(n)
+        assert len(v) % 3 == 0
+        numVertices = len(v) // 3
+
+        data += byt.to_int32(numVertices)
+        data += v.tobytes()
+        data += t.tobytes()
+        data += n.tobytes()
+
+        return data
 
     @property
     def m_name(self):
@@ -122,15 +140,12 @@ class Datablock:
         self.__array += arr
         return offset
 
-    def makeJson(self, compress: bool):
-        if (compress):
-            data: bytes = zlib.compress(self.__array, zlib.Z_BEST_COMPRESSION)
-        else:
-            data: bytes = self.__array
-        return {
-            "size" : len(self.__array),
-            "zipped_array" : base64.encodebytes(data).decode("utf8")
-        }
+    def getSize(self) -> int:
+        return len(self.__array)
+
+    @property
+    def m_array(self) -> bytearray:
+        return self.__array
 
 
 class IndexSet:

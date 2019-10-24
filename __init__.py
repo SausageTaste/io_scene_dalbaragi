@@ -1,6 +1,6 @@
 import os
 import sys
-import json
+import zlib
 
 import bpy
 from bpy_extras.io_utils import ExportHelper
@@ -8,6 +8,7 @@ from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 
 from . import datastruct as dat
+from . import byteutils as byt
 
 
 bl_info = {
@@ -89,34 +90,14 @@ class ModelBuilder:
 
         self.__parseRenderUnits()
 
-    def makeJson(self, compress: bool):
-        data = {}
+    def makeBinary(self) -> bytearray:
+        data = bytearray()
 
-        datablock = dat.Datablock()
-        materialList = dat.IndexSet(dat.Material)
+        data += byt.to_int32(len(self.__units))
 
-        unitsData = []
         for unit in self.__units:
-            v, t, n = unit.getVertexArrays()
-            assert 2*len(v) == 3*len(t) == 2*len(n)
-            assert len(v) % 3 == 0
-            numVertices = len(v) // 3
-            offset = datablock.addData(v.tobytes())
-            datablock.addData(t.tobytes())
-            datablock.addData(n.tobytes())
-
-            materialIndex = materialList.addGetIndex(unit.m_material)
-
-            unitsData.append({
-                "name" : unit.m_name,
-                "material_index" : materialIndex,
-                "vert_data_offset" : offset,
-                "num_vert" : numVertices,
-            })
-
-        data["materials"] = [x.makeJson() for x in materialList]
-        data["render_units"] = unitsData
-        data["zipped_datablock"] = datablock.makeJson(compress)
+            unit: dat.RenderUnit
+            data += unit.makeBinary()
 
         return data
 
@@ -187,8 +168,16 @@ class EmportDalModel(Operator, ExportHelper):
 
     def execute(self, context):
         model = ModelBuilder()
-        with open(self.filepath, "w", encoding="utf8") as file:
-            json.dump(model.makeJson(self.optionBool_compress), file, indent=4, sort_keys=True)
+
+        binData = model.makeBinary()
+        fullSize = len(binData)
+        if self.optionBool_compress:
+            finalBin = byt.to_int32(fullSize) + zlib.compress(binData, zlib.Z_BEST_COMPRESSION)
+        else:
+            finalBin = binData
+
+        with open(self.filepath, "wb") as file:
+            file.write(finalBin)
 
         return {'FINISHED'}
 
