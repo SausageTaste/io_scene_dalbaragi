@@ -1,13 +1,13 @@
+import os
+import sys
 import json
-import base64
-
-import zlib
-import numpy as np
 
 import bpy
 from bpy_extras.io_utils import ExportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
+
+from . import datastruct as dat
 
 
 bl_info = {
@@ -24,99 +24,6 @@ bl_info = {
 }
 
 
-class Material:
-    def __init__(self):
-        self.__roughness = 0.5
-        self.__metallic = 0.0
-
-        self.__diffuseMap = ""
-        self.__roughnessMap = ""
-        self.__metallicMap = ""
-
-    def __str__(self):
-        return "Material{{ roughness={}, metallic={} }}".format(self.__roughness, self.__metallic)
-
-    def makeJson(self):
-        return {
-            "roughness" : self.__roughness,
-            "metallic" : self.__metallic,
-            "diffuse_map" : self.__diffuseMap,
-            "roughness_map" : self.__roughnessMap,
-            "metallic_map" : self.__metallicMap,
-        }
-
-    @property
-    def m_roughness(self):
-        return self.__roughness
-    @m_roughness.setter
-    def m_roughness(self, v: float):
-        self.__roughness = float(v)
-
-    @property
-    def m_metallic(self):
-        return self.__metallic
-    @m_metallic.setter
-    def m_metallic(self, v: float):
-        self.__metallic = float(v)
-
-    @property
-    def m_diffuseMap(self):
-        return self.__diffuseMap
-    @m_diffuseMap.setter
-    def m_diffuseMap(self, v: str):
-        self.__diffuseMap = str(v)
-
-    @property
-    def m_roughnessMap(self):
-        return self.__roughnessMap
-    @m_roughnessMap.setter
-    def m_roughnessMap(self, v: str):
-        self.__roughnessMap = str(v)
-
-    @property
-    def m_metallicMap(self):
-        return self.__metallicMap
-    @m_metallicMap.setter
-    def m_metallicMap(self, v: str):
-        self.__metallicMap = str(v)
-
-
-class RenderUnit:
-    def __init__(self, name: str):
-        self.__name = str(name)
-
-        self.__vertices = []
-        self.__texcoords = []
-        self.__normals = []
-
-        self.__material = Material()
-
-    def addVertex(self, xVert, yVert, zVert, xTex, yTex, xNorm, yNorm, zNorm):
-        self.__vertices +=  [ float(xVert), float(yVert), float(zVert) ]
-        self.__texcoords += [ float(xTex ), float(yTex )               ]
-        self.__normals +=   [ float(xNorm), float(yNorm), float(zNorm) ]
-
-    def getVertexArrays(self):
-        v = np.array(self.__vertices, dtype=np.float32)
-        t = np.array(self.__texcoords, dtype=np.float32)
-        n = np.array(self.__normals, dtype=np.float32)
-        return v, t, n
-
-    @property
-    def m_name(self):
-        return self.__name
-
-    @property
-    def m_material(self):
-        return self.__material
-    @m_material.setter
-    def m_material(self, m: Material):
-        if not isinstance(m, Material):
-            raise TypeError()
-        else:
-            self.__material = m
-
-
 class MaterialParser:
     @classmethod
     def parse(cls, blenderMat):
@@ -124,7 +31,7 @@ class MaterialParser:
         if bsdf is None:
             raise ValueError("Only Principled BSDF node is supported.")
 
-        material = Material()
+        material = dat.Material()
 
         node_baseColor = bsdf.inputs["Base Color"]
         node_metallic  = bsdf.inputs["Metallic"]
@@ -176,26 +83,6 @@ class MaterialParser:
         return None
 
 
-class Datablock:
-    def __init__(self):
-        self.__array = bytearray()
-    
-    def addData(self, arr: bytearray) -> int:
-        offset = len(self.__array)
-        self.__array += arr
-        return offset
-
-    def makeJson(self, compress: bool):
-        if (compress):
-            data: bytes = zlib.compress(self.__array, zlib.Z_BEST_COMPRESSION)
-        else:
-            data: bytes = self.__array
-        return {
-            "size" : len(self.__array),
-            "zipped_array" : base64.encodebytes(data).decode("utf8")
-        }
-
-
 class ModelBuilder:
     def __init__(self):
         self.__units = []
@@ -204,7 +91,9 @@ class ModelBuilder:
 
     def makeJson(self, compress: bool):
         data = {}
-        datablock = Datablock()
+
+        datablock = dat.Datablock()
+        materialList = dat.IndexSet(dat.Material)
 
         unitsData = []
         for unit in self.__units:
@@ -216,30 +105,24 @@ class ModelBuilder:
             datablock.addData(t.tobytes())
             datablock.addData(n.tobytes())
 
+            materialIndex = materialList.addGetIndex(unit.m_material)
+
             unitsData.append({
                 "name" : unit.m_name,
-                "material" : unit.m_material.makeJson(),
-                "vertex_datablock_offset" : offset,
-                "number_of_vertices" : numVertices,
+                "material_index" : materialIndex,
+                "vert_data_offset" : offset,
+                "num_vert" : numVertices,
             })
 
+        data["materials"] = [x.makeJson() for x in materialList]
         data["render_units"] = unitsData
         data["zipped_datablock"] = datablock.makeJson(compress)
 
         return data
 
-    def printAll(self):
-        for unit in self.__units:
-            print(unit.m_name)
-            print("\t{} : {}".format("roughness", unit.m_material.m_roughness))
-            print("\t{} : {}".format("metallic", unit.m_material.m_metallic))
-            print("\t{} : {}".format("diffuse map", unit.m_material.m_diffuseMap))
-            print("\t{} : {}".format("roughness map", unit.m_material.m_roughnessMap))
-            print("\t{} : {}".format("metallic map", unit.m_material.m_metallicMap))
-
     def __parseRenderUnits(self):
         for mesh in bpy.data.meshes:
-            unit = RenderUnit(mesh.name)
+            unit = dat.RenderUnit(mesh.name)
             uvLayer = mesh.uv_layers.active.data
 
             unit.m_material = MaterialParser.parse(mesh.materials[0])
@@ -332,5 +215,8 @@ def unregister():
 
 
 if __name__ == "__main__":
+    import importlib
+    importlib.reload(dat)
+
     register()
     bpy.ops.export_model.dmd('INVOKE_DEFAULT')
