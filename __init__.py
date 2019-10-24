@@ -101,6 +101,18 @@ class ModelBuilder:
 
         return data
 
+    def getImgNames(self):
+        imgNames = set()
+
+        for unit in self.__units:
+            imgNames.add(unit.m_material.m_diffuseMap)
+            imgNames.add(unit.m_material.m_roughnessMap)
+            imgNames.add(unit.m_material.m_metallicMap)
+
+        imgNames.remove("")
+
+        return imgNames
+
     def __parseRenderUnits(self):
         for mesh in bpy.data.meshes:
             unit = dat.RenderUnit(mesh.name)
@@ -150,10 +162,10 @@ class EmportDalModel(Operator, ExportHelper):
 
     # List of operator properties, the attributes will be assigned
     # to the class instance from the operator settings before calling.
-    optionBool_compress: BoolProperty(
-        name="Compress datablock",
-        description="Compress datablock with zlib.",
-        default=True,
+    optionBool_copyImages: BoolProperty(
+        name = "Copy textures",
+        description = "Copy textures to same path as exported model file.",
+        default = False,
     )
 
     type: EnumProperty(
@@ -171,21 +183,17 @@ class EmportDalModel(Operator, ExportHelper):
 
         binData = model.makeBinary()
         fullSize = len(binData)
-        if self.optionBool_compress:
-            finalBin = byt.to_int32(fullSize) + zlib.compress(binData, zlib.Z_BEST_COMPRESSION)
-        else:
-            finalBin = binData
-
+        finalBin = byt.to_int32(fullSize) + zlib.compress(binData, zlib.Z_BEST_COMPRESSION)
         with open(self.filepath, "wb") as file:
             file.write(finalBin)
 
-        return {'FINISHED'}
-
-    def write(self, context):
-        print("running write_some_data...")
-        f = open(self.filepath, 'w', encoding='utf-8')
-        f.write("Hello World %s" % self.optionBool_compress)
-        f.close()
+        if self.optionBool_copyImages:
+            imgNames = model.getImgNames()
+            saveFol = os.path.split(self.filepath)[0].replace("\\", "/")
+            for name in imgNames:
+                image = bpy.data.images[name]
+                dstPath = saveFol + "/" + name
+                image.save_render(dstPath)
 
         return {'FINISHED'}
 
