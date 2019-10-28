@@ -116,6 +116,33 @@ class RenderUnit:
 
         return data
 
+    def makeReadable(self) -> str:
+        return f"""RenderUnit{{
+    float roughness = {self.__material.m_roughness}
+    float metallic = {self.__material.m_metallic}
+    str diffuse map = "{self.__material.m_diffuseMap}"
+    str roughness map = "{self.__material.m_roughnessMap}"
+    str metallic map = "{self.__material.m_metallicMap}"
+
+    float vertices[{len(self.__vertices)}] = {{
+        {", ".join(str(x) for x in self.__vertices)}
+    }}
+    float texcoords[{len(self.__texcoords)}] = {{
+        {", ".join(str(x) for x in self.__texcoords)}
+    }}
+    float normals[{len(self.__normals)}] = {{
+        {", ".join(str(x) for x in self.__normals)}
+    }}
+}}
+        """
+
+    def iterVertices(self):
+        return iter(self.__vertices)
+    def iterTexcoords(self):
+        return iter(self.__texcoords)
+    def iterNormals(self):
+        return iter(self.__normals)
+
     @property
     def m_name(self):
         return self.__name

@@ -1,6 +1,8 @@
 import os
 import sys
 import zlib
+import math
+from typing import Tuple
 
 import bpy
 from bpy_extras.io_utils import ExportHelper
@@ -23,6 +25,14 @@ bl_info = {
     "category": "Import-Export",
     "tracker_url": ""
 }
+
+
+def _fixVecRotations(x: float, y: float, z: float) -> Tuple[float, float, float]:
+    return ( float(x), float(z), -float(y) )
+
+def _normalizeVec3(x: float, y: float, z: float):
+    length = math.sqrt( x*x + y*y + z*z )
+    return ( x/length, y/length, z/length )
 
 
 class MaterialParser:
@@ -101,6 +111,15 @@ class ModelBuilder:
 
         return data
 
+    def makeReadable(self):
+        data = ""
+
+        for unit in self.__units:
+            unit: dat.RenderUnit
+            data += unit.makeReadable()
+
+        return data
+
     def getImgNames(self):
         imgNames = set()
 
@@ -114,34 +133,43 @@ class ModelBuilder:
         return imgNames
 
     def __parseRenderUnits(self):
-        for mesh in bpy.data.meshes:
-            unit = dat.RenderUnit(mesh.name)
-            uvLayer = mesh.uv_layers.active.data
+        for obj in bpy.context.scene.objects:
+            if not hasattr(obj.data, "polygons"): continue
+            assert 1 == len(obj.data.materials)
 
-            unit.m_material = MaterialParser.parse(mesh.materials[0])
+            unit = dat.RenderUnit(obj.name)
+            unit.m_material = MaterialParser.parse(obj.data.materials[0])
 
-            for polygon in mesh.polygons:
-                vertIndices = []
-                vertPerFace = len(polygon.vertices)
-                if 3 == vertPerFace:
-                    vertIndices.append(polygon.vertices[0])
-                    vertIndices.append(polygon.vertices[1])
-                    vertIndices.append(polygon.vertices[2])
-                elif 4 == vertPerFace:
-                    vertIndices.append(polygon.vertices[0])
-                    vertIndices.append(polygon.vertices[1])
-                    vertIndices.append(polygon.vertices[2])
-                    vertIndices.append(polygon.vertices[0])
-                    vertIndices.append(polygon.vertices[2])
-                    vertIndices.append(polygon.vertices[3])
+            for face in obj.data.polygons:
+                lenVert = len(face.vertices)
+                assert len(face.loop_indices) == lenVert
+                if 3 == lenVert:
+                    vertIndices = (0, 1, 2)
+                elif 4 == lenVert:
+                    vertIndices = (0, 1, 2, 0, 2, 3)
                 else:
-                    raise RuntimeError("A face with {} vertices is not supported.".format(vertPerFace))
+                    raise NotImplementedError("Loop with {} vertices is not supported!".format(lenVert))
 
-                for vertIndex in vertIndices:
-                    vertex = mesh.vertices[vertIndex].co
-                    texcoord = uvLayer[vertIndex].uv
-                    normal = mesh.vertices[vertIndex].normal
-                    unit.addVertex(vertex[0], vertex[1], vertex[2], texcoord[0], texcoord[1], normal[0], normal[1], normal[2])
+                for i in vertIndices:
+                    vert = face.vertices[i]
+                    loop = face.loop_indices[i]
+
+                    vertex = obj.data.vertices[vert].co
+                    texcoord = (obj.data.uv_layers.active.data[loop].uv if obj.data.uv_layers.active is not None else (0.0, 0.0))
+                    if face.use_smooth:
+                        normal = obj.data.vertices[vert].normal
+                    else:
+                        normal = face.normal
+
+                    vertex = _fixVecRotations(vertex[0], vertex[1], vertex[2])
+                    normal = _fixVecRotations(normal[0], normal[1], normal[2])
+                    normal = _normalizeVec3(normal[0], normal[1], normal[2])
+
+                    unit.addVertex(
+                        vertex[0], vertex[1], vertex[2],
+                        texcoord[0], texcoord[1],
+                        normal[0], normal[1], normal[2]
+                    )
 
             self.__units.append(unit)
 
@@ -165,6 +193,12 @@ class EmportDalModel(Operator, ExportHelper):
     optionBool_copyImages: BoolProperty(
         name = "Copy textures",
         description = "Copy textures to same path as exported model file.",
+        default = False,
+    )
+
+    optionBool_createReadable: BoolProperty(
+        name = "Create readable file.",
+        description = "",
         default = False,
     )
 
@@ -194,6 +228,10 @@ class EmportDalModel(Operator, ExportHelper):
                 image = bpy.data.images[name]
                 dstPath = saveFol + "/" + name
                 image.save_render(dstPath)
+
+        if self.optionBool_createReadable:
+            with open(self.filepath[:-3] + "txt", "w", encoding="utf8") as file:
+                file.write(model.makeReadable())
 
         return {'FINISHED'}
 
