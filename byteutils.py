@@ -1,6 +1,9 @@
 import struct
 
 
+def to_bool1(v: bool) -> bytes:
+    return b"\x01" if v else b"\x00"
+
 def to_int16(v: int) -> bytes:
     res = struct.pack("<i", int(v))
     if res[2] or res[3]:
