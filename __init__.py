@@ -1,40 +1,40 @@
 import os
-import sys
 import zlib
 import math
 import json
-import collections
 from typing import Tuple, List, Dict
 
 import bpy
+import bpy.types
 from bpy_extras.io_utils import ExportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
+
 
 from . import datastruct as dat
 from . import byteutils as byt
 
 
 bl_info = {
-    "name": "Dalbaragi Model Exporter",
-    "author": "Sungmin Woo",
-    "version": (1, 0, 0),
-    "blender": (2, 80, 0),
-    "location": "File > Export > Dalbaragi Model (.dmd)",
+    "name"       : "Dalbaragi Model Exporter",
+    "author"     : "Sungmin Woo",
+    "version"    : (1, 0, 0),
+    "blender"    : (2, 80, 0),
+    "location"   : "File > Export > Dalbaragi Model (.dmd)",
     "description": "Export a model file for Dalbargi engine.",
-    "warning": "Under development.",
-    "wiki_url": "",
-    "category": "Import-Export",
+    "warning"    : "Under development.",
+    "wiki_url"   : "",
+    "category"   : "Import-Export",
     "tracker_url": ""
 }
 
 
 def _fixVecRotations(x: float, y: float, z: float) -> Tuple[float, float, float]:
-    return ( float(x), float(z), -float(y) )
+    return float(x), float(z), -float(y)
 
 def _normalizeVec3(x: float, y: float, z: float):
     length = math.sqrt( x*x + y*y + z*z )
-    return ( x/length, y/length, z/length )
+    return x/length, y/length, z/length
 
 
 class AnimationParser:
@@ -78,12 +78,60 @@ class AnimationParser:
         return root
 
 
-    class BoneAnimInfo:
+    class AnimInfoVar:
         def __init__(self):
             self.__data = {}
-            # dict< var name, dict< time, dict<channel, value> > >
 
-        def __getitem__(self, key):
+        def add(self, channel: int, timepoint: float, value: float) -> None:
+            assert isinstance(channel, int)
+            assert isinstance(timepoint, float)
+
+            if timepoint not in self.__data.keys():
+                self.__data[timepoint] = {}
+            self.__data[timepoint][channel] = float(value)
+
+        def get(self, timepoint: float, channel: int) -> float:
+            assert isinstance(channel, int)
+            assert isinstance(timepoint, float)
+
+            return self.__data[timepoint][channel]
+
+        def getExtended(self, timepoint: float, channel: int) -> float:
+            assert isinstance(channel, int)
+            assert isinstance(timepoint, float)
+
+            try:
+                return self.__data[timepoint][channel]
+            except KeyError:
+                requestedOrder = self.__timepointToOrder(timepoint)
+                prevOrder = requestedOrder - 1
+                if prevOrder < 0:
+                    raise RuntimeError("First keyframe need all its channels with a value.")
+                prevTimepoint = self.__orderToTimepoint(prevOrder)
+                return self.get(prevTimepoint, channel)
+
+        def iterTimepoints(self) -> iter:
+            return iter(self.__getSortedTimepoints())
+
+        def __getSortedTimepoints(self) -> List[float]:
+            timepoints = list(self.__data.keys())
+            timepoints.sort()
+            return timepoints
+
+        def __orderToTimepoint(self, order: int) -> float:
+            assert isinstance(order, int)
+            assert order >= 0
+            return self.__getSortedTimepoints()[order]
+
+        def __timepointToOrder(self, timepoint: float) -> int:
+            assert isinstance(timepoint, float)
+            return self.__getSortedTimepoints().index(timepoint)
+
+    class BoneAnimInfo:
+        def __init__(self):
+            self.__data = {}  # dict< var name, dict< time, dict<channel, value> > >
+
+        def __getitem__(self, key) -> "AnimationParser.AnimInfoVar":
             return self.__data[key]
 
         def add(self, varName: str, channel: int, timepoint: float, value: float) -> None:
@@ -92,25 +140,20 @@ class AnimationParser:
             assert isinstance(varName, str)
 
             if varName not in self.__data.keys():
-                self.__data[varName] = dict()
-            keyframes = self.__data[varName]
-
-            if timepoint not in keyframes.keys():
-                keyframes[timepoint] = {}
-
-            keyframes[timepoint][channel] = float(value)
+                self.__data[varName] = AnimationParser.AnimInfoVar()
+            self.__data[varName].add(channel, timepoint, value)
 
         def items(self):
             return self.__data.items()
 
     class BoneDict:
         def __init__(self):
-            self.__bones: Dict[ str, "BoneAnimInfo" ] = {}
+            self.__bones: Dict[ str, AnimationParser.BoneAnimInfo ] = {}
 
         def __str__(self):
             return str(self.__bones)
 
-        def __getitem__(self, boneName: str) -> "BoneAnimInfo":
+        def __getitem__(self, boneName: str) -> "AnimationParser.BoneAnimInfo":
             try:
                 return self.__bones[boneName]
             except KeyError:
@@ -135,13 +178,36 @@ class AnimationParser:
 
         for action in bpy.data.actions:
             anim = dat.Animation(action.name, skeleton)
-            bonedict: BoneDict = cls.__makeBoneDict(action)
+            bonedict: AnimationParser.BoneDict = cls.__makeBoneDict(action)
 
             for joint in anim.m_joints:
-                boneInfo: BoneAnimInfo = bonedict[joint.m_name]
-                poses = boneInfo["location"]
-                rotations = boneInfo["rotation_quaternion"]
-                scales = boneInfo["scale"]
+                joint: dat.JointAnim
+
+                boneInfo : AnimationParser.BoneAnimInfo = bonedict[joint.m_name]
+                poses    : AnimationParser.AnimInfoVar  = boneInfo["location"]
+                rotations: AnimationParser.AnimInfoVar  = boneInfo["rotation_quaternion"]
+                scales   : AnimationParser.AnimInfoVar  = boneInfo["scale"]
+
+                for tp in poses.iterTimepoints():
+                    x = poses.get(tp, 0)
+                    y = poses.get(tp, 1)
+                    z = poses.get(tp, 2)
+                    joint.addPos(tp, x, y, z)
+
+                for tp in rotations.iterTimepoints():
+                    # It always confuses me.
+                    w = rotations.get(tp, 0)
+                    x = rotations.get(tp, 1)
+                    y = rotations.get(tp, 2)
+                    z = rotations.get(tp, 3)
+                    joint.addRotation(tp, x, y, z, w)
+
+                for tp in scales.iterTimepoints():
+                    x = scales.get(tp, 0)
+                    y = scales.get(tp, 1)
+                    z = scales.get(tp, 2)
+                    averageScale = (x + y + z) / 3
+                    joint.addScale(tp, averageScale)
 
             animations.append(anim)
 
@@ -154,7 +220,7 @@ class AnimationParser:
         for fcu in action.fcurves:
             boneName, varName = cls.__splitFcuDataPath(fcu.data_path)
             channel = fcu.array_index
-            bone: BoneAnimInfo = bones[boneName]
+            bone: AnimationParser.BoneAnimInfo = bones[boneName]
             for keyframe in fcu.keyframe_points:
                 bone.add(varName, channel, keyframe.co[0], keyframe.co[1])
 
@@ -222,8 +288,8 @@ class MaterialParser:
                     if res is not None:
                         return res
         if hasattr(parentNode, "inputs"):
-            for input in parentNode.inputs:
-                res = cls.__findImageNodeRecur(input)
+            for nodeinput in parentNode.inputs:
+                res = cls.__findImageNodeRecur(nodeinput)
                 if res is not None:
                     return res
             
@@ -237,11 +303,11 @@ class ModelBuilder:
         self.__parseRenderUnits()
 
         skeleton = AnimationParser.parseSkeleton()
-        for k in (skeleton):
+        for k in skeleton:
             print(k)
 
         animations = AnimationParser.parseActions(skeleton)
-        for anim in (animations):
+        for anim in animations:
             print(anim.m_joints)
 
     def makeBinary(self) -> bytearray:
@@ -322,34 +388,34 @@ class EmportDalModel(Operator, ExportHelper):
 
     filename_ext = ".dmd"
 
-    filter_glob: StringProperty(
-        default="*.dmd",
-        options={'HIDDEN'},
-        maxlen=255,  # Max internal buffer length, longer would be clamped.
+    filter_glob = StringProperty(
+        default = "*.dmd",
+        options = {'HIDDEN'},
+        maxlen = 255,  # Max internal buffer length, longer would be clamped.
     )
 
     # List of operator properties, the attributes will be assigned
     # to the class instance from the operator settings before calling.
-    optionBool_copyImages: BoolProperty(
-        name = "Copy textures",
+    optionBool_copyImages = BoolProperty(
+        name        = "Copy textures",
         description = "Copy textures to same path as exported model file.",
-        default = False,
+        default     = False,
     )
 
-    optionBool_createReadable: BoolProperty(
-        name = "Create readable file.",
+    optionBool_createReadable = BoolProperty(
+        name        = "Create readable file.",
         description = "",
-        default = False,
+        default     = False,
     )
 
-    type: EnumProperty(
-        name="Example Enum",
-        description="Choose between two items",
-        items=(
+    enum_example = EnumProperty(
+        name        = "Example Enum",
+        description = "Choose between two items",
+        items       = (
             ('OPT_A', "First Option", "Description one"),
             ('OPT_B', "Second Option", "Description two"),
         ),
-        default='OPT_A',
+        default     = 'OPT_A',
     )
 
     def execute(self, context):

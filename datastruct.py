@@ -1,4 +1,3 @@
-import base64
 from typing import List, Tuple
 
 import numpy as np
@@ -133,7 +132,7 @@ class Mesh:
 
         return data
 
-    def makeJson(self) -> str:
+    def makeJson(self) -> dict:
         return {
             "vertices[{}]".format(len(self.__vertices)) : ", ".join(str(x) for x in self.__vertices),
             "texcoords[{}]".format(len(self.__texcoords)) : ", ".join(str(x) for x in self.__texcoords),
@@ -163,7 +162,7 @@ class RenderUnit:
 
         return data
 
-    def makeJson(self) -> str:
+    def makeJson(self) -> dict:
         return {
             "name" : self.__name,
             "mesh" : self.__mesh.makeJson(),
@@ -224,7 +223,7 @@ class SkeletonInterface:
 
     def makeIndexOf(self, boneName: str) -> int:
         try:
-            found = self.getIndexOf(boneName)
+            _ = self.getIndexOf(boneName)
         except ValueError:
             self.__bones.append(Bone(boneName))
             return len(self.__bones) - 1
