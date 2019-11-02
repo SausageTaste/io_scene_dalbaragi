@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Generator, Callable, Any
 
 import numpy as np
 
@@ -113,7 +113,7 @@ class Mesh:
         assert len(v) % 3 == 0
         numVertices = len(v) // 3
 
-        hasBones = 0 != len(self.__boneWeights)
+        hasBones = self.__hasBones()
 
         data += byt.to_int32(numVertices)
         data += byt.to_bool1(hasBones)
@@ -124,7 +124,7 @@ class Mesh:
 
         if hasBones:
             bw = np.array(self.__boneWeights, dtype=np.float32)
-            bi = np.array(self.__boneIndices, dtype=np.float32)
+            bi = np.array(self.__boneIndices, dtype=np.int32)
             assert len(bw) == len(bi) == 3*numVertices
 
             data += bw.tobytes()
@@ -133,18 +133,45 @@ class Mesh:
         return data
 
     def makeJson(self) -> dict:
-        return {
-            "vertices[{}]".format(len(self.__vertices)) : ", ".join(str(x) for x in self.__vertices),
-            "texcoords[{}]".format(len(self.__texcoords)) : ", ".join(str(x) for x in self.__texcoords),
-            "normals[{}]".format(len(self.__normals)) : ", ".join(str(x) for x in self.__normals),
-            "boneWeights[{}]".format(len(self.__boneWeights)) : ", ".join(str(x) for x in self.__boneWeights),
-            "boneIndices[{}]".format(len(self.__boneIndices)) : ", ".join(str(x) for x in self.__boneIndices),
+        data = {
+            "vertices"    : len(self.__vertices),
+            "texcoords"   : len(self.__texcoords),
+            "normals"     : len(self.__normals),
         }
 
-    def addVertex(self, xVert: float, yVert: float, zVert: float, xTex: float, yTex: float, xNorm: float, yNorm: float, zNorm: float) -> None:
-        self.__vertices +=  [ float(xVert), float(yVert), float(zVert) ]
-        self.__texcoords += [ float(xTex ), float(yTex )               ]
-        self.__normals +=   [ float(xNorm), float(yNorm), float(zNorm) ]
+        if self.__hasBones():
+            data["boneWeights"] = len(self.__boneWeights)
+            data["boneIndices"] = len(self.__boneIndices)
+            data["bone wights"] = [x for x in self.__boneWeights]
+            data["bone indices"] = [x for x in self.__boneIndices]
+
+        return data
+
+    def addVertex(self,
+      xVert  : float, yVert  : float, zVert  : float,
+      xTex   : float, yTex   : float,
+      xNorm  : float, yNorm  : float, zNorm  : float,
+      boneID0: int  , boneID1: int  , boneID2: int  ,
+      weight0: float, weight1: float, weight2: float
+    ) -> None:
+        weightSum = weight0 + weight1 + weight2
+        if 0 != weightSum:
+            weight0 /= weightSum
+            weight1 /= weightSum
+            weight2 /= weightSum
+
+        self.__vertices    += [ float( xVert ), float( yVert ), float( zVert ) ]
+        self.__texcoords   += [ float( xTex  ), float( yTex  )                 ]
+        self.__normals     += [ float( xNorm ), float (yNorm ), float( zNorm ) ]
+        self.__boneWeights += [ float(weight0), float(weight1), float(weight2) ]
+        self.__boneIndices += [   int(boneID0),   int(boneID1),   int(boneID2) ]
+
+    def __hasBones(self) -> bool:
+        for x in self.__boneWeights:
+            if x != 0:
+                return True
+        else:
+            return False
 
 
 class RenderUnit:
@@ -197,6 +224,20 @@ class Bone:
     def __str__(self):
         return "{{ name={}, parent={} }}".format(self.m_name, self.m_parentIndex)
 
+    def makeBinary(self) -> bytearray:
+        data = bytearray()
+
+        data += byt.to_nullTerminated(self.m_name)
+        data += byt.to_int32(self.m_parentIndex)
+
+        return data
+
+    def makeJson(self) -> dict:
+        return {
+            "name" : self.m_name,
+            "parent_index" : self.m_parentIndex,
+        }
+
 
 class SkeletonInterface:
     def __init__(self):
@@ -214,26 +255,38 @@ class SkeletonInterface:
     def __len__(self) -> int:
         return len(self.__bones)
 
+    def makeBinary(self) -> bytearray:
+        data = bytearray()
+
+        data += byt.to_int32(len(self.__bones))
+        for bone in self.__bones:
+            data += bone.makeBinary()
+
+        return data
+
+    def makeJson(self) -> list:
+        return [x.makeJson() for x in self.__bones]
+
     def getIndexOf(self, boneName: str) -> int:
         for i, bone in enumerate(self.__bones):
             if bone.m_name == boneName:
                 return i
         else:
-            raise ValueError("Bone name '{}' not found.".format(boneName))
+            raise RuntimeError("Bone name '{}' not found.".format(boneName))
 
     def makeIndexOf(self, boneName: str) -> int:
         try:
             _ = self.getIndexOf(boneName)
-        except ValueError:
+        except RuntimeError:
             self.__bones.append(Bone(boneName))
             return len(self.__bones) - 1
         else:
-            raise ValueError("Bone already exists: {}".format(boneName))
+            raise RuntimeError("Bone already exists: {}".format(boneName))
 
     def getOrMakeIndexOf(self, boneName: str) -> int:
         try:
             found = self.getIndexOf(boneName)
-        except ValueError:
+        except RuntimeError:
             self.__bones.append(Bone(boneName))
             return len(self.__bones) - 1
         else:
@@ -250,9 +303,76 @@ class JointAnim:
         self.__rotations: List[Tuple[float, float, float, float, float]] = []
         self.__scales: List[Tuple[float, float]] = []
 
+    def makeBinary(self) ->bytearray:
+        data = bytearray()
+
+        poses = list(self.iterPoses())
+        rotations = list(self.iterRotations())
+        scales = list(self.iterScales())
+
+        data += byt.to_int32(len(poses))
+        for timepoint, value in poses:
+            data += byt.to_float32(timepoint)
+            data += byt.to_float32(value[0])
+            data += byt.to_float32(value[1])
+            data += byt.to_float32(value[2])
+
+        data += byt.to_int32(len(rotations))
+        for timepoint, value in rotations:
+            data += byt.to_float32(timepoint)
+            data += byt.to_float32(value[0])
+            data += byt.to_float32(value[1])
+            data += byt.to_float32(value[2])
+            data += byt.to_float32(value[3])
+
+        data += byt.to_int32(len(scales))
+        for timepoint, value in scales:
+            data += byt.to_float32(timepoint)
+            data += byt.to_float32(value)
+
+        return data
+
+    def makeJson(self):
+        return {
+            "name" : self.__name,
+            "poses" : ["{} : ( x={:0.6}, y={:0.6}, w={:0.6} )".format(timepoint, *value) for timepoint, value in self.iterPoses()],
+            "rotations" : ["{} : ( x={:0.6}, y={:0.6}. z={:0.6}, w={:0.6} )".format(timepoint, *value) for timepoint, value in self.iterRotations()],
+            "scales" : ["{} : {:0.6}".format(timepoint, value) for timepoint, value in self.iterScales()],
+        }
+
     @property
     def m_name(self):
         return self.__name
+
+    def iterPoses(self) -> Generator[Tuple[float, Tuple[float, float, float]], None, None]:
+        self.__poses.sort()
+        equalfunc = lambda xx, yy: (xx[1], xx[2], xx[3]) == (yy[1], yy[2], yy[3])
+        newList = self.__removeDuplicate(self.__poses, equalfunc)
+
+        for pos in newList:
+            timepoint = pos[0]
+            valvec = (pos[1], pos[2], pos[3])
+            yield timepoint, valvec
+
+    def iterRotations(self) -> Generator[Tuple[float, Tuple[float, float, float, float]], None, None]:
+        self.__rotations.sort()
+        equalfunc = lambda xx, yy: (xx[1], xx[2], xx[3], xx[4]) == (yy[1], yy[2], yy[3], yy[4])
+        newList = self.__removeDuplicate(self.__rotations, equalfunc)
+
+        for val in newList:
+            timepoint = val[0]
+            valvec = (val[1], val[2], val[3], val[4])
+            yield timepoint, valvec
+
+    def iterScales(self) -> Generator[Tuple[float, float], None, None]:
+        self.__scales.sort()
+        equalfunc = lambda xx, yy: xx[1] == yy[1]
+        newList = self.__removeDuplicate(self.__scales, equalfunc)
+
+        for pos in newList:
+            timepoint = pos[0]
+            scale = pos[1]
+            yield timepoint, scale
 
     def addPos(self, timepoint: float, x: float, y: float, z: float):
         posTuple = ( float(timepoint), float(x), float(y), float(z) )
@@ -266,15 +386,43 @@ class JointAnim:
         scaleTuple = ( float(timepoint), float(x) )
         self.__scales.append(scaleTuple)
 
+    @staticmethod
+    def __removeDuplicate(arr: List[Any], funcEqual: Callable[[Any, Any], bool]):
+        arrSize = len(arr)
+        newArr = [arr[0]]
+        for i in range(1, arrSize):
+            if not funcEqual(arr[i], newArr[-1]):
+                newArr.append(arr[i])
+        return newArr
+
 
 class Animation:
     def __init__(self, name: str, skeleton: SkeletonInterface):
         self.__name = str(name)
         self.__joints: List[JointAnim] = [JointAnim(bone.m_name) for bone in skeleton]
 
+    def makeBinary(self) -> bytearray:
+        data = bytearray()
+
+        data += byt.to_nullTerminated(self.__name)
+        data += byt.to_int32(len(self.__joints))
+        for joint in self.__joints:
+            data += joint.makeBinary()
+
+        return data
+
+    def makeJson(self) -> dict:
+        return {
+            "name" : self.__name,
+            "joints" : [x.makeJson() for x in self.__joints]
+        }
+
     @property
     def m_joints(self):
         return self.__joints
+    @property
+    def m_name(self):
+        return self.__name
 
 
 class Datablock:

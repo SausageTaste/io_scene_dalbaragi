@@ -40,8 +40,14 @@ def _normalizeVec3(x: float, y: float, z: float):
 class AnimationParser:
     @classmethod
     def parseSkeleton(cls):
+        numArma = len(bpy.data.armatures)
+        if 0 == numArma:
+            return dat.SkeletonInterface()
+        elif numArma > 1:
+            raise RuntimeError("Multiple armatures.")
+
         skeleton = dat.SkeletonInterface()
-        assert 1 == len(bpy.data.armatures)
+
         armature = bpy.data.armatures[0]
         rootBone = cls.__findRootBone(armature.bones)
 
@@ -298,23 +304,34 @@ class MaterialParser:
 
 class ModelBuilder:
     def __init__(self):
-        self.__units = []
+        self.__skeleton = AnimationParser.parseSkeleton()
+        self.__animations = AnimationParser.parseActions(self.__skeleton)
+        self.__units = self.__parseRenderUnits(self.__skeleton)
 
-        self.__parseRenderUnits()
-
-        skeleton = AnimationParser.parseSkeleton()
-        for k in skeleton:
+        for k in self.__skeleton:
             print(k)
 
-        animations = AnimationParser.parseActions(skeleton)
-        for anim in animations:
-            print(anim.m_joints)
+        for anim in self.__animations:
+            print(anim.m_name)
+            for joint in anim.m_joints:
+                print("  ", joint.m_name)
+                for timepoint, pos in joint.iterPoses():
+                    print("    ", "pos [{}] : {}".format(timepoint, pos))
+                for timepoint, pos in joint.iterRotations():
+                    print("    ", "rotation [{}] : {}".format(timepoint, pos))
+                for timepoint, pos in joint.iterScales():
+                    print("    ", "scale [{}] : {}".format(timepoint, pos))
 
     def makeBinary(self) -> bytearray:
         data = bytearray()
 
-        data += byt.to_int32(len(self.__units))
+        data += self.__skeleton.makeBinary()
 
+        data += byt.to_int32(len(self.__animations))
+        for anim in self.__animations:
+            data += anim.makeBinary()
+
+        data += byt.to_int32(len(self.__units))
         for unit in self.__units:
             unit: dat.RenderUnit
             data += unit.makeBinary()
@@ -323,7 +340,10 @@ class ModelBuilder:
 
     def makeJson(self) -> dict:
         return {
-            "render units[{}]".format(len(self.__units)) : [x.makeJson() for x in self.__units],
+            "render units size"         : len(self.__units),
+            "render units" : [x.makeJson() for x in self.__units],
+            "skeleton interface" : self.__skeleton.makeJson(),
+            "animations" : [x.makeJson() for x in self.__animations]
         }
 
     def getImgNames(self):
@@ -338,7 +358,10 @@ class ModelBuilder:
 
         return imgNames
 
-    def __parseRenderUnits(self):
+    @staticmethod
+    def __parseRenderUnits(skeleton: dat.SkeletonInterface):
+        units = []
+
         for obj in bpy.context.scene.objects:
             if not hasattr(obj.data, "polygons"): continue
             assert 1 == len(obj.data.materials)
@@ -357,8 +380,8 @@ class ModelBuilder:
                     raise NotImplementedError("Loop with {} vertices is not supported!".format(lenVert))
 
                 for i in vertIndices:
-                    vert = face.vertices[i]
-                    loop = face.loop_indices[i]
+                    vert: int = face.vertices[i]
+                    loop: int = face.loop_indices[i]
 
                     vertex = obj.data.vertices[vert].co
                     texcoord = (obj.data.uv_layers.active.data[loop].uv if obj.data.uv_layers.active is not None else (0.0, 0.0))
@@ -367,17 +390,32 @@ class ModelBuilder:
                     else:
                         normal = face.normal
 
-                    vertex = _fixVecRotations(vertex[0], vertex[1], vertex[2])
-                    normal = _fixVecRotations(normal[0], normal[1], normal[2])
-                    normal = _normalizeVec3(normal[0], normal[1], normal[2])
+                    vertex: Tuple[float, float, float] = _fixVecRotations(vertex[0], vertex[1], vertex[2])
+                    normal: Tuple[float, float, float] = _fixVecRotations(normal[0], normal[1], normal[2])
+                    normal: Tuple[float, float, float] = _normalizeVec3(normal[0], normal[1], normal[2])
+
+                    boneWeightAndID = [(0, -1), (0, -1), (0, -1)]
+                    for g in obj.data.vertices[vert].groups:
+                        groupName = str(obj.vertex_groups[g.group].name)
+                        try:
+                            boneIndex = skeleton.getIndexOf(groupName)
+                        except RuntimeError:
+                            continue
+                        else:
+                            boneWeightAndID.append((float(g.weight), boneIndex))
+                    boneWeightAndID.sort(reverse=True)
 
                     unit.m_mesh.addVertex(
                         vertex[0], vertex[1], vertex[2],
                         texcoord[0], texcoord[1],
-                        normal[0], normal[1], normal[2]
+                        normal[0], normal[1], normal[2],
+                        boneWeightAndID[0][1], boneWeightAndID[1][1], boneWeightAndID[2][1],
+                        boneWeightAndID[0][0], boneWeightAndID[1][0], boneWeightAndID[2][0],
                     )
 
-            self.__units.append(unit)
+            units.append(unit)
+
+        return units
 
 
 class EmportDalModel(Operator, ExportHelper):
