@@ -7,7 +7,25 @@ from . import byteutils as byt
 
 class Mat4:
     def __init__(self):
-        pass
+        self.__data = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0]
+        ]
+
+    def set(self, mat):
+        for row in range(4):
+            for col in range(4):
+                self.__data[row][col] = mat[row][col]
+
+    def makeBinary(self) -> bytearray:
+        floatlist = []
+        for row in range(4):
+            for col in range(4):
+                floatlist.append(self.__data[row][col])
+
+        return bytearray(np.array(floatlist, dtype=np.float32).tobytes())
 
 
 class Material:
@@ -218,7 +236,7 @@ class RenderUnit:
 class Bone:
     def __init__(self, name: str):
         self.m_name = str(name)
-        self.m_offsetMat = None
+        self.m_offsetMat = Mat4()
         self.m_parentIndex = -1
 
     def __str__(self):
@@ -229,6 +247,7 @@ class Bone:
 
         data += byt.to_nullTerminated(self.m_name)
         data += byt.to_int32(self.m_parentIndex)
+        data += self.m_offsetMat.makeBinary()
 
         return data
 
@@ -305,6 +324,8 @@ class JointAnim:
 
     def makeBinary(self) ->bytearray:
         data = bytearray()
+
+        data += self.__transform.makeBinary()
 
         poses = list(self.iterPoses())
         rotations = list(self.iterRotations())

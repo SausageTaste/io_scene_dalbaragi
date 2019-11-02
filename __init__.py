@@ -6,6 +6,7 @@ from typing import Tuple, List, Dict
 
 import bpy
 import bpy.types
+import mathutils
 from bpy_extras.io_utils import ExportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
@@ -55,15 +56,21 @@ class AnimationParser:
         boneInfo = skeleton[index]
         boneInfo.m_parentIndex = -1
 
+        mat_loc = mathutils.Matrix.Translation((0.0, 3.0, 0.0))
+        boneInfo.m_offsetMat.set(mat_loc)
+
         cls.__parseSkelRecur(rootBone, skeleton)
         return skeleton
 
     @classmethod
-    def __parseSkelRecur(cls, bone, skeleton: dat.SkeletonInterface) -> None:
+    def __parseSkelRecur(cls, bone: bpy.types.Bone, skeleton: dat.SkeletonInterface) -> None:
         for child in bone.children:
             index = skeleton.makeIndexOf(child.name)
             boneInfo = skeleton[index]
             boneInfo.m_parentIndex = skeleton.getIndexOf(bone.name)
+
+            mat_loc = mathutils.Matrix.Translation((0.0, 3.0, 0.0))
+            boneInfo.m_offsetMat.set(mat_loc)
 
             cls.__parseSkelRecur(child, skeleton)
 
