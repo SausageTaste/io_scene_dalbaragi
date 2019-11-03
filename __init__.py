@@ -56,8 +56,7 @@ class AnimationParser:
         boneInfo = skeleton[index]
         boneInfo.m_parentIndex = -1
 
-        mat_loc = mathutils.Matrix.Translation((0.0, 3.0, 0.0))
-        boneInfo.m_offsetMat.set(mat_loc)
+        boneInfo.m_offsetMat.set(rootBone.matrix_local)
 
         cls.__parseSkelRecur(rootBone, skeleton)
         return skeleton
@@ -69,8 +68,8 @@ class AnimationParser:
             boneInfo = skeleton[index]
             boneInfo.m_parentIndex = skeleton.getIndexOf(bone.name)
 
-            mat_loc = mathutils.Matrix.Translation((0.0, 3.0, 0.0))
-            boneInfo.m_offsetMat.set(mat_loc)
+            #rot = mathutils.Matrix.Rotation(math.radians(-90.0), 4, 'X')
+            boneInfo.m_offsetMat.set(child.matrix_local @ bone.matrix_local.inverted())
 
             cls.__parseSkelRecur(child, skeleton)
 
@@ -325,7 +324,7 @@ class ModelBuilder:
                 for timepoint, pos in joint.iterPoses():
                     print("    ", "pos [{}] : {}".format(timepoint, pos))
                 for timepoint, pos in joint.iterRotations():
-                    print("    ", "rotation [{}] : {}".format(timepoint, pos))
+                    print("    ", "rotation [{}] : {:.6}, {:.6}, {:.6}, {:.6}".format(timepoint, *pos))
                 for timepoint, pos in joint.iterScales():
                     print("    ", "scale [{}] : {}".format(timepoint, pos))
 
