@@ -396,8 +396,8 @@ class ModelBuilder:
                     else:
                         normal = face.normal
 
-                    #vertex: Tuple[float, float, float] = _fixVecRotations(vertex[0], vertex[1], vertex[2])
-                    #normal: Tuple[float, float, float] = _fixVecRotations(normal[0], normal[1], normal[2])
+                    vertex: Tuple[float, float, float] = _fixVecRotations(vertex[0], vertex[1], vertex[2])
+                    normal: Tuple[float, float, float] = _fixVecRotations(normal[0], normal[1], normal[2])
                     normal: Tuple[float, float, float] = _normalizeVec3(normal[0], normal[1], normal[2])
 
                     boneWeightAndID = [(0, -1), (0, -1), (0, -1)]
