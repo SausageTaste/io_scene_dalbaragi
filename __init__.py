@@ -69,7 +69,7 @@ class AnimationParser:
             boneInfo.m_parentIndex = skeleton.getIndexOf(bone.name)
 
             #rot = mathutils.Matrix.Rotation(math.radians(-90.0), 4, 'X')
-            boneInfo.m_offsetMat.set(child.matrix_local @ bone.matrix_local.inverted())
+            boneInfo.m_offsetMat.set(child.matrix_local)
 
             cls.__parseSkelRecur(child, skeleton)
 
@@ -322,11 +322,11 @@ class ModelBuilder:
             for joint in anim.m_joints:
                 print("  ", joint.m_name)
                 for timepoint, pos in joint.iterPoses():
-                    print("    ", "pos [{}] : {}".format(timepoint, pos))
+                    print("    ", "pos [{}] : {:.6f}, {:.6f}, {:.6f}".format(timepoint, *pos))
                 for timepoint, pos in joint.iterRotations():
-                    print("    ", "rotation [{}] : {:.6}, {:.6}, {:.6}, {:.6}".format(timepoint, *pos))
+                    print("    ", "rotation [{}] : {:.6f}, {:.6f}, {:.6f}, {:.6f}".format(timepoint, *pos))
                 for timepoint, pos in joint.iterScales():
-                    print("    ", "scale [{}] : {}".format(timepoint, pos))
+                    print("    ", "scale [{}] : {:.6f}".format(timepoint, pos))
 
     def makeBinary(self) -> bytearray:
         data = bytearray()
@@ -396,8 +396,8 @@ class ModelBuilder:
                     else:
                         normal = face.normal
 
-                    vertex: Tuple[float, float, float] = _fixVecRotations(vertex[0], vertex[1], vertex[2])
-                    normal: Tuple[float, float, float] = _fixVecRotations(normal[0], normal[1], normal[2])
+                    #vertex: Tuple[float, float, float] = _fixVecRotations(vertex[0], vertex[1], vertex[2])
+                    #normal: Tuple[float, float, float] = _fixVecRotations(normal[0], normal[1], normal[2])
                     normal: Tuple[float, float, float] = _normalizeVec3(normal[0], normal[1], normal[2])
 
                     boneWeightAndID = [(0, -1), (0, -1), (0, -1)]
