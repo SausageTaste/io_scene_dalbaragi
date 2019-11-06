@@ -160,8 +160,6 @@ class Mesh:
         if self.__hasBones():
             data["boneWeights"] = len(self.__boneWeights)
             data["boneIndices"] = len(self.__boneIndices)
-            data["bone wights"] = [x for x in self.__boneWeights]
-            data["bone indices"] = [x for x in self.__boneIndices]
 
         return data
 
@@ -420,12 +418,20 @@ class JointAnim:
 class Animation:
     def __init__(self, name: str, skeleton: SkeletonInterface):
         self.__name = str(name)
+        self.__durationTick = 0.0
+        self.__tickPerSec = 0.0
         self.__joints: List[JointAnim] = [JointAnim(bone.m_name) for bone in skeleton]
 
     def makeBinary(self) -> bytearray:
         data = bytearray()
 
+        assert 0.0 != self.__durationTick
+        assert 0.0 != self.__tickPerSec
+
         data += byt.to_nullTerminated(self.__name)
+        data += byt.to_float32(self.__durationTick)
+        data += byt.to_float32(self.__tickPerSec)
+
         data += byt.to_int32(len(self.__joints))
         for joint in self.__joints:
             data += joint.makeBinary()
@@ -435,7 +441,9 @@ class Animation:
     def makeJson(self) -> dict:
         return {
             "name" : self.__name,
-            "joints" : [x.makeJson() for x in self.__joints]
+            "joints" : [x.makeJson() for x in self.__joints],
+            "tick_per_sec" : self.__tickPerSec,
+            "duration_tick" : self.__durationTick,
         }
 
     @property
@@ -444,6 +452,20 @@ class Animation:
     @property
     def m_name(self):
         return self.__name
+
+    @property
+    def m_durationTick(self):
+        return self.__durationTick
+    @m_durationTick.setter
+    def m_durationTick(self, v: float):
+        self.__durationTick = float(v)
+
+    @property
+    def m_tickPerSec(self):
+        return self.__tickPerSec
+    @m_tickPerSec.setter
+    def m_tickPerSec(self, v: float):
+        self.__tickPerSec = float(v)
 
 
 class Datablock:

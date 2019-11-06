@@ -190,6 +190,9 @@ class AnimationParser:
 
         for action in bpy.data.actions:
             anim = dat.Animation(action.name, skeleton)
+            anim.m_durationTick = action.frame_range[1] - action.frame_range[0]
+            anim.m_tickPerSec = bpy.context.scene.render.fps
+
             bonedict: AnimationParser.BoneDict = cls.__makeBoneDict(action)
 
             for joint in anim.m_joints:
