@@ -199,30 +199,42 @@ class AnimationParser:
                 joint: dat.JointAnim
 
                 boneInfo : AnimationParser.BoneAnimInfo = bonedict[joint.m_name]
-                poses    : AnimationParser.AnimInfoVar  = boneInfo["location"]
-                rotations: AnimationParser.AnimInfoVar  = boneInfo["rotation_quaternion"]
-                scales   : AnimationParser.AnimInfoVar  = boneInfo["scale"]
 
-                for tp in poses.iterTimepoints():
-                    x = poses.get(tp, 0)
-                    y = poses.get(tp, 1)
-                    z = poses.get(tp, 2)
-                    joint.addPos(tp, x, y, z)
+                try:
+                    poses: AnimationParser.AnimInfoVar  = boneInfo["location"]
+                except KeyError:
+                    pass
+                else:
+                    for tp in poses.iterTimepoints():
+                        x = poses.get(tp, 0)
+                        y = poses.get(tp, 1)
+                        z = poses.get(tp, 2)
+                        joint.addPos(tp, x, y, z)
 
-                for tp in rotations.iterTimepoints():
-                    # It always confuses me.
-                    w = rotations.get(tp, 0)
-                    x = rotations.get(tp, 1)
-                    y = rotations.get(tp, 2)
-                    z = rotations.get(tp, 3)
-                    joint.addRotation(tp, x, y, z, w)
+                try:
+                    rotations: AnimationParser.AnimInfoVar  = boneInfo["rotation_quaternion"]
+                except KeyError:
+                    pass
+                else:
+                    for tp in rotations.iterTimepoints():
+                        # It always confuses me.
+                        w = rotations.get(tp, 0)
+                        x = rotations.get(tp, 1)
+                        y = rotations.get(tp, 2)
+                        z = rotations.get(tp, 3)
+                        joint.addRotation(tp, x, y, z, w)
 
-                for tp in scales.iterTimepoints():
-                    x = scales.get(tp, 0)
-                    y = scales.get(tp, 1)
-                    z = scales.get(tp, 2)
-                    averageScale = (x + y + z) / 3
-                    joint.addScale(tp, averageScale)
+                try:
+                    scales: AnimationParser.AnimInfoVar  = boneInfo["scale"]
+                except KeyError:
+                    pass
+                else:
+                    for tp in scales.iterTimepoints():
+                        x = scales.get(tp, 0)
+                        y = scales.get(tp, 1)
+                        z = scales.get(tp, 2)
+                        averageScale = (x + y + z) / 3
+                        joint.addScale(tp, averageScale)
 
             animations.append(anim)
 

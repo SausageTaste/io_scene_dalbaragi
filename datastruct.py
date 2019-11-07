@@ -408,6 +408,9 @@ class JointAnim:
     @staticmethod
     def __removeDuplicate(arr: List[Any], funcEqual: Callable[[Any, Any], bool]):
         arrSize = len(arr)
+        if 0 == arrSize:
+            return arr
+
         newArr = [arr[0]]
         for i in range(1, arrSize):
             if not funcEqual(arr[i], newArr[-1]):
