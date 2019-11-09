@@ -43,6 +43,42 @@ class Mat4:
         return bytearray(np.array(floatlist, dtype=np.float32).tobytes())
 
 
+class AABB:
+    def __init__(self):
+        self.__min = [0.0, 0.0, 0.0]
+        self.__max = [0.0, 0.0, 0.0]
+
+    def __str__(self):
+        return "AABB{{ min=({}, {}, {}), max=({}, {}, {}) }}".format(*self.__min, *self.__max)
+
+    def makeBinary(self):
+        data = bytearray()
+
+        data += byt.to_float32(self.__min[0])
+        data += byt.to_float32(self.__min[1])
+        data += byt.to_float32(self.__min[2])
+        data += byt.to_float32(self.__max[0])
+        data += byt.to_float32(self.__max[1])
+        data += byt.to_float32(self.__max[2])
+
+        return data
+
+    def makeJson(self):
+        return {
+            "min" : "{:0.6}, {:0.6}, {:0.6}".format(*self.__min),
+            "max" : "{:0.6}, {:0.6}, {:0.6}".format(*self.__max),
+        }
+
+    def resizeToContain(self, x, y, z):
+        p = [x, y, z]
+
+        for i in range(3):
+            if p[i] < self.__min[i]:
+                self.__min[i] = p[i]
+            elif p[i] > self.__max[i]:
+                self.__max[i] = p[i]
+
+
 class Material:
     def __init__(self):
         self.__roughness = 0.5

@@ -48,7 +48,7 @@ class AnimationParser:
 
         skeleton = dat.SkeletonInterface()
 
-        armature = bpy.data.armatures[0]
+        armature: bpy.types.Armature = bpy.data.armatures[0]
         rootBone = cls.__findRootBone(armature.bones)
 
         index = skeleton.makeIndexOf(rootBone.name)
@@ -345,7 +345,7 @@ class ModelBuilder:
         else:
             jointIndexMap = self.__skeleton.makeIndexMap()
 
-        self.__units = self.__parseRenderUnits(jointIndexMap)
+        self.__units, self.__aabb = self.__parseRenderUnits(jointIndexMap)
 
     def makeBinary(self) -> bytearray:
         if len(self.__skeleton) > 30:
@@ -353,6 +353,7 @@ class ModelBuilder:
 
         data = bytearray()
 
+        data += self.__aabb.makeBinary()
         data += self.__skeleton.makeBinary()
 
         data += byt.to_int32(len(self.__animations))
@@ -368,10 +369,11 @@ class ModelBuilder:
 
     def makeJson(self) -> dict:
         return {
+            "aabb" : self.__aabb.makeJson(),
             "render units size"         : len(self.__units),
             "render units" : [x.makeJson() for x in self.__units],
             "skeleton interface" : self.__skeleton.makeJson(),
-            "animations" : [x.makeJson() for x in self.__animations]
+            "animations" : [x.makeJson() for x in self.__animations],
         }
 
     def getImgNames(self):
@@ -389,6 +391,7 @@ class ModelBuilder:
     @staticmethod
     def __parseRenderUnits(skeleton: Dict[str, int]):
         units = []
+        aabb = dat.AABB()
 
         for obj in bpy.context.scene.objects:
             if not hasattr(obj.data, "polygons"): continue
@@ -441,9 +444,11 @@ class ModelBuilder:
                         boneWeightAndID[0][0], boneWeightAndID[1][0], boneWeightAndID[2][0],
                     )
 
+                    aabb.resizeToContain(vertex[0], vertex[1], vertex[2])
+
             units.append(unit)
 
-        return units
+        return units, aabb
 
 
 class EmportDalModel(Operator, ExportHelper):
