@@ -599,7 +599,9 @@ class Animation:
             if joint.isUseless():
                 result.add(joint.m_name)
 
-        result.remove(self.__joints[0].m_name)
+        rootName = self.__joints[0].m_name
+        if rootName in result:
+            result.remove(rootName)
 
         return result
 
