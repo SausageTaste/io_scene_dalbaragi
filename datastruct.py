@@ -1,8 +1,23 @@
-from typing import List, Tuple, Generator, Callable, Any
+from typing import List, Tuple, Generator, Callable, Any, Set, Dict
 
 import numpy as np
 
 from . import byteutils as byt
+
+
+EPSILON = 1.0 / 1000.0
+
+def _isFloatNear(v: float, criteria: float = 0.0):
+    return float(criteria + -EPSILON) < float(v) < float(criteria + EPSILON)
+
+def _isPosDefault(v: Tuple[float, float, float]) -> bool:
+    return _isFloatNear(v[0]) and _isFloatNear(v[1]) and _isFloatNear(v[2])
+
+def _isQuatDefault(q: Tuple[float, float, float, float]) -> bool:
+    return _isFloatNear(q[0]) and _isFloatNear(q[1]) and _isFloatNear(q[2]) and _isFloatNear(q[3], 1.0)
+
+def _isScaleDefault(s: float) -> bool:
+    return _isFloatNear(s, 1.0)
 
 
 class Mat4:
@@ -235,25 +250,38 @@ class Bone:
     def __init__(self, name: str):
         self.m_name = str(name)
         self.m_offsetMat = Mat4()
-        self.m_parentIndex = -1
+        self.m_parentName = ""
 
     def __str__(self):
-        return "{{ name={}, parent={} }}".format(self.m_name, self.m_parentIndex)
-
-    def makeBinary(self) -> bytearray:
-        data = bytearray()
-
-        data += byt.to_nullTerminated(self.m_name)
-        data += byt.to_int32(self.m_parentIndex)
-        data += self.m_offsetMat.makeBinary()
-
-        return data
+        return "{{ name={}, parent={} }}".format(self.m_name, self.m_parentName)
 
     def makeJson(self) -> dict:
         return {
             "name" : self.m_name,
-            "parent_index" : self.m_parentIndex,
+            "parent_name" : self.m_parentName,
         }
+
+
+class _JointReplaceMap:
+    def __init__(self, joints: List[Bone]):
+        self.__names = [xx.m_name for xx in joints]
+
+    def __str__(self) -> str:
+        return str(self.__names)
+
+    def __len__(self) -> int:
+        return len(self.__names)
+
+    def __iter__(self):
+        return iter(self.__names)
+
+    def __getitem__(self, index: int) -> str:
+        return self.__names[index]
+
+    def replace(self, fromName: str, toName: str) -> None:
+        for i in range(len(self.__names)):
+            if self.__names[i] == fromName:
+                self.__names[i] = toName
 
 
 class SkeletonInterface:
@@ -277,7 +305,9 @@ class SkeletonInterface:
 
         data += byt.to_int32(len(self.__bones))
         for bone in self.__bones:
-            data += bone.makeBinary()
+            data += byt.to_nullTerminated(bone.m_name)
+            data += byt.to_int32(self.getIndexOf(bone.m_parentName))
+            data += bone.m_offsetMat.makeBinary()
 
         return data
 
@@ -285,6 +315,9 @@ class SkeletonInterface:
         return [x.makeJson() for x in self.__bones]
 
     def getIndexOf(self, boneName: str) -> int:
+        if "" == boneName:
+            return -1
+
         for i, bone in enumerate(self.__bones):
             if bone.m_name == boneName:
                 return i
@@ -308,6 +341,52 @@ class SkeletonInterface:
             return len(self.__bones) - 1
         else:
             return found
+
+    # Returns joint ids replace map for mesh.
+    def removeJoints(self, jointNames: Set[str]) -> Dict[str, int]:
+        replaceMapStr = _JointReplaceMap(self.__bones)
+        originalNames = [xx.m_name for xx in self.__bones]
+
+        for i in reversed(range(1, len(self.__bones))):
+            joint: Bone = self.__bones[i]
+            parent: Bone = self.__bones[self.getIndexOf(joint.m_parentName)]
+            if joint.m_name in jointNames:
+                replaceMapStr.replace(joint.m_name, parent.m_name)
+
+        for i in reversed(range(1, len(self.__bones))):
+            joint: Bone = self.__bones[i]
+            if joint.m_name in jointNames:
+                self.__removeAJoint(i)
+
+        result = {}
+
+        assert len(originalNames) == len(replaceMapStr)
+        for i in range(len(originalNames)):
+            newName = replaceMapStr[i]
+            oriName = originalNames[i]
+            newIndex = self.getIndexOf(newName)
+            result[oriName] = newIndex
+
+        return result
+
+    def makeIndexMap(self) -> Dict[str, int]:
+        result = {}
+
+        for i in range(len(self.__bones)):
+            result[self.__bones[i].m_name] = i
+
+        return result
+
+    def __removeAJoint(self, index: int) -> None:
+        joint: Bone = self.__bones[index]
+        parentName = joint.m_parentName
+
+        for j in self.__bones:
+            if j.m_parentName == joint.m_name:
+                j.m_parentName = parentName
+
+        self.__bones.remove(joint)
+        print("Removed joint '{}' from skeleton.".format(joint.m_name))
 
 
 class JointAnim:
@@ -359,36 +438,66 @@ class JointAnim:
             "scales" : ["{} : {:0.6}".format(timepoint, value) for timepoint, value in self.iterScales()],
         }
 
+    def cleanUp(self) -> None:
+        # Poses
+
+        self.__poses.sort()
+        equalfunc = lambda xx, yy: (xx[1], xx[2], xx[3]) == (yy[1], yy[2], yy[3])
+        self.__poses = self.__removeDuplicate(self.__poses, equalfunc)
+
+        if 1 == len(self.__poses) and _isPosDefault(self.__poses[0][1:]):
+            self.__poses.clear()
+            print("Cleared poses for joint '{}'.".format(self.__name))
+
+        # Rotations
+
+        self.__rotations.sort()
+        equalfunc = lambda xx, yy: (xx[1], xx[2], xx[3], xx[4]) == (yy[1], yy[2], yy[3], yy[4])
+        self.__rotations = self.__removeDuplicate(self.__rotations, equalfunc)
+
+        if 1 == len(self.__rotations) and _isQuatDefault(self.__rotations[0][1:]):
+            self.__rotations.clear()
+            print("Cleared rotations for joint '{}'.".format(self.__name))
+
+        # Scales
+
+        self.__scales.sort()
+        equalfunc = lambda xx, yy: xx[1] == yy[1]
+        self.__scales = self.__removeDuplicate(self.__scales, equalfunc)
+
+        if 1 == len(self.__scales) and _isScaleDefault(self.__scales[0][1]):
+            self.__scales.clear()
+            print("Cleared scales for joint '{}'.".format(self.__name))
+
+    # Must call self.cleanUp first
+    def isUseless(self) -> bool:
+        if len(self.__poses):
+            return False
+        elif len(self.__rotations):
+            return False
+        elif len(self.__scales):
+            return False
+        else:
+            return True
+
     @property
     def m_name(self):
         return self.__name
 
     def iterPoses(self) -> Generator[Tuple[float, Tuple[float, float, float]], None, None]:
-        self.__poses.sort()
-        equalfunc = lambda xx, yy: (xx[1], xx[2], xx[3]) == (yy[1], yy[2], yy[3])
-        newList = self.__removeDuplicate(self.__poses, equalfunc)
-
-        for pos in newList:
+        for pos in self.__poses:
             timepoint = pos[0]
             valvec = (pos[1], pos[2], pos[3])
             yield timepoint, valvec
 
     def iterRotations(self) -> Generator[Tuple[float, Tuple[float, float, float, float]], None, None]:
-        self.__rotations.sort()
-        equalfunc = lambda xx, yy: (xx[1], xx[2], xx[3], xx[4]) == (yy[1], yy[2], yy[3], yy[4])
-        newList = self.__removeDuplicate(self.__rotations, equalfunc)
-
-        for val in newList:
+        for val in self.__rotations:
             timepoint = val[0]
             valvec = (val[1], val[2], val[3], val[4])
             yield timepoint, valvec
 
     def iterScales(self) -> Generator[Tuple[float, float], None, None]:
-        self.__scales.sort()
-        equalfunc = lambda xx, yy: xx[1] == yy[1]
-        newList = self.__removeDuplicate(self.__scales, equalfunc)
-
-        for pos in newList:
+        for pos in self.__scales:
             timepoint = pos[0]
             scale = pos[1]
             yield timepoint, scale
@@ -425,6 +534,16 @@ class Animation:
         self.__tickPerSec = 0.0
         self.__joints: List[JointAnim] = [JointAnim(bone.m_name) for bone in skeleton]
 
+    def isMatchWith(self, skeleton: SkeletonInterface) -> bool:
+        if len(self.__joints) != len(skeleton):
+            return False
+
+        for i in range(len(self.__joints)):
+            if self.__joints[i].m_name != skeleton[i].m_name:
+                return False
+
+        return True
+
     def makeBinary(self) -> bytearray:
         data = bytearray()
 
@@ -448,6 +567,27 @@ class Animation:
             "tick_per_sec" : self.__tickPerSec,
             "duration_tick" : self.__durationTick,
         }
+
+    def cleanUp(self) -> None:
+        for joint in self.__joints:
+            joint.cleanUp()
+
+    def removeJoints(self, jointNames: Set[str]) -> None:
+        for i in reversed(range(len(self.__joints))):
+            joint = self.__joints[i]
+            if joint.m_name in jointNames:
+                self.__joints.remove(joint)
+
+    def getSetOfNamesOfUselesses(self) -> Set[str]:
+        result = set()
+
+        for joint in self.__joints:
+            if joint.isUseless():
+                result.add(joint.m_name)
+
+        result.remove(self.__joints[0].m_name)
+
+        return result
 
     @property
     def m_joints(self):

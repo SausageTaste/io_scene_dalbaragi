@@ -6,7 +6,6 @@ from typing import Tuple, List, Dict
 
 import bpy
 import bpy.types
-import mathutils
 from bpy_extras.io_utils import ExportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
@@ -54,7 +53,7 @@ class AnimationParser:
 
         index = skeleton.makeIndexOf(rootBone.name)
         boneInfo = skeleton[index]
-        boneInfo.m_parentIndex = -1
+        boneInfo.m_parentName = ""
 
         boneInfo.m_offsetMat.set(rootBone.matrix_local)
 
@@ -66,7 +65,7 @@ class AnimationParser:
         for child in bone.children:
             index = skeleton.makeIndexOf(child.name)
             boneInfo = skeleton[index]
-            boneInfo.m_parentIndex = skeleton.getIndexOf(bone.name)
+            boneInfo.m_parentName = bone.name
 
             #rot = mathutils.Matrix.Rotation(math.radians(-90.0), 4, 'X')
             boneInfo.m_offsetMat.set(child.matrix_local)
@@ -324,24 +323,29 @@ class MaterialParser:
 
 
 class ModelBuilder:
-    def __init__(self):
+    def __init__(self, removeUselessJoints: bool):
         self.__skeleton = AnimationParser.parseSkeleton()
         self.__animations = AnimationParser.parseActions(self.__skeleton)
-        self.__units = self.__parseRenderUnits(self.__skeleton)
 
-        for k in self.__skeleton:
-            print(k)
+        if removeUselessJoints:
+            uselesses = None
+            for anim in self.__animations:
+                anim.cleanUp()
+                animUselesses = anim.getSetOfNamesOfUselesses()
+                if uselesses is None:
+                    uselesses = animUselesses
+                else:
+                    uselesses = uselesses.intersection(animUselesses)
 
-        for anim in self.__animations:
-            print(anim.m_name)
-            for joint in anim.m_joints:
-                print("  ", joint.m_name)
-                for timepoint, pos in joint.iterPoses():
-                    print("    ", "pos [{}] : {:.6f}, {:.6f}, {:.6f}".format(timepoint, *pos))
-                for timepoint, pos in joint.iterRotations():
-                    print("    ", "rotation [{}] : {:.6f}, {:.6f}, {:.6f}, {:.6f}".format(timepoint, *pos))
-                for timepoint, pos in joint.iterScales():
-                    print("    ", "scale [{}] : {:.6f}".format(timepoint, pos))
+            jointIndexMap = self.__skeleton.removeJoints(uselesses)
+
+            for anim in self.__animations:
+                anim.removeJoints(uselesses)
+                assert anim.isMatchWith(self.__skeleton)
+        else:
+            jointIndexMap = self.__skeleton.makeIndexMap()
+
+        self.__units = self.__parseRenderUnits(jointIndexMap)
 
     def makeBinary(self) -> bytearray:
         data = bytearray()
@@ -380,7 +384,7 @@ class ModelBuilder:
         return imgNames
 
     @staticmethod
-    def __parseRenderUnits(skeleton: dat.SkeletonInterface):
+    def __parseRenderUnits(skeleton: Dict[str, int]):
         units = []
 
         for obj in bpy.context.scene.objects:
@@ -419,7 +423,7 @@ class ModelBuilder:
                     for g in obj.data.vertices[vert].groups:
                         groupName = str(obj.vertex_groups[g.group].name)
                         try:
-                            boneIndex = skeleton.getIndexOf(groupName)
+                            boneIndex = skeleton[groupName]
                         except RuntimeError:
                             continue
                         else:
@@ -467,6 +471,12 @@ class EmportDalModel(Operator, ExportHelper):
         default     = False,
     )
 
+    optionBool_removeUselessJoints = BoolProperty(
+        name="Remove useless joints",
+        description="Remove all the joints without keyframes.",
+        default=False,
+    )
+
     enum_example = EnumProperty(
         name        = "Example Enum",
         description = "Choose between two items",
@@ -478,7 +488,13 @@ class EmportDalModel(Operator, ExportHelper):
     )
 
     def execute(self, context):
-        model = ModelBuilder()
+        model = ModelBuilder(self.optionBool_removeUselessJoints)
+
+        if self.optionBool_createReadable:
+            readablePath = os.path.splitext(self.filepath)[0] + ".txt"
+            readableContent = model.makeJson()
+            with open(readablePath, "w", encoding="utf8") as file:
+                json.dump(readableContent, file, indent=4, sort_keys=False)
 
         binData = model.makeBinary()
         fullSize = len(binData)
@@ -493,12 +509,6 @@ class EmportDalModel(Operator, ExportHelper):
                 image = bpy.data.images[name]
                 dstPath = saveFol + "/" + name
                 image.save_render(dstPath)
-
-        if self.optionBool_createReadable:
-            readablePath = os.path.splitext(self.filepath)[0] + ".txt"
-            readableContent = model.makeJson()
-            with open(readablePath, "w", encoding="utf8") as file:
-                json.dump(readableContent, file, indent=4, sort_keys=False)
 
         return {'FINISHED'}
 
