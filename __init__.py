@@ -345,11 +345,12 @@ class ModelBuilder:
         else:
             jointIndexMap = self.__skeleton.makeIndexMap()
 
-        assert len(self.__skeleton) <= 30
-
         self.__units = self.__parseRenderUnits(jointIndexMap)
 
     def makeBinary(self) -> bytearray:
+        if len(self.__skeleton) > 30:
+            raise RuntimeError("The number of joints ({}) cannot exceed 30.".format(len(self.__skeleton)))
+
         data = bytearray()
 
         data += self.__skeleton.makeBinary()
