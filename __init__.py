@@ -188,8 +188,8 @@ class AnimationParser:
         animations = []
 
         for action in bpy.data.actions:
+            action: bpy.types.Action
             anim = dat.Animation(action.name, skeleton)
-            anim.m_durationTick = action.frame_range[1] - action.frame_range[0]
             anim.m_tickPerSec = bpy.context.scene.render.fps
 
             bonedict: AnimationParser.BoneDict = cls.__makeBoneDict(action)
@@ -345,6 +345,8 @@ class ModelBuilder:
         else:
             jointIndexMap = self.__skeleton.makeIndexMap()
 
+        assert len(self.__skeleton) <= 30
+
         self.__units = self.__parseRenderUnits(jointIndexMap)
 
     def makeBinary(self) -> bytearray:
@@ -457,8 +459,6 @@ class EmportDalModel(Operator, ExportHelper):
         maxlen = 255,  # Max internal buffer length, longer would be clamped.
     )
 
-    # List of operator properties, the attributes will be assigned
-    # to the class instance from the operator settings before calling.
     optionBool_copyImages = BoolProperty(
         name        = "Copy textures",
         description = "Copy textures to same path as exported model file.",
@@ -466,17 +466,18 @@ class EmportDalModel(Operator, ExportHelper):
     )
 
     optionBool_createReadable = BoolProperty(
-        name        = "Create readable file.",
-        description = "",
+        name        = "Create readable file",
+        description = "Create a txt file that contains model info.",
         default     = False,
     )
 
     optionBool_removeUselessJoints = BoolProperty(
-        name="Remove useless joints",
-        description="Remove all the joints without keyframes.",
-        default=False,
+        name        = "Remove useless joints",
+        description = "Remove all the joints without keyframes.",
+        default     = False,
     )
 
+    """
     enum_example = EnumProperty(
         name        = "Example Enum",
         description = "Choose between two items",
@@ -486,6 +487,7 @@ class EmportDalModel(Operator, ExportHelper):
         ),
         default     = 'OPT_A',
     )
+    """
 
     def execute(self, context):
         model = ModelBuilder(self.optionBool_removeUselessJoints)

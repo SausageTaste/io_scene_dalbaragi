@@ -311,8 +311,11 @@ class SkeletonInterface:
 
         return data
 
-    def makeJson(self) -> list:
-        return [x.makeJson() for x in self.__bones]
+    def makeJson(self) -> dict:
+        return {
+            "joints" : [x.makeJson() for x in self.__bones],
+            "joints_count" : len(self.__bones),
+        }
 
     def getIndexOf(self, boneName: str) -> int:
         if "" == boneName:
@@ -514,6 +517,18 @@ class JointAnim:
         scaleTuple = ( float(timepoint), float(x) )
         self.__scales.append(scaleTuple)
 
+    def getMaxTimepoint(self) -> float:
+        maxValue = 0.0
+
+        for x in self.__poses:
+            maxValue = max(maxValue, x[0])
+        for x in self.__rotations:
+            maxValue = max(maxValue, x[0])
+        for x in self.__scales:
+            maxValue = max(maxValue, x[0])
+
+        return maxValue
+
     @staticmethod
     def __removeDuplicate(arr: List[Any], funcEqual: Callable[[Any, Any], bool]):
         arrSize = len(arr)
@@ -530,7 +545,6 @@ class JointAnim:
 class Animation:
     def __init__(self, name: str, skeleton: SkeletonInterface):
         self.__name = str(name)
-        self.__durationTick = 0.0
         self.__tickPerSec = 0.0
         self.__joints: List[JointAnim] = [JointAnim(bone.m_name) for bone in skeleton]
 
@@ -547,11 +561,10 @@ class Animation:
     def makeBinary(self) -> bytearray:
         data = bytearray()
 
-        assert 0.0 != self.__durationTick
         assert 0.0 != self.__tickPerSec
 
         data += byt.to_nullTerminated(self.__name)
-        data += byt.to_float32(self.__durationTick)
+        data += byt.to_float32(self.__makeDurationTick())
         data += byt.to_float32(self.__tickPerSec)
 
         data += byt.to_int32(len(self.__joints))
@@ -563,9 +576,10 @@ class Animation:
     def makeJson(self) -> dict:
         return {
             "name" : self.__name,
+            "joints_count" : len(self.__joints),
             "joints" : [x.makeJson() for x in self.__joints],
             "tick_per_sec" : self.__tickPerSec,
-            "duration_tick" : self.__durationTick,
+            "duration_tick" : self.__makeDurationTick(),
         }
 
     def cleanUp(self) -> None:
@@ -597,18 +611,19 @@ class Animation:
         return self.__name
 
     @property
-    def m_durationTick(self):
-        return self.__durationTick
-    @m_durationTick.setter
-    def m_durationTick(self, v: float):
-        self.__durationTick = float(v)
-
-    @property
     def m_tickPerSec(self):
         return self.__tickPerSec
     @m_tickPerSec.setter
     def m_tickPerSec(self, v: float):
         self.__tickPerSec = float(v)
+
+    def __makeDurationTick(self) -> float:
+        maxValue = 0.0
+
+        for joint in self.__joints:
+            maxValue = max(joint.getMaxTimepoint(), maxValue)
+
+        return maxValue if 0.0 != maxValue else 1.0
 
 
 class Datablock:
