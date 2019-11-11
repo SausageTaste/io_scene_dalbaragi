@@ -361,7 +361,7 @@ class SkeletonInterface:
             if bone.m_name == boneName:
                 return i
         else:
-            raise RuntimeError("Bone name '{}' not found.".format(boneName))
+            raise RuntimeError("[DAL] Bone name '{}' not found.".format(boneName))
 
     def makeIndexOf(self, boneName: str) -> int:
         try:
@@ -370,7 +370,7 @@ class SkeletonInterface:
             self.__bones.append(Bone(boneName))
             return len(self.__bones) - 1
         else:
-            raise RuntimeError("Bone already exists: {}".format(boneName))
+            raise RuntimeError("[DAL] Bone already exists: {}".format(boneName))
 
     def getOrMakeIndexOf(self, boneName: str) -> int:
         try:
@@ -425,7 +425,6 @@ class SkeletonInterface:
                 j.m_parentName = parentName
 
         self.__bones.remove(joint)
-        print("Removed joint '{}' from skeleton.".format(joint.m_name))
 
 
 class JointAnim:
@@ -486,7 +485,6 @@ class JointAnim:
 
         if 1 == len(self.__poses) and _isPosDefault(self.__poses[0][1:]):
             self.__poses.clear()
-            print("Cleared poses for joint '{}'.".format(self.__name))
 
         # Rotations
 
@@ -496,7 +494,6 @@ class JointAnim:
 
         if 1 == len(self.__rotations) and _isQuatDefault(self.__rotations[0][1:]):
             self.__rotations.clear()
-            print("Cleared rotations for joint '{}'.".format(self.__name))
 
         # Scales
 
@@ -506,7 +503,6 @@ class JointAnim:
 
         if 1 == len(self.__scales) and _isScaleDefault(self.__scales[0][1]):
             self.__scales.clear()
-            print("Cleared scales for joint '{}'.".format(self.__name))
 
     # Must call self.cleanUp first
     def isUseless(self) -> bool:
@@ -691,7 +687,7 @@ class IndexSet:
 
     def addGetIndex(self, val):
         if not isinstance(val, self.__valType):
-            raise TypeError("Expected type '{}', got '{}' instead.".format(self.__valType, type(val)))
+            raise TypeError("[DAL] Expected type '{}', got '{}' instead.".format(self.__valType, type(val)))
         else:
             found = self.__findIndex(val)
             if -1 != found:

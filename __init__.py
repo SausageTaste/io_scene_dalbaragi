@@ -42,16 +42,16 @@ def _copyImage(image: bpy.types.Image, dstpath: str) -> None:
         srcpath = bpy.path.abspath(image.filepath)
         if os.path.isfile(srcpath):
             shutil.copyfile(srcpath, dstpath)
-            print("Image copied: {}".format(dstpath))
+            print("[DAL] Image copied: {}".format(dstpath))
         else:
-            raise FileNotFoundError("Image not found: {}".format(srcpath))
+            raise FileNotFoundError("[DAL] Image not found: {}".format(srcpath))
     else:  # Packed
         packed = image.packed_files[0]
         originalPath = packed.filepath
         packed.filepath = dstpath
         packed.save()
         packed.filepath = originalPath
-        print("Image exported from packed: {}".format(dstpath))
+        print("[DAL] Image exported from packed: {}".format(dstpath))
 
 
 class AnimationParser:
@@ -61,7 +61,7 @@ class AnimationParser:
         if 0 == numArma:
             return dat.SkeletonInterface()
         elif numArma > 1:
-            raise RuntimeError("Multiple armatures.")
+            raise RuntimeError("[DAL] Multiple armatures.")
 
         skeleton = dat.SkeletonInterface()
 
@@ -98,10 +98,10 @@ class AnimationParser:
                 if root is None:
                     root = bone
                 else:
-                    raise ValueError("There are two root bone: {}, {}".format(root.name, bone.name))
+                    raise ValueError("[DAL] There are two root bone: {}, {}".format(root.name, bone.name))
 
         if root is None:
-            raise ValueError("Failed to find a root bone")
+            raise ValueError("[DAL] Failed to find a root bone")
 
         return root
 
@@ -134,7 +134,7 @@ class AnimationParser:
                 requestedOrder = self.__timepointToOrder(timepoint)
                 prevOrder = requestedOrder - 1
                 if prevOrder < 0:
-                    raise RuntimeError("First keyframe need all its channels with a value.")
+                    raise RuntimeError("[DAL] First keyframe need all its channels with a value.")
                 prevTimepoint = self.__orderToTimepoint(prevOrder)
                 return self.get(prevTimepoint, channel)
 
@@ -285,7 +285,7 @@ class MaterialParser:
     def parse(cls, blenderMat):
         bsdf = cls.__findPrincipledBSDFNode(blenderMat.node_tree.nodes)
         if bsdf is None:
-            raise ValueError("Only Principled BSDF node is supported.")
+            raise ValueError("[DAL] Only Principled BSDF node is supported.")
 
         material = dat.Material()
 
@@ -300,7 +300,7 @@ class MaterialParser:
         if imageNode is not None:
             material.m_diffuseMap = imageNode.image.name
         else:
-            raise ValueError("Diffuse map must be defined.")
+            raise ValueError("[DAL] Diffuse map must be defined.")
 
         imageNode = cls.__findImageNodeRecur(node_metallic)
         if imageNode is not None:
@@ -359,6 +359,8 @@ class ModelBuilder:
             for anim in self.__animations:
                 anim.removeJoints(uselesses)
                 assert anim.isMatchWith(self.__skeleton)
+
+            print("[DAL] Removed joints are {}".format(uselesses))
         else:
             jointIndexMap = self.__skeleton.makeIndexMap()
 
@@ -366,7 +368,7 @@ class ModelBuilder:
 
     def makeBinary(self) -> bytearray:
         if len(self.__skeleton) > 30:
-            raise RuntimeError("The number of joints ({}) cannot exceed 30.".format(len(self.__skeleton)))
+            raise RuntimeError("[DAL] The number of joints ({}) cannot exceed 30.".format(len(self.__skeleton)))
 
         data = bytearray()
 
@@ -428,7 +430,7 @@ class ModelBuilder:
                 elif 4 == lenVert:
                     vertIndices = (0, 1, 2, 0, 2, 3)
                 else:
-                    raise NotImplementedError("Loop with {} vertices is not supported!".format(lenVert))
+                    raise NotImplementedError("[DAL] Loop with {} vertices is not supported!".format(lenVert))
 
                 for i in vertIndices:
                     vert: int = face.vertices[i]
