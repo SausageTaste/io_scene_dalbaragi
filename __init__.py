@@ -2,6 +2,7 @@ import os
 import zlib
 import math
 import json
+import shutil
 from typing import Tuple, List, Dict
 
 import bpy
@@ -35,6 +36,22 @@ def _fixVecRotations(x: float, y: float, z: float) -> Tuple[float, float, float]
 def _normalizeVec3(x: float, y: float, z: float):
     length = math.sqrt( x*x + y*y + z*z )
     return x/length, y/length, z/length
+
+def _copyImage(image: bpy.types.Image, dstpath: str) -> None:
+    if image.packed_file is None:  # Not packed
+        srcpath = bpy.path.abspath(image.filepath)
+        if os.path.isfile(srcpath):
+            shutil.copyfile(srcpath, dstpath)
+            print("Image copied: {}".format(dstpath))
+        else:
+            raise FileNotFoundError("Image not found: {}".format(srcpath))
+    else:  # Packed
+        packed = image.packed_files[0]
+        originalPath = packed.filepath
+        packed.filepath = dstpath
+        packed.save()
+        packed.filepath = originalPath
+        print("Image exported from packed: {}".format(dstpath))
 
 
 class AnimationParser:
@@ -384,7 +401,10 @@ class ModelBuilder:
             imgNames.add(unit.m_material.m_roughnessMap)
             imgNames.add(unit.m_material.m_metallicMap)
 
-        imgNames.remove("")
+        try:
+            imgNames.remove("")
+        except KeyError:
+            pass
 
         return imgNames
 
@@ -514,9 +534,9 @@ class EmportDalModel(Operator, ExportHelper):
             imgNames = model.getImgNames()
             saveFol = os.path.split(self.filepath)[0].replace("\\", "/")
             for name in imgNames:
-                image = bpy.data.images[name]
+                image: bpy.types.Image = bpy.data.images[name]
                 dstPath = saveFol + "/" + name
-                image.save_render(dstPath)
+                _copyImage(image, dstPath)
 
         return {'FINISHED'}
 
