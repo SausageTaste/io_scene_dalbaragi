@@ -528,7 +528,7 @@ class EmportDalModel(Operator, ExportHelper):
 
         binData = model.makeBinary()
         fullSize = len(binData)
-        finalBin = byt.to_int32(fullSize) + zlib.compress(binData, zlib.Z_BEST_COMPRESSION)
+        finalBin = bytearray() + b"dalmdl" + byt.to_int32(fullSize) + zlib.compress(binData, zlib.Z_BEST_COMPRESSION)
         with open(self.filepath, "wb") as file:
             file.write(finalBin)
 
