@@ -283,6 +283,8 @@ class AnimationParser:
 class MaterialParser:
     @classmethod
     def parse(cls, blenderMat):
+        assert blenderMat is not None
+
         bsdf = cls.__findPrincipledBSDFNode(blenderMat.node_tree.nodes)
         if bsdf is None:
             raise ValueError("[DAL] Only Principled BSDF node is supported.")
@@ -417,9 +419,15 @@ class ModelBuilder:
 
         for obj in bpy.context.scene.objects:
             if not hasattr(obj.data, "polygons"): continue
+            if not obj.visible_get():
+                print("Skipped obj: {}".format(obj.name))
+                continue
+
             assert 1 == len(obj.data.materials)
 
             unit = dat.RenderUnit(obj.name)
+            if obj.data.materials[0] is None:
+                raise RuntimeError("Object '{}' does not have a material.".format(obj.name))
             unit.m_material = MaterialParser.parse(obj.data.materials[0])
 
             for face in obj.data.polygons:
@@ -452,7 +460,7 @@ class ModelBuilder:
                         groupName = str(obj.vertex_groups[g.group].name)
                         try:
                             boneIndex = skeleton[groupName]
-                        except RuntimeError:
+                        except (RuntimeError, KeyError):
                             continue
                         else:
                             boneWeightAndID.append((float(g.weight), boneIndex))
