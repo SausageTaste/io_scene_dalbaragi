@@ -16,6 +16,9 @@ from . import datastruct as dat
 from . import byteutils as byt
 
 
+MAX_JOINT_NUM = 130
+
+
 bl_info = {
     "name"       : "Dalbaragi Model Exporter",
     "author"     : "Sungmin Woo",
@@ -369,8 +372,8 @@ class ModelBuilder:
         self.__units, self.__aabb = self.__parseRenderUnits(jointIndexMap)
 
     def makeBinary(self) -> bytearray:
-        if len(self.__skeleton) > 30:
-            raise RuntimeError("[DAL] The number of joints ({}) cannot exceed 30.".format(len(self.__skeleton)))
+        if len(self.__skeleton) > MAX_JOINT_NUM:
+            raise RuntimeError("[DAL] The number of joints ({}) cannot exceed {}.".format(len(self.__skeleton), MAX_JOINT_NUM))
 
         data = bytearray()
 
