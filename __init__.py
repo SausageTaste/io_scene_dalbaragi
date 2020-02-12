@@ -87,6 +87,11 @@ class AnimationParser:
             boneInfo = skeleton[index]
             boneInfo.m_parentName = bone.name
 
+            if ( child.get("dal_phy_hairRoot", None) is not None ):
+                boneInfo.setHairRoot();
+            elif ( child.get("dal_phy_skirtRoot", None) is not None ):
+                boneInfo.setSkirtRoot();
+
             #rot = mathutils.Matrix.Rotation(math.radians(-90.0), 4, 'X')
             boneInfo.m_offsetMat.set(child.matrix_local)
 
@@ -368,6 +373,8 @@ class ModelBuilder:
             print("[DAL] Removed joints are {}".format(uselesses))
         else:
             jointIndexMap = self.__skeleton.makeIndexMap()
+
+        
 
         self.__units, self.__aabb = self.__parseRenderUnits(jointIndexMap)
 

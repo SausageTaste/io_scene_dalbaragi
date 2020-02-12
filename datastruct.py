@@ -1,4 +1,5 @@
 from typing import List, Tuple, Generator, Callable, Any, Set, Dict
+from enum import Enum
 
 import numpy as np
 
@@ -283,10 +284,17 @@ class RenderUnit:
 
 
 class Bone:
+    class __BoneType(Enum):
+        normal = 0
+        hair_root = 1
+        skirt_root = 2
+
     def __init__(self, name: str):
         self.m_name = str(name)
         self.m_offsetMat = Mat4()
         self.m_parentName = ""
+
+        self.__boneType = self.__BoneType.normal
 
     def __str__(self):
         return "{{ name={}, parent={} }}".format(self.m_name, self.m_parentName)
@@ -295,7 +303,18 @@ class Bone:
         return {
             "name" : self.m_name,
             "parent_name" : self.m_parentName,
+            "bone_type_index" : self.__boneType.value,
+            "bone_type_name" : self.__boneType.name,
         }
+
+    def setHairRoot(self) -> None:
+        self.__boneType = self.__BoneType.hair_root
+
+    def setSkirtRoot(self) -> None:
+        self.__boneType = self.__BoneType.skirt_root
+
+    def getBoneTypeIndex(self) -> int:
+        return self.__boneType.value
 
 
 class _JointReplaceMap:
@@ -343,6 +362,7 @@ class SkeletonInterface:
         for bone in self.__bones:
             data += byt.to_nullTerminated(bone.m_name)
             data += byt.to_int32(self.getIndexOf(bone.m_parentName))
+            data += byt.to_int32(bone.getBoneTypeIndex())
             data += bone.m_offsetMat.makeBinary()
 
         return data
