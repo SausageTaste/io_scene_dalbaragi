@@ -43,6 +43,19 @@ class Mat4:
 
         return bytearray(np.array(floatlist, dtype=np.float32).tobytes())
 
+    def makeReadable(self) -> str:
+        colStrings = []
+
+        for col in range(4):
+            colValues = []
+            for row in range(4):
+                numstr = "{:0.2}".format(self.__data[row][col])
+                colValues.append(numstr)
+            colstr = ", ".join(colValues)
+            colStrings.append("( {} )".format(colstr))
+        
+        return ", ".join(colStrings)
+            
 
 class AABB:
     def __init__(self):
@@ -305,6 +318,7 @@ class Bone:
             "parent_name" : self.m_parentName,
             "bone_type_index" : self.__boneType.value,
             "bone_type_name" : self.__boneType.name,
+            "offset_matrix" : self.m_offsetMat.makeReadable(),
         }
 
     def setHairRoot(self) -> None:
