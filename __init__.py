@@ -310,8 +310,8 @@ class MaterialParser:
         imageNode = cls.__findImageNodeRecur(node_baseColor)
         if imageNode is not None:
             material.m_diffuseMap = imageNode.image.name
-        else:
-            raise ValueError("[DAL] Diffuse map must be defined.")
+        #else:
+        #    raise ValueError("[DAL] Diffuse map must be defined.")
 
         imageNode = cls.__findImageNodeRecur(node_metallic)
         if imageNode is not None:
