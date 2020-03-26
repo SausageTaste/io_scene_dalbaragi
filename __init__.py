@@ -12,6 +12,7 @@ from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 
 
+from . import blender_parser as bpa
 from . import datastruct as dat
 from . import byteutils as byt
 
