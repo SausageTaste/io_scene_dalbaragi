@@ -429,7 +429,10 @@ class ModelBuilder:
         units = []
         aabb = dat.AABB()
 
-        for obj in bpy.context.scene.objects:
+        scene = bpa.parse_raw_data()
+        scene.printInfo(print)
+
+        for obj in bpa.get_objects():
             if not hasattr(obj.data, "polygons"): continue
             if not obj.visible_get():
                 print("Skipped obj: {}".format(obj.name))
