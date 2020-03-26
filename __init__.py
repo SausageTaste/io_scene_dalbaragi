@@ -376,8 +376,6 @@ class ModelBuilder:
         else:
             jointIndexMap = self.__skeleton.makeIndexMap()
 
-        
-
         self.__units, self.__aabb = self.__parseRenderUnits(jointIndexMap)
 
     def makeBinary(self) -> bytearray:
@@ -454,11 +452,9 @@ class ModelBuilder:
                     vertIndices = (0, 1, 2, 0, 2, 3)
                 else:
                     raise NotImplementedError("[DAL] Loop with {} vertices is not supported!".format(lenVert))
-
                 for i in vertIndices:
                     vert: int = face.vertices[i]
                     loop: int = face.loop_indices[i]
-
                     vertex = obj.data.vertices[vert].co
                     texcoord = (obj.data.uv_layers.active.data[loop].uv if obj.data.uv_layers.active is not None else (0.0, 0.0))
                     if face.use_smooth:
@@ -519,7 +515,7 @@ class EmportDalModel(Operator, ExportHelper):
     optionBool_createReadable = BoolProperty(
         name        = "Create readable file",
         description = "Create a txt file that contains model info.",
-        default     = False,
+        default     = True,
     )
 
     optionBool_removeUselessJoints = BoolProperty(
@@ -542,18 +538,21 @@ class EmportDalModel(Operator, ExportHelper):
 
     def execute(self, context):
         model = ModelBuilder(self.optionBool_removeUselessJoints)
+        print("[DAL] Building done")
 
         if self.optionBool_createReadable:
             readablePath = os.path.splitext(self.filepath)[0] + ".txt"
             readableContent = model.makeJson()
             with open(readablePath, "w", encoding="utf8") as file:
                 json.dump(readableContent, file, indent=4, sort_keys=False)
+        print("[DAL] Readable file created")
 
         binData = model.makeBinary()
         fullSize = len(binData)
         finalBin = bytearray() + b"dalmdl" + byt.to_int32(fullSize) + zlib.compress(binData, zlib.Z_BEST_COMPRESSION)
         with open(self.filepath, "wb") as file:
             file.write(finalBin)
+        print("[DAL] Model exported")
 
         if self.optionBool_copyImages:
             imgNames = model.getImgNames()
@@ -562,7 +561,9 @@ class EmportDalModel(Operator, ExportHelper):
                 image: bpy.types.Image = bpy.data.images[name]
                 dstPath = saveFol + "/" + name
                 _copyImage(image, dstPath)
+        print("[DAL] Image copied")
 
+        print("[DAL] Finished")
         return {'FINISHED'}
 
 
