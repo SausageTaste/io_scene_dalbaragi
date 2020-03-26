@@ -3,6 +3,7 @@ import zlib
 import math
 import json
 import shutil
+import importlib
 from typing import Tuple, List, Dict
 
 import bpy
@@ -567,6 +568,10 @@ def menu_func_export(self, context):
     self.layout.operator(EmportDalModel.bl_idname, text="Dalbaragi Model (.dmd)")
 
 def register():
+    importlib.reload(bpa)
+    importlib.reload(dat)
+    importlib.reload(byt)
+
     bpy.utils.register_class(EmportDalModel)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 
