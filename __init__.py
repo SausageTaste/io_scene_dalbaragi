@@ -12,25 +12,24 @@ from bpy_extras.io_utils import ExportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 
-
 from . import blender_parser as bpa
 from . import datastruct as dat
 from . import byteutils as byt
-
+from . import rawdata as rwd
+from . import smalltype as smt
 
 MAX_JOINT_NUM = 130
 
-
 bl_info = {
-    "name"       : "Dalbaragi Model Exporter",
-    "author"     : "Sungmin Woo",
-    "version"    : (1, 0, 0),
-    "blender"    : (2, 80, 0),
-    "location"   : "File > Export > Dalbaragi Model (.dmd)",
+    "name": "Dalbaragi Model Exporter",
+    "author": "Sungmin Woo",
+    "version": (1, 0, 0),
+    "blender": (2, 80, 0),
+    "location": "File > Export > Dalbaragi Model (.dmd)",
     "description": "Export a model file for Dalbargi engine.",
-    "warning"    : "Under development.",
-    "wiki_url"   : "",
-    "category"   : "Import-Export",
+    "warning": "Under development.",
+    "wiki_url": "",
+    "category": "Import-Export",
     "tracker_url": ""
 }
 
@@ -38,9 +37,11 @@ bl_info = {
 def _fixVecRotations(x: float, y: float, z: float) -> Tuple[float, float, float]:
     return float(x), float(z), -float(y)
 
+
 def _normalizeVec3(x: float, y: float, z: float):
-    length = math.sqrt( x*x + y*y + z*z )
-    return x/length, y/length, z/length
+    length = math.sqrt(x * x + y * y + z * z)
+    return x / length, y / length, z / length
+
 
 def _copyImage(image: bpy.types.Image, dstpath: str) -> None:
     if image.packed_file is None:  # Not packed
@@ -89,12 +90,12 @@ class AnimationParser:
             boneInfo = skeleton[index]
             boneInfo.m_parentName = bone.name
 
-            if ( child.get("dal_phy_hairRoot", None) is not None ):
+            if (child.get("dal_phy_hairRoot", None) is not None):
                 boneInfo.setHairRoot();
-            elif ( child.get("dal_phy_skirtRoot", None) is not None ):
+            elif (child.get("dal_phy_skirtRoot", None) is not None):
                 boneInfo.setSkirtRoot();
 
-            #rot = mathutils.Matrix.Rotation(math.radians(-90.0), 4, 'X')
+            # rot = mathutils.Matrix.Rotation(math.radians(-90.0), 4, 'X')
             boneInfo.m_offsetMat.set(child.matrix_local)
 
             cls.__parseSkelRecur(child, skeleton)
@@ -114,7 +115,6 @@ class AnimationParser:
             raise ValueError("[DAL] Failed to find a root bone")
 
         return root
-
 
     class AnimInfoVar:
         def __init__(self):
@@ -186,7 +186,7 @@ class AnimationParser:
 
     class BoneDict:
         def __init__(self):
-            self.__bones: Dict[ str, AnimationParser.BoneAnimInfo ] = {}
+            self.__bones: Dict[str, AnimationParser.BoneAnimInfo] = {}
 
         def __str__(self):
             return str(self.__bones)
@@ -209,7 +209,6 @@ class AnimationParser:
                     for x in data.items():
                         print("\t\t", x)
 
-
     @classmethod
     def parseActions(cls, skeleton: dat.SkeletonInterface) -> List[dat.Animation]:
         animations = []
@@ -224,10 +223,10 @@ class AnimationParser:
             for joint in anim.m_joints:
                 joint: dat.JointAnim
 
-                boneInfo : AnimationParser.BoneAnimInfo = bonedict[joint.m_name]
+                boneInfo: AnimationParser.BoneAnimInfo = bonedict[joint.m_name]
 
                 try:
-                    poses: AnimationParser.AnimInfoVar  = boneInfo["location"]
+                    poses: AnimationParser.AnimInfoVar = boneInfo["location"]
                 except KeyError:
                     pass
                 else:
@@ -238,7 +237,7 @@ class AnimationParser:
                         joint.addPos(tp, x, y, z)
 
                 try:
-                    rotations: AnimationParser.AnimInfoVar  = boneInfo["rotation_quaternion"]
+                    rotations: AnimationParser.AnimInfoVar = boneInfo["rotation_quaternion"]
                 except KeyError:
                     pass
                 else:
@@ -251,7 +250,7 @@ class AnimationParser:
                         joint.addRotation(tp, x, y, z, w)
 
                 try:
-                    scales: AnimationParser.AnimInfoVar  = boneInfo["scale"]
+                    scales: AnimationParser.AnimInfoVar = boneInfo["scale"]
                 except KeyError:
                     pass
                 else:
@@ -302,7 +301,7 @@ class MaterialParser:
         material = dat.Material()
 
         node_baseColor = bsdf.inputs["Base Color"]
-        node_metallic  = bsdf.inputs["Metallic"]
+        node_metallic = bsdf.inputs["Metallic"]
         node_roughness = bsdf.inputs["Roughness"]
 
         material.m_roughness = node_roughness.default_value
@@ -311,7 +310,7 @@ class MaterialParser:
         imageNode = cls.__findImageNodeRecur(node_baseColor)
         if imageNode is not None:
             material.m_diffuseMap = imageNode.image.name
-        #else:
+        # else:
         #    raise ValueError("[DAL] Diffuse map must be defined.")
 
         imageNode = cls.__findImageNodeRecur(node_metallic)
@@ -347,12 +346,15 @@ class MaterialParser:
                 res = cls.__findImageNodeRecur(nodeinput)
                 if res is not None:
                     return res
-            
+
         return None
 
 
 class ModelBuilder:
     def __init__(self, removeUselessJoints: bool):
+        scene = bpa.parse_raw_data()
+        scene.printInfo(print)
+
         self.__skeleton = AnimationParser.parseSkeleton()
         self.__animations = AnimationParser.parseActions(self.__skeleton)
 
@@ -380,7 +382,8 @@ class ModelBuilder:
 
     def makeBinary(self) -> bytearray:
         if len(self.__skeleton) > MAX_JOINT_NUM:
-            raise RuntimeError("[DAL] The number of joints ({}) cannot exceed {}.".format(len(self.__skeleton), MAX_JOINT_NUM))
+            raise RuntimeError(
+                "[DAL] The number of joints ({}) cannot exceed {}.".format(len(self.__skeleton), MAX_JOINT_NUM))
 
         data = bytearray()
 
@@ -400,11 +403,11 @@ class ModelBuilder:
 
     def makeJson(self) -> dict:
         return {
-            "aabb" : self.__aabb.makeJson(),
-            "render units size"         : len(self.__units),
-            "render units" : [x.makeJson() for x in self.__units],
-            "skeleton interface" : self.__skeleton.makeJson(),
-            "animations" : [x.makeJson() for x in self.__animations],
+            "aabb": self.__aabb.makeJson(),
+            "render units size": len(self.__units),
+            "render units": [x.makeJson() for x in self.__units],
+            "skeleton interface": self.__skeleton.makeJson(),
+            "animations": [x.makeJson() for x in self.__animations],
         }
 
     def getImgNames(self):
@@ -426,9 +429,6 @@ class ModelBuilder:
     def __parseRenderUnits(skeleton: Dict[str, int]):
         units = []
         aabb = dat.AABB()
-
-        scene = bpa.parse_raw_data()
-        scene.printInfo(print)
 
         for obj in bpa.get_objects():
             if not hasattr(obj.data, "polygons"): continue
@@ -456,7 +456,8 @@ class ModelBuilder:
                     vert: int = face.vertices[i]
                     loop: int = face.loop_indices[i]
                     vertex = obj.data.vertices[vert].co
-                    texcoord = (obj.data.uv_layers.active.data[loop].uv if obj.data.uv_layers.active is not None else (0.0, 0.0))
+                    texcoord = (obj.data.uv_layers.active.data[loop].uv if obj.data.uv_layers.active is not None else (
+                    0.0, 0.0))
                     if face.use_smooth:
                         normal = obj.data.vertices[vert].normal
                     else:
@@ -501,27 +502,27 @@ class EmportDalModel(Operator, ExportHelper):
     filename_ext = ".dmd"
 
     filter_glob = StringProperty(
-        default = "*.dmd",
-        options = {'HIDDEN'},
-        maxlen = 255,  # Max internal buffer length, longer would be clamped.
+        default="*.dmd",
+        options={'HIDDEN'},
+        maxlen=255,  # Max internal buffer length, longer would be clamped.
     )
 
     optionBool_copyImages = BoolProperty(
-        name        = "Copy textures",
-        description = "Copy textures to same path as exported model file.",
-        default     = False,
+        name="Copy textures",
+        description="Copy textures to same path as exported model file.",
+        default=False,
     )
 
     optionBool_createReadable = BoolProperty(
-        name        = "Create readable file",
-        description = "Create a txt file that contains model info.",
-        default     = True,
+        name="Create readable file",
+        description="Create a txt file that contains model info.",
+        default=True,
     )
 
     optionBool_removeUselessJoints = BoolProperty(
-        name        = "Remove useless joints",
-        description = "Remove all the joints without keyframes.",
-        default     = False,
+        name="Remove useless joints",
+        description="Remove all the joints without keyframes.",
+        default=False,
     )
 
     """
@@ -541,26 +542,26 @@ class EmportDalModel(Operator, ExportHelper):
         print("[DAL] Building done")
 
         if self.optionBool_createReadable:
-            readablePath = os.path.splitext(self.filepath)[0] + ".txt"
-            readableContent = model.makeJson()
-            with open(readablePath, "w", encoding="utf8") as file:
-                json.dump(readableContent, file, indent=4, sort_keys=False)
+            readable_path = os.path.splitext(self.filepath)[0] + ".txt"
+            readable_content = model.makeJson()
+            with open(readable_path, "w", encoding="utf8") as file:
+                json.dump(readable_content, file, indent=4, sort_keys=False)
         print("[DAL] Readable file created")
 
-        binData = model.makeBinary()
-        fullSize = len(binData)
-        finalBin = bytearray() + b"dalmdl" + byt.to_int32(fullSize) + zlib.compress(binData, zlib.Z_BEST_COMPRESSION)
+        bin_data = model.makeBinary()
+        full_size = len(bin_data)
+        final_bin = bytearray() + b"dalmdl" + byt.to_int32(full_size) + zlib.compress(bin_data, zlib.Z_BEST_COMPRESSION)
         with open(self.filepath, "wb") as file:
-            file.write(finalBin)
+            file.write(final_bin)
         print("[DAL] Model exported")
 
         if self.optionBool_copyImages:
-            imgNames = model.getImgNames()
-            saveFol = os.path.split(self.filepath)[0].replace("\\", "/")
-            for name in imgNames:
+            img_names = model.getImgNames()
+            save_fol = os.path.split(self.filepath)[0].replace("\\", "/")
+            for name in img_names:
                 image: bpy.types.Image = bpy.data.images[name]
-                dstPath = saveFol + "/" + name
-                _copyImage(image, dstPath)
+                dst_path = save_fol + "/" + name
+                _copyImage(image, dst_path)
         print("[DAL] Image copied")
 
         print("[DAL] Finished")
@@ -571,13 +572,17 @@ def menu_func_export(self, context):
     # Only needed if you want to add into a dynamic menu
     self.layout.operator(EmportDalModel.bl_idname, text="Dalbaragi Model (.dmd)")
 
+
 def register():
     importlib.reload(bpa)
     importlib.reload(dat)
     importlib.reload(byt)
+    importlib.reload(rwd)
+    importlib.reload(smt)
 
     bpy.utils.register_class(EmportDalModel)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
+
 
 def unregister():
     bpy.utils.unregister_class(EmportDalModel)
