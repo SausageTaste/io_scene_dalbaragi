@@ -21,6 +21,9 @@ def _isScaleDefault(s: float) -> bool:
     return _isFloatNear(s, 1.0)
 
 
+
+
+
 class Mat4:
     def __init__(self):
         self.__data = [
@@ -53,9 +56,9 @@ class Mat4:
                 colValues.append(numstr)
             colstr = ", ".join(colValues)
             colStrings.append("( {} )".format(colstr))
-        
+
         return ", ".join(colStrings)
-            
+
 
 class AABB:
     def __init__(self):
@@ -79,8 +82,8 @@ class AABB:
 
     def makeJson(self):
         return {
-            "min" : "{:0.6}, {:0.6}, {:0.6}".format(*self.__min),
-            "max" : "{:0.6}, {:0.6}, {:0.6}".format(*self.__max),
+            "min": "{:0.6}, {:0.6}, {:0.6}".format(*self.__min),
+            "max": "{:0.6}, {:0.6}, {:0.6}".format(*self.__max),
         }
 
     def resizeToContain(self, x, y, z):
@@ -91,7 +94,6 @@ class AABB:
                 self.__min[i] = p[i]
             elif p[i] > self.__max[i]:
                 self.__max[i] = p[i]
-
 
 class Material:
     def __init__(self):

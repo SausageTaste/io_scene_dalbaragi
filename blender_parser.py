@@ -87,11 +87,38 @@ class _MaterialParser:
         return None
 
 
+def _parse_skeleton(blender_armature) -> rwd.Scene.Skeleton:
+    assert isinstance(blender_armature, bpy.types.Armature)
+
+    skeleton = rwd.Scene.Skeleton(blender_armature.name)
+
+    for bone in blender_armature.bones:
+        parent_name = ""
+        if bone.parent is not None:
+            parent_name = bone.parent.name
+
+        joint_data = skeleton.newJoint(bone.name, parent_name)
+
+        if bone.get("dal_phy_hairRoot", None) is not None:
+            joint_data.m_jointType = rwd.Scene.JointType.hair_root
+        elif bone.get("dal_phy_skirtRoot", None) is not None:
+            joint_data.m_jointType = rwd.Scene.JointType.skirt_root
+
+        joint_data.m_offsetMat.set(bone.matrix_local)
+
+    return skeleton
+
 def _parse_render_unit(obj) -> rwd.Scene.RenderUnit:
+    assert isinstance(obj.data, bpy.types.Mesh)
+
     unit = rwd.Scene.RenderUnit()
 
     if obj.data.materials[0] is not None:
         unit.m_material = _MaterialParser.parse(obj.data.materials[0])
+
+    armature = obj.find_armature()
+    if armature is not None:
+        unit.m_mesh.m_skeletonName = armature.name
 
     for face in obj.data.polygons:
         verts_per_face = len(face.vertices)
@@ -150,16 +177,19 @@ def parse_raw_data():
             scene.m_skipped_objs.append((obj.name, "Hiddel object"))
             continue
 
-        if BLENDER_OBJ_TYPE_MESH == str(type_str):
+        if BLENDER_OBJ_TYPE_MESH == type_str:
             data_id = id(obj.data)
             if data_id not in scene.m_render_units.keys():
                 scene.m_render_units[data_id] = _parse_render_unit(obj)
-            scene.m_render_units[data_id].m_ref_count += 1
+            scene.m_render_units[data_id].m_refCount += 1
 
             actor = rwd.Scene.StaticActor()
             actor.m_name = obj.name
             actor.m_renderUnitID = data_id
             scene.m_static_actors.append(actor)
+        elif BLENDER_OBJ_TYPE_ARMATURE == type_str:
+            skeleton = _parse_skeleton(obj.data)
+            scene.m_skeletons.append(skeleton)
         else:
             scene.m_skipped_objs.append((obj.name, "Not supported object type: {}".format(type_str)))
 

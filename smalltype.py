@@ -59,3 +59,50 @@ class Vec3:
         self.x /= length
         self.y /= length
         self.z /= length
+
+
+class Mat4:
+    # Representation is row major.
+    def __init__(self):
+        self.__data = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0]
+        ]
+
+    def set(self, mat):
+        for row in range(4):
+            for col in range(4):
+                self.__data[row][col] = mat[row][col]
+
+    def makeReadable(self) -> str:
+        col_strings = []
+
+        for col in range(4):
+            col_values = []
+            for row in range(4):
+                numstr = "{:0.2}".format(self.__data[row][col])
+                col_values.append(numstr)
+            colstr = ", ".join(col_values)
+            col_strings.append("( {} )".format(colstr))
+
+        return ", ".join(col_strings)
+
+
+class AABB:
+    def __init__(self):
+        self.__min = [0.0, 0.0, 0.0]
+        self.__max = [0.0, 0.0, 0.0]
+
+    def __str__(self):
+        return "AABB{{ min=({}, {}, {}), max=({}, {}, {}) }}".format(*self.__min, *self.__max)
+
+    def resizeToContain(self, x, y, z):
+        p = [x, y, z]
+
+        for i in range(3):
+            if p[i] < self.__min[i]:
+                self.__min[i] = p[i]
+            elif p[i] > self.__max[i]:
+                self.__max[i] = p[i]
