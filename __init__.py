@@ -352,9 +352,6 @@ class MaterialParser:
 
 class ModelBuilder:
     def __init__(self, removeUselessJoints: bool):
-        scene = bpa.parse_raw_data()
-        scene.printInfo(print)
-
         self.__skeleton = AnimationParser.parseSkeleton()
         self.__animations = AnimationParser.parseActions(self.__skeleton)
 
@@ -537,7 +534,13 @@ class EmportDalModel(Operator, ExportHelper):
     )
     """
 
+    def __testNewModelBuilder(self):
+        scene = bpa.parse_raw_data()
+        scene.printInfo(print)
+
     def execute(self, context):
+        self.__testNewModelBuilder()
+
         model = ModelBuilder(self.optionBool_removeUselessJoints)
         print("[DAL] Building done")
 
