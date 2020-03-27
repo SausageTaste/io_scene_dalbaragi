@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Callable, Iterator, Any
+from typing import Dict, List, Tuple, Callable, Iterator, Any, Set
 import enum
 
 from . import smalltype as smt
@@ -44,21 +44,24 @@ class Scene:
         @property
         def m_skeletonName(self):
             return self.__skeletonName
-
         @m_skeletonName.setter
         def m_skeletonName(self, name: str):
             self.__skeletonName = str(name)
 
     class RenderUnit:
-        def __init__(self):
+        def __init__(self, uid: int):
+            self.__id = int(uid)
             self.__ref_count = 0
             self.__material = Scene.Material()
             self.__mesh = Scene.Mesh()
 
         @property
+        def m_id(self):
+            return self.__id
+
+        @property
         def m_refCount(self):
             return self.__ref_count
-
         @m_refCount.setter
         def m_refCount(self, value: int):
             self.__ref_count = int(value)
@@ -66,7 +69,6 @@ class Scene:
         @property
         def m_material(self):
             return self.__material
-
         @m_material.setter
         def m_material(self, value: "Scene.Material"):
             assert isinstance(value, Scene.Material)
@@ -102,6 +104,9 @@ class Scene:
         @property
         def m_parentName(self):
             return self.__parentName
+        @m_parentName.setter
+        def m_parentName(self, v: str):
+            self.__parentName = str(v)
 
         @property
         def m_offsetMat(self):
@@ -110,7 +115,6 @@ class Scene:
         @property
         def m_jointType(self):
             return self.__jointType
-
         @m_jointType.setter
         def m_jointType(self, v: "Scene.JointType"):
             assert isinstance(v, Scene.JointType)
@@ -136,14 +140,78 @@ class Scene:
         def newJoint(self, name: str, parent_name: str) -> "Scene.Joint":
             if len(self.__joints) > MAX_JOINT_COUNT:
                 raise RuntimeError("the number of joints cannot exceed {}.".format(MAX_JOINT_COUNT))
+            if self.__doesNameExist(name):
+                raise RuntimeError('tried to add joint "{}" which already exists'.format(name))
 
             joint = Scene.Joint(name, parent_name)
             self.__joints.append(joint)
             return joint
 
+        def findByName(self, name: str):
+            for joint in self.__joints:
+                if joint.m_name == name:
+                    return joint
+            else:
+                raise RuntimeError('joint "{}" not found in skeleton "{}"'.format(name, self.__name))
+
+        def assertJointOrder(self) -> None:
+            for i, joint in enumerate(self.__joints):
+                parent_name = joint.m_parentName
+                if "" == parent_name:
+                    continue
+
+                for j, parent in enumerate(self.__joints):
+                    if parent.m_name == parent_name:
+                        if i <= j:
+                            raise AssertionError('child joint "{}" is on left of its parent "{}"'.format(
+                                joint.m_name, parent_name
+                            ))
+                        else:
+                            break
+                else:
+                    raise RuntimeError('a joint "{}" has "{}" as its parent, which does not exist'.format(
+                        joint.m_name, parent_name
+                    ))
+
+        def getVitalJoints(self) -> Set[str]:
+            super_parents: Set[str] = set()
+            result: Set[str] = set()
+
+            for joint in self.__joints:
+                jname = joint.m_name
+
+                if "" == joint.m_parentName:
+                    result.add(jname)
+                elif joint.m_parentName in super_parents:
+                    super_parents.add(jname)
+                    result.add(jname)
+
+                if joint.m_jointType in (Scene.JointType.skirt_root, Scene.JointType.hair_root):
+                    super_parents.add(jname)
+                    result.add(jname)
+
+            return result
+
         @property
         def m_name(self):
             return self.__name
+        @property
+        def m_joints(self):
+            return self.__joints
+        @m_joints.setter
+        def m_joints(self, v: List["Scene.Joint"]):
+            assert isinstance(v, list)
+            for x in v:
+                assert isinstance(x, Scene.Joint)
+
+            self.__joints = v
+
+        def __doesNameExist(self, name: str) -> bool:
+            for joint in self.__joints:
+                if name == joint.m_name:
+                    return True
+
+            return False
 
     class JointKeyframes:
         def __init__(self, joint_name: str):
@@ -262,14 +330,21 @@ class Scene:
             for joint in self.m_joints:
                 joint.cleanUp()
 
+        def removeJoints(self, to_remove_names: Set[str]):
+            new_list: List[Scene.JointKeyframes] = []
+
+            for joint in self.__keyframes:
+                if joint.m_name not in to_remove_names:
+                    new_list.append(joint)
+
+            self.__keyframes = new_list
+
         @property
         def m_name(self):
             return self.__name
-
         @property
         def m_tickPerSec(self):
             return self.__tickPerSec
-
         @property
         def m_joints(self):
             return self.__keyframes
@@ -278,6 +353,7 @@ class Scene:
         def __init__(self):
             self.m_name = ""
             self.m_renderUnitID = 0
+
 
     def __init__(self):
         self.m_render_units: Dict[int, Scene.RenderUnit] = {}

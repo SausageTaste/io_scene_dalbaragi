@@ -259,10 +259,10 @@ def _parse_skeleton(blender_armature) -> rwd.Scene.Skeleton:
 
     return skeleton
 
-def _parse_render_unit(obj) -> rwd.Scene.RenderUnit:
+def _parse_render_unit(obj, data_id: int) -> rwd.Scene.RenderUnit:
     assert isinstance(obj.data, bpy.types.Mesh)
 
-    unit = rwd.Scene.RenderUnit()
+    unit = rwd.Scene.RenderUnit(data_id)
 
     if obj.data.materials[0] is not None:
         unit.m_material = _MaterialParser.parse(obj.data.materials[0])
@@ -331,7 +331,7 @@ def parse_raw_data():
         if BLENDER_OBJ_TYPE_MESH == type_str:
             data_id = id(obj.data)
             if data_id not in scene.m_render_units.keys():
-                scene.m_render_units[data_id] = _parse_render_unit(obj)
+                scene.m_render_units[data_id] = _parse_render_unit(obj, data_id)
             scene.m_render_units[data_id].m_refCount += 1
 
             actor = rwd.Scene.StaticActor()

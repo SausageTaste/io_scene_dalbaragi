@@ -17,6 +17,7 @@ from . import datastruct as dat
 from . import byteutils as byt
 from . import rawdata as rwd
 from . import smalltype as smt
+from . import modify_data as mfd
 
 MAX_JOINT_NUM = 130
 
@@ -534,12 +535,16 @@ class EmportDalModel(Operator, ExportHelper):
     )
     """
 
-    def __testNewModelBuilder(self):
+    @staticmethod
+    def __testNewModelBuilder():
         scene = bpa.parse_raw_data()
+        assert 1 == len(scene.m_skeletons)
+        mfd.JointRemover.process(scene.m_skeletons[0], scene.m_animations, scene.m_render_units.values())
         scene.printInfo(print)
 
     def execute(self, context):
         self.__testNewModelBuilder()
+        print("[DAL] Test done")
 
         model = ModelBuilder(self.optionBool_removeUselessJoints)
         print("[DAL] Building done")
@@ -582,6 +587,7 @@ def register():
     importlib.reload(byt)
     importlib.reload(rwd)
     importlib.reload(smt)
+    importlib.reload(mfd)
 
     bpy.utils.register_class(EmportDalModel)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
