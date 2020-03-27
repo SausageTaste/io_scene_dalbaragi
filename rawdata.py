@@ -4,6 +4,9 @@ import enum
 from . import smalltype as smt
 
 
+MAX_JOINT_COUNT = 130
+
+
 class Scene:
     class Material:
         def __init__(self):
@@ -131,6 +134,9 @@ class Scene:
             return len(self.__joints)
 
         def newJoint(self, name: str, parent_name: str) -> "Scene.Joint":
+            if len(self.__joints) > MAX_JOINT_COUNT:
+                raise RuntimeError("the number of joints cannot exceed {}.".format(MAX_JOINT_COUNT))
+
             joint = Scene.Joint(name, parent_name)
             self.__joints.append(joint)
             return joint
