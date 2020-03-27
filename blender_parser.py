@@ -1,3 +1,5 @@
+from typing import Dict, List, Tuple, Iterator
+
 import bpy
 
 from . import rawdata as rwd
@@ -85,6 +87,155 @@ class _MaterialParser:
                     return res
             
         return None
+
+class _AnimationParser:
+    class _ActionAssembler:
+        class _JointData:
+            class _TimepointDict:
+                def __init__(self):
+                    self.__data: Dict[float, Dict[int, float]] = {}
+
+                def add(self, timepoint: float, channel: int, value: float):
+                    assert isinstance(timepoint, float)
+                    assert isinstance(channel, int)
+                    assert isinstance(value, float)
+
+                    if timepoint not in self.__data.keys():
+                        self.__data[timepoint] = {}
+                    self.__data[timepoint][channel] = value
+
+                def get(self, timepoint: float, channel: int) -> float:
+                    assert isinstance(channel, int)
+                    assert isinstance(timepoint, float)
+
+                    return self.__data[timepoint][channel]
+
+                def getExtended(self, timepoint: float, channel: int) -> float:
+                    assert isinstance(channel, int)
+                    assert isinstance(timepoint, float)
+
+                    try:
+                        return self.__data[timepoint][channel]
+                    except KeyError:
+                        requested_order = self.__timepointToOrder(timepoint)
+                        prev_order = requested_order - 1
+                        if prev_order < 0:
+                            raise RuntimeError("[DAL] First keyframe need all its channels with a value.")
+                        prev_timepoint = self.__orderToTimepoint(prev_order)
+                        return self.get(prev_timepoint, channel)
+
+                def iterTimepoints(self) -> iter:
+                    return iter(self.__getSortedTimepoints())
+
+                def __getSortedTimepoints(self) -> List[float]:
+                    timepoints = list(self.__data.keys())
+                    timepoints.sort()
+                    return timepoints
+
+                def __orderToTimepoint(self, order: int) -> float:
+                    assert isinstance(order, int)
+                    assert order >= 0
+                    return self.__getSortedTimepoints()[order]
+
+                def __timepointToOrder(self, timepoint: float) -> int:
+                    assert isinstance(timepoint, float)
+                    return self.__getSortedTimepoints().index(timepoint)
+
+            def __init__(self):
+                # For a pos and scale, x=0, y=1, z=2
+                # For a quat, w=0, x=1, y=2, z=3
+                self.__poses = self._TimepointDict()
+                self.__quats = self._TimepointDict()
+                self.__scales = self._TimepointDict()
+
+            @property
+            def m_poses(self):
+                return self.__poses
+            @property
+            def m_quats(self):
+                return self.__quats
+            @property
+            def m_scales(self):
+                return self.__scales
+
+        def __init__(self):
+            self.__jointsData: Dict[str, _AnimationParser._ActionAssembler._JointData] = {}
+
+        def add(self, joint_name: str, var_name: str, timepoint: float, channel: int, value: float):
+            joint_name = str(joint_name)
+            var_name = str(var_name)
+
+            if joint_name not in self.__jointsData.keys():
+                self.__jointsData[joint_name] = self._JointData()
+
+            if "location" == var_name:
+                self.__jointsData[joint_name].m_poses.add(timepoint, channel, value)
+            elif "rotation_quaternion" == var_name:
+                self.__jointsData[joint_name].m_quats.add(timepoint, channel, value)
+            elif "scale" == var_name:
+                self.__jointsData[joint_name].m_scales.add(timepoint, channel, value)
+            else:
+                print('[DAL] WARN::Unkown variable for a joint: "{}"'.format(var_name))
+
+        @property
+        def m_jointsData(self):
+            return self.__jointsData
+
+    @classmethod
+    def parse(cls, blender_action: bpy.types.Action):
+        assert isinstance(blender_action, bpy.types.Action)
+
+        anim = rwd.Scene.Animation(blender_action.name, bpy.context.scene.render.fps)
+
+        assembler = cls._ActionAssembler()
+        for fcu in blender_action.fcurves:
+            # var_name is either location, rotation_quaternion or scale
+            # channel stands for x, y, z for locations, w, x, y, z for quat, x, y, z for scale.
+            joint_name, var_name = cls.__splitFcuDataPath(fcu.data_path)
+            channel = fcu.array_index
+
+            for keyframe in fcu.keyframe_points:
+                timepoint = keyframe.co[0]
+                value = keyframe.co[1]
+                assembler.add(joint_name, var_name, timepoint, channel, value)
+
+        for joint_name, joint_data in assembler.m_jointsData.items():
+            joint_keyframes = anim.newJoint(joint_name)
+
+            poses = joint_data.m_poses
+            for tp in poses.iterTimepoints():
+                x = poses.get(tp, 0)
+                y = poses.get(tp, 1)
+                z = poses.get(tp, 2)
+                joint_keyframes.addPos(tp, x, y, z)
+
+            rots = joint_data.m_quats
+            for tp in rots.iterTimepoints():
+                w = rots.get(tp, 0)
+                x = rots.get(tp, 1)
+                y = rots.get(tp, 2)
+                z = rots.get(tp, 3)
+                joint_keyframes.addRotate(tp, w, x, y, z)
+
+            scales = joint_data.m_scales
+            for tp in scales.iterTimepoints():
+                x = scales.get(tp, 0)
+                y = scales.get(tp, 1)
+                z = scales.get(tp, 2)
+                average_scale = (x + y + z) / 3
+                joint_keyframes.addScale(tp, average_scale)
+
+        return anim
+
+    @staticmethod
+    def __splitFcuDataPath(path: str) -> Tuple[str, str]:
+        pass1 = path.split('"')
+        bone_name = pass1[1]
+
+        pass2 = pass1[2].split(".")
+        var_name = pass2[-1]
+
+        return bone_name, var_name
 
 
 def _parse_skeleton(blender_armature) -> rwd.Scene.Skeleton:
@@ -192,5 +343,10 @@ def parse_raw_data():
             scene.m_skeletons.append(skeleton)
         else:
             scene.m_skipped_objs.append((obj.name, "Not supported object type: {}".format(type_str)))
+
+    for action in bpy.data.actions:
+        animation = _AnimationParser.parse(action)
+        animation.cleanUp()
+        scene.m_animations.append(animation)
 
     return scene
