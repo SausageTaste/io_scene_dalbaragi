@@ -536,19 +536,13 @@ class EmportDalModel(Operator, ExportHelper):
     )
     """
 
-    @staticmethod
-    def __testNewModelBuilder():
+    def execute(self, context):
+        model = ModelBuilder(self.optionBool_removeUselessJoints)
+
         scene = bpa.parse_raw_data()
         assert 1 == len(scene.m_skeletons)
         mfd.JointRemover.process(scene.m_skeletons[0], scene.m_animations, scene.m_render_units.values())
         scene.printInfo(print)
-        return mex.make_binary_dmd(scene)
-
-    def execute(self, context):
-        test_binary = self.__testNewModelBuilder()
-        print("[DAL] Test done")
-
-        model = ModelBuilder(self.optionBool_removeUselessJoints)
         print("[DAL] Building done")
 
         if self.optionBool_createReadable:
@@ -556,9 +550,9 @@ class EmportDalModel(Operator, ExportHelper):
             readable_content = model.makeJson()
             with open(readable_path, "w", encoding="utf8") as file:
                 json.dump(readable_content, file, indent=4, sort_keys=False)
-        print("[DAL] Readable file created")
+            print("[DAL] Readable file created")
 
-        bin_data = model.makeBinary()
+        bin_data = mex.make_binary_dmd(scene)
         full_size = len(bin_data)
         final_bin = bytearray() + b"dalmdl" + byt.to_int32(full_size) + zlib.compress(bin_data, zlib.Z_BEST_COMPRESSION)
         with open(self.filepath, "wb") as file:
@@ -572,7 +566,7 @@ class EmportDalModel(Operator, ExportHelper):
                 image: bpy.types.Image = bpy.data.images[name]
                 dst_path = save_fol + "/" + name
                 _copyImage(image, dst_path)
-        print("[DAL] Image copied")
+            print("[DAL] Image copied")
 
         print("[DAL] Finished")
         return {'FINISHED'}
