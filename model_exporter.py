@@ -16,6 +16,15 @@ def _make_joints_id_map(skeleton: rwd.Scene.Skeleton) -> Dict[str, int]:
 
     return result
 
+def _make_aabb_of_meshes(meshes: Iterable[rwd.Scene.Mesh]) -> rwd.smt.AABB3:
+    aabb = rwd.smt.AABB3()
+
+    for mesh in meshes:
+        for v in mesh.vertices():
+            aabb.resizeToContain(v.m_vertex.x, v.m_vertex.y, v.m_vertex.z)
+
+    return aabb
+
 
 def _build_bin_mat4(mat: smt.Mat4) -> bytearray:
     assert isinstance(mat, smt.Mat4)
@@ -196,23 +205,13 @@ def _build_bin_render_unit(actor: rwd.Scene.StaticActor, unit: rwd.Scene.RenderU
     return data
 
 
-
-def make_aabb_of_meshes(meshes: Iterable[rwd.Scene.Mesh]) -> rwd.smt.AABB3:
-    aabb = rwd.smt.AABB3()
-
-    for mesh in meshes:
-        for v in mesh.vertices():
-            aabb.resizeToContain(v.m_vertex.x, v.m_vertex.y, v.m_vertex.z)
-
-    return aabb
-
 def make_binary_dmd(scene: rwd.Scene):
     assert isinstance(scene, rwd.Scene)
 
     data = bytearray()
 
     # AABB
-    aabb = make_aabb_of_meshes(xx.m_mesh for xx in scene.m_render_units.values())
+    aabb = _make_aabb_of_meshes(xx.m_mesh for xx in scene.m_render_units.values())
     data += _build_bin_aabb(aabb)
 
     # Skeleton
