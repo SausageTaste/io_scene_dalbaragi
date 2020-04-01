@@ -124,7 +124,8 @@ def _build_bin_animation(anim: rwd.Scene.Animation, id_map: Dict[str, int]) -> b
 
     return data
 
-def _build_bin_mesh(mesh: rwd.Scene.Mesh, id_map: Dict[str, int]) -> bytearray:
+# id_map is None if skeleton doesn't exist.
+def _build_bin_mesh(mesh: rwd.Scene.Mesh, id_map: Optional[Dict[str, int]]) -> bytearray:
     assert isinstance(mesh, rwd.Scene.Mesh)
 
     data = bytearray()
@@ -138,20 +139,20 @@ def _build_bin_mesh(mesh: rwd.Scene.Mesh, id_map: Dict[str, int]) -> bytearray:
         raw_uv_coords.extend(v.m_uvCoord.xy)
         raw_normals.extend(v.m_normal.xyz)
 
-    has_bones = mesh.hasJoint()
+    has_skeleton = mesh.hasJoint() and (id_map is not None)
     num_vertices = mesh.size()
     v = np.array(raw_vertices, dtype=np.float32)
     t = np.array(raw_uv_coords, dtype=np.float32)
     n = np.array(raw_normals, dtype=np.float32)
 
     data += byt.to_int32(num_vertices)
-    data += byt.to_bool1(has_bones)
+    data += byt.to_bool1(has_skeleton)
 
     data += v.tobytes()
     data += t.tobytes()
     data += n.tobytes()
 
-    if has_bones:
+    if has_skeleton:
         raw_weights: List[float] = []
         raw_jids: List[int] = []
 
@@ -183,7 +184,7 @@ def _build_bin_mesh(mesh: rwd.Scene.Mesh, id_map: Dict[str, int]) -> bytearray:
 
     return data
 
-def _build_bin_render_unit(actor: rwd.Scene.StaticActor, unit: rwd.Scene.RenderUnit, id_map: Dict[str, int]):
+def _build_bin_render_unit(actor: rwd.Scene.StaticActor, unit: rwd.Scene.RenderUnit, id_map: Optional[Dict[str, int]]):
     assert isinstance(actor, rwd.Scene.StaticActor)
     assert isinstance(unit, rwd.Scene.RenderUnit)
 
@@ -214,15 +215,21 @@ def make_binary_dmd(scene: rwd.Scene):
     aabb = _make_aabb_of_meshes(xx.m_mesh for xx in scene.m_render_units.values())
     data += _build_bin_aabb(aabb)
 
-    # Skeleton
-    assert 1 == len(scene.m_skeletons)
-    joint_id_map = _make_joints_id_map(scene.m_skeletons[0])
-    data += _build_bin_skeleton(scene.m_skeletons[0], joint_id_map)
+    joint_id_map = None
+    if 0 == len(scene.m_skeletons):
+        data += byt.to_int32(0)  # 0 joints
+        data += byt.to_int32(0)  # 0 animations
+    elif 1 == len(scene.m_skeletons):
+        # Skeleton
+        joint_id_map = _make_joints_id_map(scene.m_skeletons[0])
+        data += _build_bin_skeleton(scene.m_skeletons[0], joint_id_map)
 
-    # Animations
-    data += byt.to_int32(len(scene.m_animations))
-    for anim in scene.m_animations:
-        data += _build_bin_animation(anim, joint_id_map)
+        # Animations
+        data += byt.to_int32(len(scene.m_animations))
+        for anim in scene.m_animations:
+            data += _build_bin_animation(anim, joint_id_map)
+    else:
+        raise RuntimeError("multiple armatures are not supported!")
 
     # Render units
     data += byt.to_int32(len(scene.m_static_actors))

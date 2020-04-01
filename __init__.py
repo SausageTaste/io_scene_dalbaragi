@@ -100,7 +100,6 @@ class EmportDalModel(Operator, ExportHelper):
 
     def execute(self, context):
         scene = bpa.parse_raw_data()
-        assert 1 == len(scene.m_skeletons)
         if self.optionBool_removeUselessJoints:
             mfd.JointRemover.process(scene.m_skeletons[0], scene.m_animations, scene.m_render_units.values())
         print("[DAL] Building done")
