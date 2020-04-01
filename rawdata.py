@@ -3,7 +3,6 @@ import enum
 
 from . import smalltype as smt
 
-
 MAX_JOINT_COUNT = 130
 
 
@@ -15,6 +14,15 @@ class Scene:
             self.m_albedoMap = ""
             self.m_roughnessMap = ""
             self.m_metallicMap = ""
+
+        def makeJson(self):
+            return {
+                "roughness": self.m_roughness,
+                "metallic": self.m_metallic,
+                "albedo map": self.m_albedoMap,
+                "roughness map": self.m_roughnessMap,
+                "metallic map": self.m_metallicMap,
+            }
 
     class VertexData:
         def __init__(self):
@@ -31,6 +39,13 @@ class Scene:
         def __init__(self):
             self.__vertices: List[Scene.VertexData] = []
             self.__skeletonName = ""
+
+        def makeJson(self):
+            return {
+                "vertices size": len(self.__vertices),
+                "skeleton name": self.__skeletonName,
+                "has joints": self.hasJoint(),
+            }
 
         def addVertex(self, data: "Scene.VertexData") -> None:
             self.__vertices.append(data)
@@ -51,6 +66,7 @@ class Scene:
         @property
         def m_skeletonName(self):
             return self.__skeletonName
+
         @m_skeletonName.setter
         def m_skeletonName(self, name: str):
             self.__skeletonName = str(name)
@@ -62,6 +78,14 @@ class Scene:
             self.__material = Scene.Material()
             self.__mesh = Scene.Mesh()
 
+        def makeJson(self):
+            return {
+                "id": self.__id,
+                "ref count": self.__ref_count,
+                "material": self.__material.makeJson(),
+                "mesh": self.__mesh.makeJson(),
+            }
+
         @property
         def m_id(self):
             return self.__id
@@ -69,6 +93,7 @@ class Scene:
         @property
         def m_refCount(self):
             return self.__ref_count
+
         @m_refCount.setter
         def m_refCount(self, value: int):
             self.__ref_count = int(value)
@@ -76,6 +101,7 @@ class Scene:
         @property
         def m_material(self):
             return self.__material
+
         @m_material.setter
         def m_material(self, value: "Scene.Material"):
             assert isinstance(value, Scene.Material)
@@ -104,6 +130,13 @@ class Scene:
             else:
                 return 'Joint{{ name="{}", parent="{}" }}'.format(self.m_name, self.m_parentName)
 
+        def makeJson(self):
+            return {
+                "name": self.__name,
+                "parent name": self.__parentName,
+                "joint type": self.__jointType.name,
+            }
+
         @property
         def m_name(self):
             return self.__name
@@ -111,6 +144,7 @@ class Scene:
         @property
         def m_parentName(self):
             return self.__parentName
+
         @m_parentName.setter
         def m_parentName(self, v: str):
             self.__parentName = str(v)
@@ -122,6 +156,7 @@ class Scene:
         @property
         def m_jointType(self):
             return self.__jointType
+
         @m_jointType.setter
         def m_jointType(self, v: "Scene.JointType"):
             assert isinstance(v, Scene.JointType)
@@ -143,6 +178,13 @@ class Scene:
 
         def __len__(self):
             return len(self.__joints)
+
+        def makeJson(self):
+            return {
+                "name": self.__name,
+                "joints size": len(self.__joints),
+                "joints": [xx.makeJson() for xx in self.__joints],
+            }
 
         def newJoint(self, name: str, parent_name: str) -> "Scene.Joint":
             if len(self.__joints) > MAX_JOINT_COUNT:
@@ -202,9 +244,11 @@ class Scene:
         @property
         def m_name(self):
             return self.__name
+
         @property
         def m_joints(self):
             return self.__joints
+
         @m_joints.setter
         def m_joints(self, v: List["Scene.Joint"]):
             assert isinstance(v, list)
@@ -228,6 +272,16 @@ class Scene:
             self.__poses: List[Tuple[float, smt.Vec3]] = []
             self.__rotates: List[Tuple[float, smt.Quat]] = []
             self.__scales: List[Tuple[float, float]] = []
+
+        def getJson(self):
+            data = {
+                "name": self.__name,
+                "poses size": len(self.__poses),
+                "rotates size": len(self.__rotates),
+                "scales size": len(self.__scales)
+            }
+
+            return data
 
         def addPos(self, timepoint: float, x, y, z) -> None:
             data = (float(timepoint), smt.Vec3(x, y, z))
@@ -310,6 +364,7 @@ class Scene:
         @property
         def m_name(self):
             return self.__name
+
         @property
         def m_transform(self):
             return self.__transform
@@ -331,6 +386,14 @@ class Scene:
             self.__name = str(name)
             self.__tickPerSec = float(tick_per_sec)
             self.__keyframes: List[Scene.JointKeyframes] = []
+
+        def makeJson(self):
+            return {
+                "name": self.__name,
+                "tick per sec": self.__tickPerSec,
+                "joint keyframes size": len(self.__keyframes),
+                "joint keyframes": [xx.getJson() for xx in self.__keyframes],
+            }
 
         def newJoint(self, joint_name: str) -> "Scene.JointKeyframes":
             keyframes = Scene.JointKeyframes(joint_name)
@@ -361,9 +424,11 @@ class Scene:
         @property
         def m_name(self):
             return self.__name
+
         @property
         def m_tickPerSec(self):
             return self.__tickPerSec
+
         @property
         def m_joints(self):
             return self.__keyframes
@@ -373,6 +438,11 @@ class Scene:
             self.m_name = ""
             self.m_renderUnitID = 0
 
+        def makeJson(self):
+            return {
+                "name": self.m_name,
+                "render unit id": self.m_renderUnitID,
+            }
 
     def __init__(self):
         self.m_render_units: Dict[int, Scene.RenderUnit] = {}
@@ -382,6 +452,28 @@ class Scene:
 
         # Tuple(name, reason)
         self.m_skipped_objs: List[Tuple[str, str]] = []
+
+    def makeJson(self):
+        data = {
+            "render units size": len(self.m_render_units),
+            "render units": [xx.makeJson() for xx in self.m_render_units.values()],
+
+            "static actors size": len(self.m_static_actors),
+            "static actors": [xx.makeJson() for xx in self.m_static_actors],
+
+            "skeletons size": len(self.m_skeletons),
+            "skeletons": [xx.makeJson() for xx in self.m_skeletons],
+
+            "animations size": len(self.m_animations),
+            "animations": [xx.makeJson() for xx in self.m_animations],
+        }
+
+        skipped_list = {}
+        for obj_name, reason in self.m_skipped_objs:
+            skipped_list[obj_name] = reason
+        data["skipped"] = skipped_list
+
+        return data
 
     def printInfo(self, println: Callable) -> None:
         for uid, unit in self.m_render_units.items():
@@ -406,3 +498,18 @@ class Scene:
                     println('[DAL]        scale at {} : {}'.format(tp, scale))
         for name, reason in self.m_skipped_objs:
             println('[DAL] Skipped {{ name="{}", reason="{}" }}'.format(name, reason))
+
+    def imageNames(self) -> Set[str]:
+        img_names = set()
+
+        for unit in self.m_render_units.values():
+            img_names.add(unit.m_material.m_albedoMap)
+            img_names.add(unit.m_material.m_roughnessMap)
+            img_names.add(unit.m_material.m_metallicMap)
+
+        try:
+            img_names.remove("")
+        except KeyError:
+            pass
+
+        return img_names

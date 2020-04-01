@@ -55,10 +55,10 @@ def _copyImage(image: bpy.types.Image, dstpath: str) -> None:
             raise FileNotFoundError("[DAL] Image not found: {}".format(srcpath))
     else:  # Packed
         packed = image.packed_files[0]
-        originalPath = packed.filepath
+        original_path = packed.filepath
         packed.filepath = dstpath
         packed.save()
-        packed.filepath = originalPath
+        packed.filepath = original_path
         print("[DAL] Image exported from packed: {}".format(dstpath))
 
 
@@ -537,17 +537,17 @@ class EmportDalModel(Operator, ExportHelper):
     """
 
     def execute(self, context):
-        model = ModelBuilder(self.optionBool_removeUselessJoints)
+        #model = ModelBuilder(self.optionBool_removeUselessJoints)
 
         scene = bpa.parse_raw_data()
         assert 1 == len(scene.m_skeletons)
-        mfd.JointRemover.process(scene.m_skeletons[0], scene.m_animations, scene.m_render_units.values())
-        scene.printInfo(print)
+        if self.optionBool_removeUselessJoints:
+            mfd.JointRemover.process(scene.m_skeletons[0], scene.m_animations, scene.m_render_units.values())
         print("[DAL] Building done")
 
         if self.optionBool_createReadable:
             readable_path = os.path.splitext(self.filepath)[0] + ".txt"
-            readable_content = model.makeJson()
+            readable_content = scene.makeJson()
             with open(readable_path, "w", encoding="utf8") as file:
                 json.dump(readable_content, file, indent=4, sort_keys=False)
             print("[DAL] Readable file created")
@@ -560,7 +560,7 @@ class EmportDalModel(Operator, ExportHelper):
         print("[DAL] Model exported")
 
         if self.optionBool_copyImages:
-            img_names = model.getImgNames()
+            img_names = scene.imageNames()
             save_fol = os.path.split(self.filepath)[0].replace("\\", "/")
             for name in img_names:
                 image: bpy.types.Image = bpy.data.images[name]
