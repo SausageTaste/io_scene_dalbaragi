@@ -48,15 +48,11 @@ def _build_bin_skeleton(skeleton: rwd.Scene.Skeleton, id_map: Dict[str, int]) ->
 
     data += byt.to_int32(len(skeleton))
     for joint in skeleton.m_joints:
-        joint_id = id_map[joint.m_name]
-        if "" != joint.m_parentName:
-            parent_id = id_map[joint.m_parentName]
-        else:
-            parent_id = -1
+        parent_id = id_map[joint.m_parentName] if ("" != joint.m_parentName) else -1
 
         data += byt.to_nullTerminated(joint.m_name)
-        data += byt.to_int32(joint_id)
         data += byt.to_int32(parent_id)
+        data += byt.to_int32(joint.m_jointType.value)
         data += _build_bin_mat4(joint.m_offsetMat)
 
     return data
@@ -82,10 +78,10 @@ def _build_bin_joint_keyframes(keyframes: rwd.Scene.JointKeyframes) -> bytearray
     data += byt.to_int32(len(rotations))
     for timepoint, value in rotations:
         data += byt.to_float32(timepoint)
-        data += byt.to_float32(value.w)
         data += byt.to_float32(value.x)
         data += byt.to_float32(value.y)
         data += byt.to_float32(value.z)
+        data += byt.to_float32(value.w)
 
     data += byt.to_int32(len(scales))
     for timepoint, value in scales:
@@ -105,7 +101,7 @@ def _build_bin_animation(anim: rwd.Scene.Animation, id_map: Dict[str, int]) -> b
     data += byt.to_float32(anim.m_tickPerSec)
 
     # Joints
-    data += byt.to_int32(len(anim.m_joints))
+    data += byt.to_int32(len(id_map))
 
     dummy_joint_data = _build_bin_joint_keyframes(rwd.Scene.JointKeyframes("dummy"))
     data_list: List[Optional[bytearray]] = [dummy_joint_data for _ in range(len(id_map))]
@@ -233,6 +229,6 @@ def make_binary_dmd(scene: rwd.Scene):
     data += byt.to_int32(len(scene.m_static_actors))
     for actor in scene.m_static_actors:
         unit = scene.m_render_units[actor.m_renderUnitID]
-        _build_bin_render_unit(actor, unit, joint_id_map)
+        data += _build_bin_render_unit(actor, unit, joint_id_map)
 
     return data
