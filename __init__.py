@@ -13,7 +13,6 @@ from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 
 from . import blender_parser as bpa
-from . import datastruct as dat
 from . import byteutils as byt
 from . import rawdata as rwd
 from . import smalltype as smt
@@ -141,11 +140,9 @@ def register():
     importlib.reload(byt)
     importlib.reload(smt)
     importlib.reload(rwd)
-    importlib.reload(mex)
-
     importlib.reload(bpa)
-    importlib.reload(dat)
     importlib.reload(mfd)
+    importlib.reload(mex)
 
     bpy.utils.register_class(EmportDalModel)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
