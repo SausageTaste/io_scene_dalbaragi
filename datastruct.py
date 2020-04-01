@@ -473,7 +473,7 @@ class JointAnim:
         self.__rotations: List[Tuple[float, float, float, float, float]] = []
         self.__scales: List[Tuple[float, float]] = []
 
-    def makeBinary(self) ->bytearray:
+    def makeBinary(self) -> bytearray:
         data = bytearray()
 
         data += self.__transform.makeBinary()

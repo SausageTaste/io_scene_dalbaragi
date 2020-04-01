@@ -18,6 +18,7 @@ from . import byteutils as byt
 from . import rawdata as rwd
 from . import smalltype as smt
 from . import modify_data as mfd
+from . import model_exporter as mex
 
 MAX_JOINT_NUM = 130
 
@@ -541,9 +542,10 @@ class EmportDalModel(Operator, ExportHelper):
         assert 1 == len(scene.m_skeletons)
         mfd.JointRemover.process(scene.m_skeletons[0], scene.m_animations, scene.m_render_units.values())
         scene.printInfo(print)
+        return mex.make_binary_dmd(scene)
 
     def execute(self, context):
-        self.__testNewModelBuilder()
+        test_binary = self.__testNewModelBuilder()
         print("[DAL] Test done")
 
         model = ModelBuilder(self.optionBool_removeUselessJoints)
@@ -582,11 +584,13 @@ def menu_func_export(self, context):
 
 
 def register():
+    importlib.reload(byt)
+    importlib.reload(smt)
+    importlib.reload(rwd)
+    importlib.reload(mex)
+
     importlib.reload(bpa)
     importlib.reload(dat)
-    importlib.reload(byt)
-    importlib.reload(rwd)
-    importlib.reload(smt)
     importlib.reload(mfd)
 
     bpy.utils.register_class(EmportDalModel)

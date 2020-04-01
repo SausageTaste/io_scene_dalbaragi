@@ -41,6 +41,13 @@ class Scene:
         def size(self) -> int:
             return len(self.__vertices)
 
+        def hasJoint(self) -> bool:
+            for v in self.vertices():
+                if len(v.m_joints):
+                    return True
+
+            return False
+
         @property
         def m_skeletonName(self):
             return self.__skeletonName
@@ -109,7 +116,7 @@ class Scene:
             self.__parentName = str(v)
 
         @property
-        def m_offsetMat(self):
+        def m_offsetMat(self) -> smt.Mat4:
             return self.__offsetMat
 
         @property
@@ -216,6 +223,7 @@ class Scene:
     class JointKeyframes:
         def __init__(self, joint_name: str):
             self.__name = str(joint_name)
+            self.__transform = smt.Mat4()
 
             self.__poses: List[Tuple[float, smt.Vec3]] = []
             self.__rotates: List[Tuple[float, smt.Quat]] = []
@@ -302,6 +310,9 @@ class Scene:
         @property
         def m_name(self):
             return self.__name
+        @property
+        def m_transform(self):
+            return self.__transform
 
         @staticmethod
         def __removeDuplicateKeyframes(arr: List[Tuple[float, Any]]):
@@ -338,6 +349,14 @@ class Scene:
                     new_list.append(joint)
 
             self.__keyframes = new_list
+
+        def calcDurationTick(self) -> float:
+            max_value = 0.0
+
+            for joint in self.m_joints:
+                max_value = max(joint.getMaxTimepoint(), max_value)
+
+            return max_value if 0.0 != max_value else 1.0
 
         @property
         def m_name(self):
