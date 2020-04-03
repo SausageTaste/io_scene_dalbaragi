@@ -30,7 +30,7 @@ def _fix_rotation(v: smt.Vec3) -> smt.Vec3:
 def _to_degree(radian: float) -> float:
     return float(radian) * 180.0 / math.pi
 
-def get_objects():
+def _get_objects():
     for obj in bpy.context.scene.objects:
         yield obj
 
@@ -400,7 +400,7 @@ def _parse_light_spot(obj):
 def parse_raw_data():
     scene = rwd.Scene()
 
-    for obj in get_objects():
+    for obj in _get_objects():
         type_str = str(obj.type)
 
         if not obj.visible_get():
