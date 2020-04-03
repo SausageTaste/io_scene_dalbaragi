@@ -128,8 +128,6 @@ class EmportDalModel(Operator, ExportHelper):
         return {'FINISHED'}
 
 class ExportDalMap(Operator, ExportHelper):
-    """Export binary map file for Dalbargi engine."""
-
     bl_idname = "export_map.dlb"
     bl_label = "Export DLB"
 
@@ -143,7 +141,7 @@ class ExportDalMap(Operator, ExportHelper):
 
     optionBool_createReadable = BoolProperty(
         name="Create readable file",
-        description="Create a txt file that contains model info.",
+        description="Create a txt file that contains map info.",
         default=True,
     )
 
