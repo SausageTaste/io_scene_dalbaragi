@@ -273,15 +273,13 @@ class Scene:
             self.__rotates: List[Tuple[float, smt.Quat]] = []
             self.__scales: List[Tuple[float, float]] = []
 
-        def getJson(self):
-            data = {
+        def makeJson(self):
+            return {
                 "name": self.__name,
                 "poses size": len(self.__poses),
                 "rotates size": len(self.__rotates),
                 "scales size": len(self.__scales)
             }
-
-            return data
 
         def addPos(self, timepoint: float, x, y, z) -> None:
             data = (float(timepoint), smt.Vec3(x, y, z))
@@ -392,7 +390,7 @@ class Scene:
                 "name": self.__name,
                 "tick per sec": self.__tickPerSec,
                 "joint keyframes size": len(self.__keyframes),
-                "joint keyframes": [xx.getJson() for xx in self.__keyframes],
+                "joint keyframes": [xx.makeJson() for xx in self.__keyframes],
             }
 
         def newJoint(self, joint_name: str) -> "Scene.JointKeyframes":
@@ -444,11 +442,155 @@ class Scene:
                 "render unit id": self.m_renderUnitID,
             }
 
+    class ILight:
+        def __init__(self):
+            self.__name = ""
+            self.__color = smt.Vec3()
+            self.__intensity = 1000.0
+            self.__hasShadow = False
+
+        def makeJson(self):
+            return {
+                "name": self.m_name,
+                "color": str(self.m_color),
+                "intensity": self.m_intensity,
+                "has shadow": self.m_hasShadow,
+            }
+
+        @property
+        def m_name(self):
+            return self.__name
+
+        @m_name.setter
+        def m_name(self, value: str):
+            self.__name = str(value)
+
+        @property
+        def m_color(self):
+            return self.__color
+
+        @m_color.setter
+        def m_color(self, value: smt.Vec3):
+            assert isinstance(value, smt.Vec3)
+            self.__color = value
+
+        @property
+        def m_intensity(self):
+            return self.__intensity
+
+        @m_intensity.setter
+        def m_intensity(self, value: float):
+            self.__intensity = float(value)
+
+        @property
+        def m_hasShadow(self):
+            return self.__hasShadow
+
+        @m_hasShadow.setter
+        def m_hasShadow(self, value: bool):
+            self.__hasShadow = bool(value)
+
+    class PointLight(ILight):
+        def __init__(self):
+            super().__init__()
+
+            self.__pos = smt.Vec3()
+            self.m_maxDistance = 0.0
+            self.m_halfIntenseDist = 0.0
+
+        def makeJson(self):
+            data = super().makeJson()
+
+            data["pos"] = str(self.m_pos)
+            data["max distance"] = self.m_maxDistance
+            data["half intensity distance"] = self.m_halfIntenseDist
+
+            return data
+
+        @property
+        def m_pos(self):
+            return self.__pos
+
+        @m_pos.setter
+        def m_pos(self, value: smt.Vec3):
+            assert isinstance(value, smt.Vec3)
+            self.__pos = value
+
+    class DirectionalLight(ILight):
+        def __init__(self):
+            super().__init__()
+
+            self.__direction = smt.Vec3()
+
+        def makeJson(self):
+            data = super().makeJson()
+
+            data["direction"] = str(self.m_direction)
+
+            return data
+
+        @property
+        def m_direction(self):
+            return self.__direction
+
+        @m_direction.setter
+        def m_direction(self, value: smt.Vec3):
+            assert isinstance(value, smt.Vec3)
+            self.__direction = value
+
+    class SpotLight(ILight):
+        def __init__(self):
+            super().__init__()
+
+            self.__pos = smt.Vec3()
+            self.m_maxDistance = 0.0
+            self.m_halfIntenseDist = 0.0
+
+            self.__direction = smt.Vec3()
+            self.m_spotDegree = 0.0
+            self.m_spotBlend = 0.0
+
+        def makeJson(self):
+            data = super().makeJson()
+
+            data["pos"] = str(self.m_pos)
+            data["max distance"] = self.m_maxDistance
+            data["half intensity distance"] = self.m_halfIntenseDist
+
+            data["direction"] = str(self.m_direction)
+            data["spot degree"] = self.m_spotDegree
+            data["spot blend"] = self.m_spotBlend
+
+            return data
+
+        @property
+        def m_pos(self):
+            return self.__pos
+
+        @m_pos.setter
+        def m_pos(self, value: smt.Vec3):
+            assert isinstance(value, smt.Vec3)
+            self.__pos = value
+
+        @property
+        def m_direction(self):
+            return self.__direction
+
+        @m_direction.setter
+        def m_direction(self, value: smt.Vec3):
+            assert isinstance(value, smt.Vec3)
+            self.__direction = value
+
+
     def __init__(self):
         self.m_render_units: Dict[int, Scene.RenderUnit] = {}
         self.m_static_actors: List[Scene.StaticActor] = []
         self.m_skeletons: List[Scene.Skeleton] = []
         self.m_animations: List[Scene.Animation] = []
+
+        self.m_plights: List[Scene.PointLight] = []
+        self.m_dlights: List[Scene.DirectionalLight] = []
+        self.m_slights: List[Scene.SpotLight] = []
 
         # Tuple(name, reason)
         self.m_skipped_objs: List[Tuple[str, str]] = []
@@ -466,6 +608,15 @@ class Scene:
 
             "animations size": len(self.m_animations),
             "animations": [xx.makeJson() for xx in self.m_animations],
+
+            "point lights size": len(self.m_plights),
+            "point lights": [xx.makeJson() for xx in self.m_plights],
+
+            "directional lights size": len(self.m_dlights),
+            "directional lights": [xx.makeJson() for xx in self.m_dlights],
+
+            "spot lights size": len(self.m_slights),
+            "spot lights": [xx.makeJson() for xx in self.m_slights],
         }
 
         skipped_list = {}

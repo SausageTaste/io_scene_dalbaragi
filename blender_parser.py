@@ -1,4 +1,5 @@
-from typing import Dict, List, Tuple, Iterator
+import math
+from typing import Dict, List, Tuple
 
 import bpy
 
@@ -21,9 +22,13 @@ BLENDER_OBJ_TYPE_SPEAKER     = "SPEAKER"
 BLENDER_OBJ_TYPE_LIGHT_PROBE = "LIGHT_PROBE"
 
 
+# In blender's coordinate system, -z is down.
+# But in Dalbaragi engine, -y is down and -z is far direction.
 def _fix_rotation(v: smt.Vec3) -> smt.Vec3:
     return smt.Vec3(v.x, v.z, -v.y)
 
+def _to_degree(radian: float) -> float:
+    return float(radian) * 180.0 / math.pi
 
 def get_objects():
     for obj in bpy.context.scene.objects:
@@ -317,6 +322,80 @@ def _parse_render_unit(obj, data_id: int) -> rwd.Scene.RenderUnit:
 
     return unit
 
+def _parse_light_base(obj, light: rwd.Scene.ILight) -> None:
+    light.m_name = obj.name
+
+    light.m_color.x = obj.data.color.r
+    light.m_color.y = obj.data.color.g
+    light.m_color.z = obj.data.color.b
+
+    light.m_useShadow = obj.data.use_shadow
+    light.m_intensity = obj.data.energy
+
+def _parse_light_point(obj):
+    assert isinstance(obj.data, bpy.types.PointLight)
+
+    plight = rwd.Scene.PointLight()
+
+    _parse_light_base(obj, plight)
+
+    plight.m_pos.x = obj.location.x
+    plight.m_pos.y = obj.location.y
+    plight.m_pos.z = obj.location.z
+
+    if not obj.data.use_custom_distance:
+        print("[DAL] WARN::custom distance is not enabled for light \"{}\"".format(plight.m_name))
+    plight.m_maxDistance = float(obj.data.cutoff_distance)
+    plight.m_halfIntenseDist = float(obj.data.distance)
+
+    return plight
+
+def _parse_light_directional(obj):
+    assert isinstance(obj.data, bpy.types.SunLight)
+
+    dlight = rwd.Scene.DirectionalLight()
+
+    _parse_light_base(obj, dlight)
+
+    quat = smt.Quat()
+    quat.w = obj.rotation_quaternion[0]
+    quat.x = obj.rotation_quaternion[1]
+    quat.y = obj.rotation_quaternion[2]
+    quat.z = obj.rotation_quaternion[3]
+    down = smt.Vec3(0, 0, -1)  # Take a look at the comment near "_fix_rotation" function
+    dlight.m_direction = _fix_rotation(quat.rotateVec(down))
+
+    return dlight
+
+def _parse_light_spot(obj):
+    assert isinstance(obj.data, bpy.types.SpotLight)
+
+    slight = rwd.Scene.SpotLight()
+
+    _parse_light_base(obj, slight)
+
+    slight.m_pos.x = obj.location.x
+    slight.m_pos.y = obj.location.y
+    slight.m_pos.z = obj.location.z
+
+    if not obj.data.use_custom_distance:
+        print("[DAL] WARN::custom distance is not enabled for light \"{}\"".format(slight.m_name))
+    slight.m_maxDistance = float(obj.data.cutoff_distance)
+    slight.m_halfIntenseDist = float(obj.data.distance)
+
+    quat = smt.Quat()
+    quat.w = obj.rotation_quaternion[0]
+    quat.x = obj.rotation_quaternion[1]
+    quat.y = obj.rotation_quaternion[2]
+    quat.z = obj.rotation_quaternion[3]
+    down = smt.Vec3(0, 0, -1)  # Take a look at the comment near "_fix_rotation" function
+    slight.m_direction = _fix_rotation(quat.rotateVec(down))
+
+    slight.m_spotDegree = _to_degree(obj.data.spot_size)
+    slight.m_spotBlend = float(obj.data.spot_blend)
+
+    return slight
+
 
 def parse_raw_data():
     scene = rwd.Scene()
@@ -341,6 +420,18 @@ def parse_raw_data():
         elif BLENDER_OBJ_TYPE_ARMATURE == type_str:
             skeleton = _parse_skeleton(obj.data)
             scene.m_skeletons.append(skeleton)
+        elif BLENDER_OBJ_TYPE_LIGHT == type_str:
+            if isinstance(obj.data, bpy.types.PointLight):
+                plight = _parse_light_point(obj)
+                scene.m_plights.append(plight)
+            elif isinstance(obj.data, bpy.types.SunLight):
+                dlight = _parse_light_directional(obj)
+                scene.m_dlights.append(dlight)
+            elif isinstance(obj.data, bpy.types.SpotLight):
+                slight = _parse_light_spot(obj)
+                scene.m_slights.append(slight)
+            else:
+                raise RuntimeError("Unkown type of light: {}".format(type(obj.data)))
         else:
             scene.m_skipped_objs.append((obj.name, "Not supported object type: {}".format(type_str)))
 
