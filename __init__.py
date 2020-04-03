@@ -1,10 +1,8 @@
 import os
 import zlib
-import math
 import json
 import shutil
 import importlib
-from typing import Tuple, List, Dict
 
 import bpy
 import bpy.types
@@ -129,10 +127,44 @@ class EmportDalModel(Operator, ExportHelper):
         print("[DAL] Finished")
         return {'FINISHED'}
 
+class ExportDalMap(Operator, ExportHelper):
+    """Export binary map file for Dalbargi engine."""
+
+    bl_idname = "export_map.dlb"
+    bl_label = "Export DLB"
+
+    filename_ext = ".dlb"
+
+    filter_glob = StringProperty(
+        default="*.dlb",
+        options={'HIDDEN'},
+        maxlen=255,  # Max internal buffer length, longer would be clamped.
+    )
+
+    optionBool_createReadable = BoolProperty(
+        name="Create readable file",
+        description="Create a txt file that contains model info.",
+        default=True,
+    )
+
+    def execute(self, context):
+        scene = bpa.parse_raw_data()
+
+        if self.optionBool_createReadable:
+            readable_path = os.path.splitext(self.filepath)[0] + ".txt"
+            readable_content = scene.makeJson()
+            with open(readable_path, "w", encoding="utf8") as file:
+                json.dump(readable_content, file, indent=4, sort_keys=False)
+            print("[DAL] Readable file created")
+
+        print("[DAL] Finished")
+        return {'FINISHED'}
+
 
 def menu_func_export(self, context):
     # Only needed if you want to add into a dynamic menu
     self.layout.operator(EmportDalModel.bl_idname, text="Dalbaragi Model (.dmd)")
+    self.layout.operator(ExportDalMap.bl_idname, text="Dalbaragi Map (.dlb)")
 
 def register():
     importlib.reload(byt)
@@ -143,10 +175,12 @@ def register():
     importlib.reload(mex)
 
     bpy.utils.register_class(EmportDalModel)
+    bpy.utils.register_class(ExportDalMap)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 
 def unregister():
     bpy.utils.unregister_class(EmportDalModel)
+    bpy.utils.unregister_class(ExportDalMap)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
 
 
