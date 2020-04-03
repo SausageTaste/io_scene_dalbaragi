@@ -161,10 +161,18 @@ class ExportDalMap(Operator, ExportHelper):
         return {'FINISHED'}
 
 
+class DalExportSubMenu(bpy.types.Menu):
+    bl_idname = "dal_export_menu"
+    bl_label = "Dalbaragi Tools"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator(EmportDalModel.bl_idname, text="Dalbaragi Model (.dmd)")
+        layout.operator(ExportDalMap.bl_idname, text="Dalbaragi Map (.dlb)")
+
+
 def menu_func_export(self, context):
-    # Only needed if you want to add into a dynamic menu
-    self.layout.operator(EmportDalModel.bl_idname, text="Dalbaragi Model (.dmd)")
-    self.layout.operator(ExportDalMap.bl_idname, text="Dalbaragi Map (.dlb)")
+    self.layout.menu(DalExportSubMenu.bl_idname)
 
 def register():
     importlib.reload(byt)
@@ -176,11 +184,13 @@ def register():
 
     bpy.utils.register_class(EmportDalModel)
     bpy.utils.register_class(ExportDalMap)
+    bpy.utils.register_class(DalExportSubMenu)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 
 def unregister():
     bpy.utils.unregister_class(EmportDalModel)
     bpy.utils.unregister_class(ExportDalMap)
+    bpy.utils.unregister_class(DalExportSubMenu)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
 
 
