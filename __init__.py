@@ -19,7 +19,6 @@ from . import smalltype as smt
 from . import modify_data as mfd
 from . import model_exporter as mex
 
-MAX_JOINT_NUM = 130
 
 bl_info = {
     "name": "Dalbaragi Model Exporter",
