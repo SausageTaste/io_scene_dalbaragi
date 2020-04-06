@@ -49,6 +49,7 @@ class _MaterialParser:
         node_base_color = bsdf.inputs["Base Color"]
         node_metallic   = bsdf.inputs["Metallic"]
         node_roughness  = bsdf.inputs["Roughness"]
+        node_normal     = bsdf.inputs["Normal"]
 
         material.m_roughness = node_roughness.default_value
         material.m_metallic = node_metallic.default_value
@@ -64,6 +65,10 @@ class _MaterialParser:
         image_node = cls.__findImageNodeRecur(node_roughness)
         if image_node is not None:
             material.m_roughnessMap = image_node.image.name
+
+        image_node = cls.__findImageNodeRecur(node_normal)
+        if image_node is not None:
+            material.m_normalMap = image_node.image.name
 
         return material
 

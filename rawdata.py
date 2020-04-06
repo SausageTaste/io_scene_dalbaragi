@@ -14,6 +14,7 @@ class Scene:
             self.m_albedoMap = ""
             self.m_roughnessMap = ""
             self.m_metallicMap = ""
+            self.m_normalMap = ""
 
         def makeJson(self):
             return {
@@ -22,6 +23,7 @@ class Scene:
                 "albedo map": self.m_albedoMap,
                 "roughness map": self.m_roughnessMap,
                 "metallic map": self.m_metallicMap,
+                "normal map": self.m_normalMap,
             }
 
     class VertexData:
@@ -657,6 +659,7 @@ class Scene:
             img_names.add(unit.m_material.m_albedoMap)
             img_names.add(unit.m_material.m_roughnessMap)
             img_names.add(unit.m_material.m_metallicMap)
+            img_names.add(unit.m_material.m_normalMap)
 
         try:
             img_names.remove("")

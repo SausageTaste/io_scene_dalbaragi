@@ -204,6 +204,7 @@ def _build_bin_render_unit(actor: rwd.Scene.StaticActor, unit: rwd.Scene.RenderU
     data += byt.to_nullTerminated(material.m_albedoMap)
     data += byt.to_nullTerminated(material.m_roughnessMap)
     data += byt.to_nullTerminated(material.m_metallicMap)
+    data += byt.to_nullTerminated(material.m_normalMap)
 
     # Mesh
     data += _build_bin_mesh(unit.m_mesh, id_map)
