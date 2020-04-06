@@ -237,9 +237,9 @@ class Scene:
                     super_parents.add(jname)
                     result.add(jname)
 
-                if joint.m_jointType in (Scene.JointType.skirt_root, Scene.JointType.hair_root):
-                    super_parents.add(jname)
-                    result.add(jname)
+                #if joint.m_jointType in (Scene.JointType.skirt_root, Scene.JointType.hair_root):
+                #    super_parents.add(jname)
+                #    result.add(jname)
 
             return result
 
