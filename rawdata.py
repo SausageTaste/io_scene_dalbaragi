@@ -34,6 +34,8 @@ class Scene:
             self.m_joints: List[Tuple[float, str]] = []
 
         def addJoint(self, name: str, weight: float) -> None:
+            if 0.0 == weight: return
+
             self.m_joints.append((weight, name))
             self.m_joints.sort(reverse=True)
 

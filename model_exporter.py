@@ -172,13 +172,21 @@ def _build_bin_mesh(mesh: rwd.Scene.Mesh, id_map: Optional[Dict[str, int]]) -> b
                     weights_n_ids.append((j_weight, joint_id))
             weights_n_ids.sort(reverse=True)
 
-            raw_weights.append(weights_n_ids[0][0])
-            raw_weights.append(weights_n_ids[1][0])
-            raw_weights.append(weights_n_ids[2][0])
+            w0 = weights_n_ids[0][0]
+            w1 = weights_n_ids[1][0]
+            w2 = weights_n_ids[2][0]
+            weight_sum = w0 + w1 + w2
+            weight_normalizer = (1.0 / weight_sum) if (0.0 != weight_sum) else 1.0
+
+            raw_weights.append(w0 * weight_normalizer)
+            raw_weights.append(w1 * weight_normalizer)
+            raw_weights.append(w2 * weight_normalizer)
 
             raw_jids.append(weights_n_ids[0][1])
             raw_jids.append(weights_n_ids[1][1])
             raw_jids.append(weights_n_ids[2][1])
+
+            # print(smt.Vec3(w0, w1, w2), weights_n_ids[0][1], weights_n_ids[1][1], weights_n_ids[2][1])
 
         bw = np.array(raw_weights, dtype=np.float32)
         bi = np.array(raw_jids, dtype=np.int32)
