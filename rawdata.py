@@ -15,6 +15,7 @@ class Scene:
             self.m_roughnessMap = ""
             self.m_metallicMap = ""
             self.m_normalMap = ""
+            self.m_alphaBlend = False
 
         def makeJson(self):
             return {
@@ -24,6 +25,7 @@ class Scene:
                 "roughness map": self.m_roughnessMap,
                 "metallic map": self.m_metallicMap,
                 "normal map": self.m_normalMap,
+                "alpha blend": self.m_alphaBlend,
             }
 
     class VertexData:

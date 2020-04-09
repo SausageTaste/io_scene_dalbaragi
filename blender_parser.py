@@ -21,6 +21,11 @@ BLENDER_OBJ_TYPE_LIGHT       = "LIGHT"
 BLENDER_OBJ_TYPE_SPEAKER     = "SPEAKER"
 BLENDER_OBJ_TYPE_LIGHT_PROBE = "LIGHT_PROBE"
 
+BLENDER_MATERIAL_BLEND_OPAQUE = "OPAQUE"
+BLENDER_MATERIAL_BLEND_CLIP   = "CLIP"
+BLENDER_MATERIAL_BLEND_HASHED = "HASHED"
+BLENDER_MATERIAL_BLEND_BLEND  = "BLEND"
+
 
 # In blender's coordinate system, -z is down.
 # But in Dalbaragi engine, -y is down and -z is far direction.
@@ -51,6 +56,7 @@ class _MaterialParser:
         node_roughness  = bsdf.inputs["Roughness"]
         node_normal     = bsdf.inputs["Normal"]
 
+        material.m_alphaBlend = True if blender_material.blend_method != BLENDER_MATERIAL_BLEND_OPAQUE else False
         material.m_roughness = node_roughness.default_value
         material.m_metallic = node_metallic.default_value
 
