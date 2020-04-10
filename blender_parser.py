@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Iterable
 
 import bpy
 
@@ -408,13 +408,11 @@ def _parse_light_spot(obj):
     return slight
 
 
-def parse_raw_data():
-    scene = rwd.Scene()
-
-    for obj in _get_objects():
+def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None:
+    for obj in objects:
         type_str = str(obj.type)
 
-        if not obj.visible_get():
+        if (not obj.visible_get()) and ignore_hidden:
             scene.m_skipped_objs.append((obj.name, "Hiddel object"))
             continue
 
@@ -446,9 +444,26 @@ def parse_raw_data():
         else:
             scene.m_skipped_objs.append((obj.name, "Not supported object type: {}".format(type_str)))
 
+
+
+def parse_raw_data() -> rwd.Scene:
+    scene = rwd.Scene()
+
+    _parse_objects(_get_objects(), scene, True)
+
     for action in bpy.data.actions:
         animation = _AnimationParser.parse(action)
         animation.cleanUp()
         scene.m_animations.append(animation)
 
     return scene
+
+def parse_raw_data_map() -> Dict[str, rwd.Scene]:
+    scenes: Dict[str, rwd.Scene] = {}
+
+    for collection in bpy.data.collections:
+        scene = rwd.Scene()
+        _parse_objects(collection.all_objects, scene, False)
+        scenes[collection.name] = scene
+
+    return scenes

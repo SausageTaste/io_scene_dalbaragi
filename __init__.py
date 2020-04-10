@@ -147,11 +147,14 @@ class ExportDalMap(Operator, ExportHelper):
     )
 
     def execute(self, context):
-        scene = bpa.parse_raw_data()
+        scenes = bpa.parse_raw_data_map()
 
         if self.optionBool_createReadable:
+            readable_content = {}
+            for collection_name, scene in scenes.items():
+                readable_content[collection_name] = scene.makeJson()
+
             readable_path = os.path.splitext(self.filepath)[0] + ".txt"
-            readable_content = scene.makeJson()
             with open(readable_path, "w", encoding="utf8") as file:
                 json.dump(readable_content, file, indent=4, sort_keys=False)
             print("[DAL] Readable file created")
