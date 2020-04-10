@@ -96,6 +96,8 @@ class EmportDalModel(Operator, ExportHelper):
     """
 
     def execute(self, context):
+        print("[DAL] Started exporting Dalbaragi model")
+
         scene = bpa.parse_raw_data()
         mfd.MaterialDuplacateRemover.process(scene.m_render_units, scene.m_static_actors)
         if self.optionBool_removeUselessJoints:
@@ -107,14 +109,14 @@ class EmportDalModel(Operator, ExportHelper):
             readable_content = scene.makeJson()
             with open(readable_path, "w", encoding="utf8") as file:
                 json.dump(readable_content, file, indent=4, sort_keys=False)
-            print("[DAL] Readable file created")
+            print("[DAL] Readable file created: " + readable_path)
 
         bin_data = mex.make_binary_dmd(scene)
         full_size = len(bin_data)
         final_bin = bytearray() + b"dalmdl" + byt.to_int32(full_size) + zlib.compress(bin_data, zlib.Z_BEST_COMPRESSION)
         with open(self.filepath, "wb") as file:
             file.write(final_bin)
-        print("[DAL] Model exported")
+        print("[DAL] Model exported: " + self.filepath)
 
         if self.optionBool_copyImages:
             img_names = scene.imageNames()
@@ -147,6 +149,8 @@ class ExportDalMap(Operator, ExportHelper):
     )
 
     def execute(self, context):
+        print("[DAL] Started exporting Dalbaragi map")
+
         scenes = bpa.parse_raw_data_map()
 
         if self.optionBool_createReadable:
@@ -157,7 +161,7 @@ class ExportDalMap(Operator, ExportHelper):
             readable_path = os.path.splitext(self.filepath)[0] + ".json"
             with open(readable_path, "w", encoding="utf8") as file:
                 json.dump(readable_content, file, indent=4, sort_keys=False)
-            print("[DAL] Readable file created")
+            print("[DAL] Readable file created: " + readable_path)
 
         print("[DAL] Finished")
         return {'FINISHED'}
