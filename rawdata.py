@@ -17,6 +17,17 @@ class Scene:
             self.m_normalMap = ""
             self.m_alphaBlend = False
 
+        def isSame(self, other: "Scene.Material") -> bool:
+            return (
+                self.m_roughness    == other.m_roughness    and
+                self.m_metallic     == other.m_metallic     and
+                self.m_albedoMap    == other.m_albedoMap    and
+                self.m_roughnessMap == other.m_roughnessMap and
+                self.m_metallicMap  == other.m_metallicMap  and
+                self.m_normalMap    == other.m_normalMap    and
+                self.m_alphaBlend   == other.m_alphaBlend
+            )
+
         def makeJson(self):
             return {
                 "roughness": self.m_roughness,
@@ -54,6 +65,7 @@ class Scene:
             }
 
         def addVertex(self, data: "Scene.VertexData") -> None:
+            assert isinstance(data, Scene.VertexData)
             self.__vertices.append(data)
 
         def vertices(self) -> Iterator["Scene.VertexData"]:
@@ -68,6 +80,10 @@ class Scene:
                     return True
 
             return False
+
+        def concatenate(self, other: "Scene.Mesh") -> None:
+            assert isinstance(other, Scene.Mesh)
+            self.__vertices = self.__vertices + other.__vertices
 
         @property
         def m_skeletonName(self):

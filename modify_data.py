@@ -85,3 +85,45 @@ class JointRemover:
         skeleton.m_joints = new_joints
 
         return replace_map.data()
+
+
+class MaterialDuplacateRemover:
+    @classmethod
+    def process(cls, units: Dict[int, rwd.Scene.RenderUnit], static_actors: List[rwd.Scene.StaticActor]) -> None:
+        replace_map = cls.__makeReplaceMap(units)
+
+        for id_removed, id_preserved in replace_map.items():
+            for actor in static_actors:
+                if id_preserved == actor.m_renderUnitID:
+                    actor_of_preserved = actor
+                    break
+            else:
+                raise RuntimeError()
+
+            for actor in static_actors:
+                if id_removed == actor.m_renderUnitID:
+                    units[id_preserved].m_mesh.concatenate(units[id_removed].m_mesh)
+                    actor_of_preserved.m_name += "+" + actor.m_name
+                    del units[id_removed]
+                    actor.m_renderUnitID = 0
+
+        static_actors_tmp = static_actors[:]
+        static_actors.clear()
+        for actor in static_actors_tmp:
+            if 0 != actor.m_renderUnitID:
+                static_actors.append(actor)
+
+    @classmethod
+    def __makeReplaceMap(cls, units: Dict[int, rwd.Scene.RenderUnit]) -> Dict[int, int]:
+        preserved: Set[int] = set()
+        replace_map: Dict[int, int] = {}  # id to remove, id to preserve
+
+        for uid in units.keys():
+            for uid_preserved in preserved:
+                if units[uid].m_material.isSame(units[uid_preserved].m_material):
+                    replace_map[uid] = uid_preserved
+                    break
+            else:
+                preserved.add(uid)
+
+        return replace_map
