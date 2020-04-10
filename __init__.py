@@ -103,7 +103,7 @@ class EmportDalModel(Operator, ExportHelper):
         print("[DAL] Building done")
 
         if self.optionBool_createReadable:
-            readable_path = os.path.splitext(self.filepath)[0] + ".txt"
+            readable_path = os.path.splitext(self.filepath)[0] + ".json"
             readable_content = scene.makeJson()
             with open(readable_path, "w", encoding="utf8") as file:
                 json.dump(readable_content, file, indent=4, sort_keys=False)
@@ -154,7 +154,7 @@ class ExportDalMap(Operator, ExportHelper):
             for collection_name, scene in scenes.items():
                 readable_content[collection_name] = scene.makeJson()
 
-            readable_path = os.path.splitext(self.filepath)[0] + ".txt"
+            readable_path = os.path.splitext(self.filepath)[0] + ".json"
             with open(readable_path, "w", encoding="utf8") as file:
                 json.dump(readable_content, file, indent=4, sort_keys=False)
             print("[DAL] Readable file created")
