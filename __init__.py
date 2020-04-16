@@ -16,6 +16,7 @@ from . import rawdata as rwd
 from . import smalltype as smt
 from . import modify_data as mfd
 from . import model_exporter as mex
+from . import map_data as mpd
 from . import map_exporter_lvl as mpx
 
 
@@ -153,6 +154,7 @@ class ExportDalMap(Operator, ExportHelper):
         print("[DAL] Started exporting Dalbaragi map")
 
         scenes = bpa.parse_raw_data_map()
+        maps = mpd.Level(scenes)
         print("[DAL] Building done")
 
         if self.optionBool_createReadable:
@@ -165,13 +167,20 @@ class ExportDalMap(Operator, ExportHelper):
                 json.dump(readable_content, file, indent=4, sort_keys=False)
             print("[DAL] Readable file created: " + readable_path)
 
-        bin_data = mpx.make_binary_dlb(scenes)
-        full_size = len(bin_data)
-        final_bin = bytearray() + b"dallvl" + byt.to_int32(full_size) + zlib.compress(bin_data, zlib.Z_BEST_COMPRESSION)
-        final_bin = bytearray() + b"dallvl" + bin_data
+        bin_data = mpx.make_binary_dlb(maps)
+        final_bin = bytearray(b"dallvl") + bin_data
         with open(self.filepath, "wb") as file:
             file.write(final_bin)
-        print("[DAL] Map exported: " + self.filepath)
+        print("[DAL] Level exported: " + self.filepath)
+
+        for name, chunk in maps.items():
+            chunk_path = os.path.splitext(self.filepath)[0] + "-" + name + ".dmc"
+            bin_data = mpx.make_binary_dmc(chunk.m_data)
+            full_size = len(bin_data)
+            final_bin = bytearray(b"dalchk") + byt.to_int32(full_size) + zlib.compress(bin_data, zlib.Z_BEST_COMPRESSION)
+            with open(chunk_path, "wb") as file:
+                file.write(final_bin)
+            print("[DAL] Map chunk exported: " + chunk_path)
 
         print("[DAL] Finished")
         return {'FINISHED'}
@@ -197,6 +206,7 @@ def register():
     importlib.reload(bpa)
     importlib.reload(mfd)
     importlib.reload(mex)
+    importlib.reload(mpd)
     importlib.reload(mpx)
 
     bpy.utils.register_class(EmportDalModel)
