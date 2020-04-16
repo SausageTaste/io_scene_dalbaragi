@@ -16,6 +16,7 @@ from . import rawdata as rwd
 from . import smalltype as smt
 from . import modify_data as mfd
 from . import model_exporter as mex
+from . import map_exporter_lvl as mpx
 
 
 bl_info = {
@@ -152,6 +153,7 @@ class ExportDalMap(Operator, ExportHelper):
         print("[DAL] Started exporting Dalbaragi map")
 
         scenes = bpa.parse_raw_data_map()
+        print("[DAL] Building done")
 
         if self.optionBool_createReadable:
             readable_content = {}
@@ -162,6 +164,14 @@ class ExportDalMap(Operator, ExportHelper):
             with open(readable_path, "w", encoding="utf8") as file:
                 json.dump(readable_content, file, indent=4, sort_keys=False)
             print("[DAL] Readable file created: " + readable_path)
+
+        bin_data = mpx.make_binary_dlb(scenes)
+        full_size = len(bin_data)
+        final_bin = bytearray() + b"dallvl" + byt.to_int32(full_size) + zlib.compress(bin_data, zlib.Z_BEST_COMPRESSION)
+        final_bin = bytearray() + b"dallvl" + bin_data
+        with open(self.filepath, "wb") as file:
+            file.write(final_bin)
+        print("[DAL] Map exported: " + self.filepath)
 
         print("[DAL] Finished")
         return {'FINISHED'}
@@ -187,6 +197,7 @@ def register():
     importlib.reload(bpa)
     importlib.reload(mfd)
     importlib.reload(mex)
+    importlib.reload(mpx)
 
     bpy.utils.register_class(EmportDalModel)
     bpy.utils.register_class(ExportDalMap)

@@ -17,6 +17,22 @@ class Vec2:
         self.__x = float(x)
         self.__y = float(y)
 
+    def __getitem__(self, item: int):
+        if 0 == item:
+            return self.x
+        elif 1 == item:
+            return self.y
+        else:
+            raise IndexError()
+
+    def __setitem__(self, key: int, value: float):
+        if 0 == key:
+            self.x = value
+        elif 1 == key:
+            self.y = value
+        else:
+            raise IndexError()
+
     @property
     def x(self):
         return self.__x
@@ -251,6 +267,30 @@ class Mat4:
             col_strings.append("( {} )".format(colstr))
 
         return ", ".join(col_strings)
+
+
+class Transform:
+    def __init__(self):
+        self.__pos = Vec3()
+        self.__quat = Quat()
+        self.__scale = 1.0
+
+    def transform(self, v: Vec3) -> Vec3:
+        v *= self.__scale
+        v = self.__quat.rotateVec(v)
+        return v + self.__pos
+
+    @property
+    def m_pos(self):
+        return self.__pos
+
+    @property
+    def m_rotate(self):
+        return self.__quat
+
+    @property
+    def m_scale(self):
+        return self.__scale
 
 
 class AABB3:

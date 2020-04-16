@@ -85,6 +85,14 @@ class Scene:
             assert isinstance(other, Scene.Mesh)
             self.__vertices = self.__vertices + other.__vertices
 
+        def makeAABB(self) -> smt.AABB3:
+            result = smt.AABB3()
+
+            for v in self.vertices():
+                result.resizeToContain(v.m_vertex.x, v.m_vertex.y, v.m_vertex.z)
+
+            return result
+
         @property
         def m_skeletonName(self):
             return self.__skeletonName
@@ -457,12 +465,17 @@ class Scene:
         def __init__(self):
             self.m_name = ""
             self.m_renderUnitID = 0
+            self.__transform = smt.Transform()
 
         def makeJson(self):
             return {
                 "name": self.m_name,
                 "render unit id": self.m_renderUnitID,
             }
+
+        @property
+        def m_transform(self):
+            return self.__transform
 
     class ILight:
         def __init__(self):
