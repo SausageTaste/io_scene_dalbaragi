@@ -54,8 +54,6 @@ def _build_bin_render_unit(actor: rwd.Scene.StaticActor, unit: rwd.Scene.RenderU
 
     data = bytearray()
 
-    data += byt.to_nullTerminated(actor.m_name)
-
     # Material
     material: rwd.Scene.Material = unit.m_material
     data += byt.to_float32(material.m_roughness)
