@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 import numpy as np
 
@@ -17,6 +17,24 @@ def _build_bin_aabb(aabb: smt.AABB3) -> bytearray:
     result += byt.to_float32(aabb.m_max.x)
     result += byt.to_float32(aabb.m_max.y)
     result += byt.to_float32(aabb.m_max.z)
+
+    return result
+
+def _build_bin_transform(trans: smt.Transform) -> bytearray:
+    assert isinstance(trans, smt.Transform)
+
+    result = bytearray()
+
+    result += byt.to_float32(trans.m_pos.x)
+    result += byt.to_float32(trans.m_pos.y)
+    result += byt.to_float32(trans.m_pos.z)
+
+    result += byt.to_float32(trans.m_rotate.w)
+    result += byt.to_float32(trans.m_rotate.x)
+    result += byt.to_float32(trans.m_rotate.y)
+    result += byt.to_float32(trans.m_rotate.z)
+
+    result += byt.to_float32(trans.m_scale)
 
     return result
 
@@ -48,8 +66,7 @@ def _build_bin_mesh(mesh: rwd.Scene.Mesh) -> bytearray:
 
     return data
 
-def _build_bin_render_unit(actor: rwd.Scene.StaticActor, unit: rwd.Scene.RenderUnit):
-    assert isinstance(actor, rwd.Scene.StaticActor)
+def _build_bin_render_unit(unit: rwd.Scene.RenderUnit):
     assert isinstance(unit, rwd.Scene.RenderUnit)
 
     data = bytearray()
@@ -72,17 +89,38 @@ def _build_bin_render_unit(actor: rwd.Scene.StaticActor, unit: rwd.Scene.RenderU
 
     return data
 
+def _build_bin_static_actor(actor: rwd.Scene.StaticActor):
+    assert isinstance(actor, rwd.Scene.StaticActor)
+
+    result = bytearray()
+
+    result += byt.to_nullTerminated(actor.m_name)
+    result += _build_bin_transform(actor.m_transform)
+
+    return result
+
 
 def make_binary_dmc(scene: rwd.Scene):
     assert isinstance(scene, rwd.Scene)
 
     data = bytearray()
 
+    uid_index_map: Dict[int, int] = {}
+
     # Render units
+    data += byt.to_int32(len(scene.m_render_units))
+    for i, uid_n_unit in enumerate(scene.m_render_units.items()):
+        uid, unit = uid_n_unit
+        data += _build_bin_render_unit(unit)
+
+        assert uid not in uid_index_map.keys()
+        uid_index_map[uid] = i
+
+    # Static actors
     data += byt.to_int32(len(scene.m_static_actors))
     for actor in scene.m_static_actors:
-        unit = scene.m_render_units[actor.m_renderUnitID]
-        data += _build_bin_render_unit(actor, unit)
+        data += _build_bin_static_actor(actor)
+        data += byt.to_int32(uid_index_map[actor.m_renderUnitID])
 
     return data
 
