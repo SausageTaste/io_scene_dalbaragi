@@ -299,7 +299,7 @@ def _parse_render_unit(obj, data_id: int) -> rwd.Scene.RenderUnit:
 
     unit = rwd.Scene.RenderUnit(data_id)
 
-    if obj.data.materials[0] is not None:
+    if len(obj.data.materials) and obj.data.materials[0] is not None:
         unit.m_material = _MaterialParser.parse(obj.data.materials[0])
 
     armature = obj.find_armature()
