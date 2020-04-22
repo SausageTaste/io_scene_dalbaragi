@@ -142,6 +142,15 @@ def _build_bin_light(light: rwd.Scene.ILight) -> bytearray:
 
     return result
 
+def _build_bin_plight(plight: rwd.Scene.PointLight) -> bytearray:
+    result = _build_bin_light(plight)
+
+    result += _build_bin_vec3(plight.m_pos)
+    result += byt.to_float32(plight.m_maxDistance)
+    result += byt.to_float32(plight.m_halfIntenseDist)
+
+    return result
+
 
 def make_binary_dmc(scene: rwd.Scene):
     assert isinstance(scene, rwd.Scene)
@@ -169,6 +178,11 @@ def make_binary_dmc(scene: rwd.Scene):
     data += byt.to_int32(len(scene.m_waters))
     for water in scene.m_waters:
         data += _build_bin_water_plane(water)
+
+    # Point lights
+    data += byt.to_int32(len(scene.m_plights))
+    for plight in scene.m_plights:
+        data += _build_bin_plight(plight)
 
     return data
 
