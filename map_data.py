@@ -4,6 +4,10 @@ from . import smalltype as smt
 from . import rawdata as rwd
 
 
+def make_scoped_chunk_name(chunk_name, level_name):
+    return level_name + "-" + chunk_name
+
+
 class Level:
     class MapChunk:
         def __init__(self, scene: rwd.Scene):
@@ -37,10 +41,10 @@ class Level:
                 self.__aabb.resizeToContain(p1.x, p1.y, p1.z)
 
 
-    def __init__(self, scenes: Dict[str, rwd.Scene]):
+    def __init__(self, scenes: Dict[str, rwd.Scene], level_name: str):
         self.__data: Dict[str, Level.MapChunk] = {}
 
-        self.__fetch(scenes)
+        self.__fetch(scenes, level_name)
 
     def __len__(self):
         return len(self.__data)
@@ -48,6 +52,7 @@ class Level:
     def items(self):
         return self.__data.items()
 
-    def __fetch(self, scenes: Dict[str, rwd.Scene]) -> None:
+    def __fetch(self, scenes: Dict[str, rwd.Scene], level_name: str) -> None:
         for name, scene in scenes.items():
-            self.__data[name] = Level.MapChunk(scene)
+            chunk_name = make_scoped_chunk_name(name, level_name)
+            self.__data[chunk_name] = Level.MapChunk(scene)

@@ -3,6 +3,7 @@ import zlib
 import json
 import shutil
 import importlib
+from typing import Tuple
 
 import bpy
 import bpy.types
@@ -51,6 +52,11 @@ def _copyImage(image: bpy.types.Image, dstpath: str) -> None:
         packed.save()
         packed.filepath = original_path
         print("[DAL] Image exported from packed: {}".format(dstpath))
+
+def _split_path_3(path: str) -> Tuple[str, str, str]:
+    rest, ext = os.path.splitext(path)
+    fol, filename = os.path.split(rest)
+    return fol, filename, ext
 
 
 class EmportDalModel(Operator, ExportHelper):
@@ -153,8 +159,10 @@ class ExportDalMap(Operator, ExportHelper):
     def execute(self, context):
         print("[DAL] Started exporting Dalbaragi map")
 
+        fol, level_name, ext_dlb = _split_path_3(self.filepath)
+
         scenes = bpa.parse_raw_data_map()
-        maps = mpd.Level(scenes)
+        maps = mpd.Level(scenes, level_name)
         print("[DAL] Building done")
 
         if self.optionBool_createReadable:
@@ -174,7 +182,7 @@ class ExportDalMap(Operator, ExportHelper):
         print("[DAL] Level exported: " + self.filepath)
 
         for name, chunk in maps.items():
-            chunk_path = os.path.splitext(self.filepath)[0] + "-" + name + ".dmc"
+            chunk_path = mpd.make_scoped_chunk_name(name, level_name) + ".dmc"
             bin_data = mpx.make_binary_dmc(chunk.m_data)
             full_size = len(bin_data)
             final_bin = bytearray(b"dalchk") + byt.to_int32(full_size) + zlib.compress(bin_data, zlib.Z_BEST_COMPRESSION)
