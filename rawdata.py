@@ -485,7 +485,7 @@ class Scene:
     class ILight:
         def __init__(self):
             self.__name = ""
-            self.__color = smt.Vec3()
+            self.__color = smt.Vec3(1, 1, 1)
             self.__intensity = 1000.0
             self.__hasShadow = False
 

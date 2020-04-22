@@ -8,6 +8,9 @@ from . import rawdata as rwd
 from . import smalltype as smt
 
 
+MAX_DLIGHT_COUNT = 3
+
+
 def _build_bin_vec3(v: smt.Vec3) -> bytearray:
     result = bytearray()
 
@@ -129,6 +132,16 @@ def _build_bin_water_plane(water: rwd.Scene.WaterPlane) -> bytearray:
 
     return result
 
+def _build_bin_light(light: rwd.Scene.ILight) -> bytearray:
+    result = bytearray()
+
+    result += byt.to_nullTerminated(light.m_name)
+    result += byt.to_bool1(light.m_hasShadow)
+    result += _build_bin_vec3(light.m_color)
+    result += byt.to_float32(light.m_intensity)
+
+    return result
+
 
 def make_binary_dmc(scene: rwd.Scene):
     assert isinstance(scene, rwd.Scene)
@@ -171,11 +184,27 @@ def __build_bin_chunk_info(chunk: mpd.Level.MapChunk) -> bytearray:
 
     return result
 
+def __build_bin_dlight(dlight: rwd.Scene.DirectionalLight) -> bytearray:
+    result = _build_bin_light(dlight)
+
+    result += _build_bin_vec3(dlight.m_direction)
+
+    return result
+
 def make_binary_dlb(level: mpd.Level) -> bytearray:
+    dlights: List[rwd.Scene.DirectionalLight] = []
+    for name, chunk in level.items():
+        dlights += chunk.m_data.m_dlights
+    if len(dlights) > MAX_DLIGHT_COUNT:
+        raise RuntimeError("the number of directional lights cannot exceed {}".format(MAX_DLIGHT_COUNT))
+
     result = bytearray()
 
-    result += byt.to_int32(len(level))
+    result += byt.to_int32(len(dlights))
+    for dlight in dlights:
+        result += __build_bin_dlight(dlight)
 
+    result += byt.to_int32(len(level))
     for name, chunk in level.items():
         result += byt.to_nullTerminated(name)
         result += __build_bin_chunk_info(chunk)
