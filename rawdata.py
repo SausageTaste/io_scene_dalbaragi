@@ -477,6 +477,10 @@ class Scene:
         @property
         def m_transform(self):
             return self.__transform
+        @m_transform.setter
+        def m_transform(self, v: smt.Transform):
+            assert isinstance(v, smt.Transform)
+            self.__transform = v
 
     class ILight:
         def __init__(self):
@@ -617,12 +621,37 @@ class Scene:
             assert isinstance(value, smt.Vec3)
             self.__direction = value
 
+    class WaterPlane:
+        def __init__(self):
+            self.m_centerPos = smt.Vec3(0, 0, 0)
+            self.m_deepColor = smt.Vec3(0.07, 0.07, 0.15)
+            self.m_width = 1.0
+            self.m_height = 1.0
+            self.m_flowSpeed = 0.03
+            self.m_waveStreng = 0.02
+            self.m_darkestDepth = 20
+            self.m_reflectance = 0.2
+
+        def makeJson(self):
+            return {
+                "pos": str(self.m_centerPos),
+                "deep color": str(self.m_deepColor),
+                "width": self.m_width,
+                "height": self.m_height,
+                "flow speed": self.m_flowSpeed,
+                "wave strength": self.m_waveStreng,
+                "darkest depth": self.m_darkestDepth,
+                "reflactance": self.m_reflectance,
+            }
+
 
     def __init__(self):
         self.m_render_units: Dict[int, Scene.RenderUnit] = {}
         self.m_static_actors: List[Scene.StaticActor] = []
         self.m_skeletons: List[Scene.Skeleton] = []
         self.m_animations: List[Scene.Animation] = []
+
+        self.m_waters: List[Scene.WaterPlane] = []
 
         self.m_plights: List[Scene.PointLight] = []
         self.m_dlights: List[Scene.DirectionalLight] = []
@@ -644,6 +673,9 @@ class Scene:
 
             "animations size": len(self.m_animations),
             "animations": [xx.makeJson() for xx in self.m_animations],
+
+            "waters size": len(self.m_waters),
+            "waters": [xx.makeJson() for xx in self.m_waters],
 
             "point lights size": len(self.m_plights),
             "point lights": [xx.makeJson() for xx in self.m_plights],

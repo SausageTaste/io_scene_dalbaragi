@@ -8,15 +8,20 @@ from . import rawdata as rwd
 from . import smalltype as smt
 
 
+def _build_bin_vec3(v: smt.Vec3) -> bytearray:
+    result = bytearray()
+
+    result += byt.to_float32(v.x)
+    result += byt.to_float32(v.y)
+    result += byt.to_float32(v.z)
+
+    return result
+
 def _build_bin_aabb(aabb: smt.AABB3) -> bytearray:
     result = bytearray()
 
-    result += byt.to_float32(aabb.m_min.x)
-    result += byt.to_float32(aabb.m_min.y)
-    result += byt.to_float32(aabb.m_min.z)
-    result += byt.to_float32(aabb.m_max.x)
-    result += byt.to_float32(aabb.m_max.y)
-    result += byt.to_float32(aabb.m_max.z)
+    result += _build_bin_vec3(aabb.m_min)
+    result += _build_bin_vec3(aabb.m_max)
 
     return result
 
@@ -25,9 +30,7 @@ def _build_bin_transform(trans: smt.Transform) -> bytearray:
 
     result = bytearray()
 
-    result += byt.to_float32(trans.m_pos.x)
-    result += byt.to_float32(trans.m_pos.y)
-    result += byt.to_float32(trans.m_pos.z)
+    result += _build_bin_vec3(trans.m_pos)
 
     result += byt.to_float32(trans.m_rotate.w)
     result += byt.to_float32(trans.m_rotate.x)
@@ -108,6 +111,24 @@ def _build_bin_static_actor(actor: rwd.Scene.StaticActor):
 
     return result
 
+def _build_bin_water_plane(water: rwd.Scene.WaterPlane) -> bytearray:
+    assert isinstance(water, rwd.Scene.WaterPlane)
+
+    result = bytearray()
+
+    result += _build_bin_vec3(water.m_centerPos)
+    result += _build_bin_vec3(water.m_deepColor)
+
+    result += byt.to_float32(water.m_width)
+    result += byt.to_float32(water.m_height)
+
+    result += byt.to_float32(water.m_flowSpeed)
+    result += byt.to_float32(water.m_waveStreng)
+    result += byt.to_float32(water.m_darkestDepth)
+    result += byt.to_float32(water.m_reflectance)
+
+    return result
+
 
 def make_binary_dmc(scene: rwd.Scene):
     assert isinstance(scene, rwd.Scene)
@@ -130,6 +151,11 @@ def make_binary_dmc(scene: rwd.Scene):
     for actor in scene.m_static_actors:
         data += _build_bin_static_actor(actor)
         data += byt.to_int32(uid_index_map[actor.m_renderUnitID])
+
+    # Waters
+    data += byt.to_int32(len(scene.m_waters))
+    for water in scene.m_waters:
+        data += _build_bin_water_plane(water)
 
     return data
 

@@ -334,7 +334,15 @@ class AABB3:
     @property
     def m_min(self):
         return self.__min
+    @m_min.setter
+    def m_min(self, v: Vec3):
+        assert isinstance(v, Vec3)
+        self.__min = v
 
     @property
     def m_max(self):
         return self.__max
+    @m_max.setter
+    def m_max(self, v: Vec3):
+        assert isinstance(v, Vec3)
+        self.__max = v

@@ -258,7 +258,9 @@ class _AnimationParser:
         return bone_name, var_name
 
 
-def _parse_transform(obj, dst: smt.Transform) -> None:
+def _parse_transform(obj) -> smt.Transform:
+    dst = smt.Transform()
+
     dst.m_pos.x = obj.location[0]
     dst.m_pos.y = obj.location[1]
     dst.m_pos.z = obj.location[2]
@@ -272,6 +274,8 @@ def _parse_transform(obj, dst: smt.Transform) -> None:
     ))
 
     dst.m_scale = (obj.scale[0] + obj.scale[1] + obj.scale[2]) / 3
+
+    return dst
 
 def _parse_skeleton(blender_armature) -> rwd.Scene.Skeleton:
     assert isinstance(blender_armature, bpy.types.Armature)
@@ -427,6 +431,37 @@ def _parse_light_spot(obj):
     return slight
 
 
+# Special objects
+def _is_water_plane(obj) -> bool:
+    if BLENDER_OBJ_TYPE_MESH != str(obj.type):
+        return False
+
+    if str(obj.name).startswith("%water"):
+        return True
+    else:
+        return False
+
+def _parse_water_plane(obj) -> rwd.Scene.WaterPlane:
+    unit = _parse_render_unit(obj, 0)
+    transform = _parse_transform(obj)
+    aabb = unit.m_mesh.makeAABB()
+    aabb.m_min = transform.transform(aabb.m_min)
+    aabb.m_max = transform.transform(aabb.m_max)
+
+    water = rwd.Scene.WaterPlane()
+
+    water.m_centerPos = smt.Vec3(
+        (aabb.m_min.x + aabb.m_max.x) / 2,
+        aabb.m_max.y,
+        (aabb.m_min.z + aabb.m_max.z) / 2,
+    )
+
+    water.m_width = abs(aabb.m_max.x - aabb.m_min.x)
+    water.m_height = abs(aabb.m_max.z - aabb.m_min.z)
+
+    return water
+
+
 def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None:
     for obj in objects:
         type_str = str(obj.type)
@@ -436,17 +471,21 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
             continue
 
         if BLENDER_OBJ_TYPE_MESH == type_str:
-            data_id = id(obj.data)
-            if data_id not in scene.m_render_units.keys():
-                scene.m_render_units[data_id] = _parse_render_unit(obj, data_id)
-            scene.m_render_units[data_id].m_refCount += 1
+            if _is_water_plane(obj):
+                water = _parse_water_plane(obj)
+                scene.m_waters.append(water)
+            else:
+                data_id = id(obj.data)
+                if data_id not in scene.m_render_units.keys():
+                    scene.m_render_units[data_id] = _parse_render_unit(obj, data_id)
+                scene.m_render_units[data_id].m_refCount += 1
 
-            actor = rwd.Scene.StaticActor()
-            actor.m_name = obj.name
-            actor.m_renderUnitID = data_id
-            _parse_transform(obj, actor.m_transform)
+                actor = rwd.Scene.StaticActor()
+                actor.m_name = obj.name
+                actor.m_renderUnitID = data_id
+                actor.m_transform = _parse_transform(obj)
 
-            scene.m_static_actors.append(actor)
+                scene.m_static_actors.append(actor)
         elif BLENDER_OBJ_TYPE_ARMATURE == type_str:
             skeleton = _parse_skeleton(obj.data)
             scene.m_skeletons.append(skeleton)
