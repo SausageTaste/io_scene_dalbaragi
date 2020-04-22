@@ -182,7 +182,7 @@ class ExportDalMap(Operator, ExportHelper):
         print("[DAL] Level exported: " + self.filepath)
 
         for name, chunk in maps.items():
-            chunk_path = mpd.make_scoped_chunk_name(name, level_name) + ".dmc"
+            chunk_path = os.path.join(fol, name) + ".dmc"
             bin_data = mpx.make_binary_dmc(chunk.m_data)
             full_size = len(bin_data)
             final_bin = bytearray(b"dalchk") + byt.to_int32(full_size) + zlib.compress(bin_data, zlib.Z_BEST_COMPRESSION)
