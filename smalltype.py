@@ -298,6 +298,10 @@ class Transform:
     @property
     def m_rotate(self):
         return self.__quat
+    @m_rotate.setter
+    def m_rotate(self, v: Quat):
+        isinstance(v, Quat)
+        self.__quat = v
 
     @property
     def m_scale(self):

@@ -32,6 +32,10 @@ BLENDER_MATERIAL_BLEND_BLEND  = "BLEND"
 def _fix_rotation(v: smt.Vec3) -> smt.Vec3:
     return smt.Vec3(v.x, v.z, -v.y)
 
+def _fix_quat_orientation(q: smt.Quat) -> smt.Quat:
+    v = _fix_rotation(smt.Vec3(q.x, q.y, q.z))
+    return smt.Quat(q.w, v.x, v.y, v.z)
+
 def _to_degree(radian: float) -> float:
     return float(radian) * 180.0 / math.pi
 
@@ -260,10 +264,12 @@ def _parse_transform(obj, dst: smt.Transform) -> None:
     dst.m_pos.z = obj.location[2]
     dst.m_pos = _fix_rotation(dst.m_pos)
 
-    dst.m_rotate.w = obj.rotation_quaternion[0]
-    dst.m_rotate.x = obj.rotation_quaternion[1]
-    dst.m_rotate.y = obj.rotation_quaternion[2]
-    dst.m_rotate.z = obj.rotation_quaternion[3]
+    dst.m_rotate = _fix_quat_orientation(smt.Quat(
+            obj.rotation_quaternion[0],
+            obj.rotation_quaternion[1],
+            obj.rotation_quaternion[2],
+            obj.rotation_quaternion[3],
+    ))
 
     dst.m_scale = (obj.scale[0] + obj.scale[1] + obj.scale[2]) / 3
 
