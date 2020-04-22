@@ -471,6 +471,7 @@ class Scene:
             return {
                 "name": self.m_name,
                 "render unit id": self.m_renderUnitID,
+                "transform": self.__transform.makeJson(),
             }
 
         @property

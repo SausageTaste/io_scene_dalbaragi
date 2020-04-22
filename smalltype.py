@@ -275,6 +275,13 @@ class Transform:
         self.__quat = Quat()
         self.__scale = 1.0
 
+    def makeJson(self):
+        return {
+            "translation": str(self.m_pos),
+            "rotation": str(self.__quat),
+            "scale": self.__scale,
+        }
+
     def transform(self, v: Vec3) -> Vec3:
         v *= self.__scale
         v = self.__quat.rotateVec(v)
@@ -283,6 +290,10 @@ class Transform:
     @property
     def m_pos(self):
         return self.__pos
+    @m_pos.setter
+    def m_pos(self, v: Vec3):
+        assert isinstance(v, Vec3)
+        self.__pos = v
 
     @property
     def m_rotate(self):
@@ -291,6 +302,9 @@ class Transform:
     @property
     def m_scale(self):
         return self.__scale
+    @m_scale.setter
+    def m_scale(self, v: float):
+        self.__scale = float(v)
 
 
 class AABB3:

@@ -75,10 +75,10 @@ def _build_bin_render_unit(unit: rwd.Scene.RenderUnit):
     material: rwd.Scene.Material = unit.m_material
     data += byt.to_float32(material.m_roughness)
     data += byt.to_float32(material.m_metallic)
-    data += byt.to_nullTerminated(material.m_albedoMap)
-    data += byt.to_nullTerminated(material.m_roughnessMap)
-    data += byt.to_nullTerminated(material.m_metallicMap)
-    data += byt.to_nullTerminated(material.m_normalMap)
+    data += byt.to_nullTerminated("::" + material.m_albedoMap)
+    data += byt.to_nullTerminated("::" + material.m_roughnessMap)
+    data += byt.to_nullTerminated("::" + material.m_metallicMap)
+    data += byt.to_nullTerminated("::" + material.m_normalMap)
 
     # Mesh
     data += _build_bin_mesh(unit.m_mesh)

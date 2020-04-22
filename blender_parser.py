@@ -254,6 +254,19 @@ class _AnimationParser:
         return bone_name, var_name
 
 
+def _parse_transform(obj, dst: smt.Transform) -> None:
+    dst.m_pos.x = obj.location[0]
+    dst.m_pos.y = obj.location[1]
+    dst.m_pos.z = obj.location[2]
+    dst.m_pos = _fix_rotation(dst.m_pos)
+
+    dst.m_rotate.w = obj.rotation_quaternion[0]
+    dst.m_rotate.x = obj.rotation_quaternion[1]
+    dst.m_rotate.y = obj.rotation_quaternion[2]
+    dst.m_rotate.z = obj.rotation_quaternion[3]
+
+    dst.m_scale = (obj.scale[0] + obj.scale[1] + obj.scale[2]) / 3
+
 def _parse_skeleton(blender_armature) -> rwd.Scene.Skeleton:
     assert isinstance(blender_armature, bpy.types.Armature)
 
@@ -425,6 +438,8 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
             actor = rwd.Scene.StaticActor()
             actor.m_name = obj.name
             actor.m_renderUnitID = data_id
+            _parse_transform(obj, actor.m_transform)
+
             scene.m_static_actors.append(actor)
         elif BLENDER_OBJ_TYPE_ARMATURE == type_str:
             skeleton = _parse_skeleton(obj.data)
