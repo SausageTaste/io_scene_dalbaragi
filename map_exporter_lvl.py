@@ -151,6 +151,19 @@ def _build_bin_plight(plight: rwd.Scene.PointLight) -> bytearray:
 
     return result
 
+def _build_bin_slight(slight: rwd.Scene.SpotLight) -> bytearray:
+    result = _build_bin_light(slight)
+
+    result += _build_bin_vec3(slight.m_pos)
+    result += byt.to_float32(slight.m_maxDistance)
+    result += byt.to_float32(slight.m_halfIntenseDist)
+
+    result += _build_bin_vec3(slight.m_direction)
+    result += byt.to_float32(slight.m_spotDegree)
+    result += byt.to_float32(slight.m_spotBlend)
+
+    return result
+
 
 def make_binary_dmc(scene: rwd.Scene):
     assert isinstance(scene, rwd.Scene)
@@ -183,6 +196,11 @@ def make_binary_dmc(scene: rwd.Scene):
     data += byt.to_int32(len(scene.m_plights))
     for plight in scene.m_plights:
         data += _build_bin_plight(plight)
+
+    # Spot lights
+    data += byt.to_int32(len(scene.m_slights))
+    for slight in scene.m_slights:
+        data += _build_bin_slight(slight)
 
     return data
 
