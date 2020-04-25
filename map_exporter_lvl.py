@@ -204,9 +204,6 @@ def make_binary_dmc(scene: rwd.Scene):
 
         data += _build_bin_render_unit(unit)
 
-        envmap_index = _find_envmap_index(unit.m_envmap, scene.m_envmaps) if unit.m_envmap else -1
-        data += byt.to_int32(envmap_index)
-
         assert uid not in uid_index_map.keys()
         uid_index_map[uid] = i
 
@@ -215,6 +212,9 @@ def make_binary_dmc(scene: rwd.Scene):
     for actor in scene.m_static_actors:
         data += _build_bin_static_actor(actor)
         data += byt.to_int32(uid_index_map[actor.m_renderUnitID])
+
+        envmap_index = _find_envmap_index(actor.m_envmap, scene.m_envmaps) if actor.m_envmap else -1
+        data += byt.to_int32(envmap_index)
 
     # Waters
     data += byt.to_int32(len(scene.m_waters))

@@ -310,11 +310,6 @@ def _parse_render_unit(obj, data_id: int) -> rwd.Scene.RenderUnit:
     if armature is not None:
         unit.m_mesh.m_skeletonName = armature.name
 
-    try:
-        unit.m_envmap = obj["envmap"]
-    except KeyError:
-        unit.m_envmap = ""
-
     for face in obj.data.polygons:
         verts_per_face = len(face.vertices)
         assert len(face.loop_indices) == verts_per_face
@@ -483,6 +478,7 @@ def _parse_env_map(obj) -> rwd.Scene.EnvMap:
 
         point = transform.transform(point)
         normal = transform.transform0(normal)
+        print(point, normal)
 
         plane = smt.Plane()
         plane.setPointNormal(point, normal)
@@ -516,6 +512,11 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
                 actor.m_name = obj.name
                 actor.m_renderUnitID = data_id
                 actor.m_transform = _parse_transform(obj)
+
+                try:
+                    actor.m_envmap = obj["envmap"]
+                except KeyError:
+                    actor.m_envmap = ""
 
                 scene.m_static_actors.append(actor)
         elif BLENDER_OBJ_TYPE_ARMATURE == type_str:
