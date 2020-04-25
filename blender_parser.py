@@ -373,9 +373,7 @@ def _parse_light_point(obj):
 
     _parse_light_base(obj, plight)
 
-    plight.m_pos.x = obj.location.x
-    plight.m_pos.y = obj.location.y
-    plight.m_pos.z = obj.location.z
+    plight.m_pos = _fix_rotation(smt.Vec3(obj.location.x, obj.location.y, obj.location.z))
 
     if not obj.data.use_custom_distance:
         print("[DAL] WARN::custom distance is not enabled for light \"{}\"".format(plight.m_name))
@@ -408,9 +406,7 @@ def _parse_light_spot(obj):
 
     _parse_light_base(obj, slight)
 
-    slight.m_pos.x = obj.location.x
-    slight.m_pos.y = obj.location.y
-    slight.m_pos.z = obj.location.z
+    slight.m_pos = _fix_rotation(smt.Vec3(obj.location.x, obj.location.y, obj.location.z))
 
     if not obj.data.use_custom_distance:
         print("[DAL] WARN::custom distance is not enabled for light \"{}\"".format(slight.m_name))
