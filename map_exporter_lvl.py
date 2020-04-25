@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Iterable
 
 import numpy as np
 
@@ -9,6 +9,14 @@ from . import smalltype as smt
 
 
 MAX_DLIGHT_COUNT = 3
+
+
+def _find_envmap_index(name: str, envmaps: Iterable[rwd.Scene.EnvMap]) -> int:
+    for i, m in enumerate(envmaps):
+        if m.m_name == name:
+            return i
+    else:
+        raise RuntimeError("envmap named \"{}\" does not exist".format(name))
 
 
 def _build_bin_vec3(v: smt.Vec3) -> bytearray:
@@ -132,6 +140,22 @@ def _build_bin_water_plane(water: rwd.Scene.WaterPlane) -> bytearray:
 
     return result
 
+def _build_bin_envmap(envmap: rwd.Scene.EnvMap) -> bytearray:
+    data = bytearray()
+
+    data += _build_bin_vec3(envmap.m_pos)
+    data += byt.to_int32(len(envmap.m_volume))
+
+    for plane in envmap.m_volume:
+        coeff = plane.coef()
+
+        data += byt.to_float32(coeff[0])
+        data += byt.to_float32(coeff[1])
+        data += byt.to_float32(coeff[2])
+        data += byt.to_float32(coeff[3])
+
+    return data
+
 def _build_bin_light(light: rwd.Scene.ILight) -> bytearray:
     result = bytearray()
 
@@ -176,7 +200,12 @@ def make_binary_dmc(scene: rwd.Scene):
     data += byt.to_int32(len(scene.m_render_units))
     for i, uid_n_unit in enumerate(scene.m_render_units.items()):
         uid, unit = uid_n_unit
+        unit: rwd.Scene.RenderUnit
+
         data += _build_bin_render_unit(unit)
+
+        envmap_index = _find_envmap_index(unit.m_envmap, scene.m_envmaps) if unit.m_envmap else -1
+        data += byt.to_int32(envmap_index)
 
         assert uid not in uid_index_map.keys()
         uid_index_map[uid] = i
@@ -191,6 +220,11 @@ def make_binary_dmc(scene: rwd.Scene):
     data += byt.to_int32(len(scene.m_waters))
     for water in scene.m_waters:
         data += _build_bin_water_plane(water)
+
+    # Env maps
+    data += byt.to_int32(len(scene.m_envmaps))
+    for envmap in scene.m_envmaps:
+        data += _build_bin_envmap(envmap)
 
     # Point lights
     data += byt.to_int32(len(scene.m_plights))

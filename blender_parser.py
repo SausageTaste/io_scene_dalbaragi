@@ -310,6 +310,11 @@ def _parse_render_unit(obj, data_id: int) -> rwd.Scene.RenderUnit:
     if armature is not None:
         unit.m_mesh.m_skeletonName = armature.name
 
+    try:
+        unit.m_envmap = obj["envmap"]
+    except KeyError:
+        unit.m_envmap = ""
+
     for face in obj.data.polygons:
         verts_per_face = len(face.vertices)
         assert len(face.loop_indices) == verts_per_face
@@ -468,6 +473,8 @@ def _parse_env_map(obj) -> rwd.Scene.EnvMap:
 
     envmap = rwd.Scene.EnvMap()
 
+    name_start_index = str(obj.name).index("%", 1) + 1
+    envmap.m_name = str(obj.name)[name_start_index:]
     envmap.m_pos = _fix_rotation(smt.Vec3(obj.location.x, obj.location.y, obj.location.z))
 
     for face in obj.data.polygons:

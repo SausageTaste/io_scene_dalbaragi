@@ -108,6 +108,7 @@ class Scene:
             self.__ref_count = 0
             self.__material = Scene.Material()
             self.__mesh = Scene.Mesh()
+            self.__envmap = ""
 
         def makeJson(self):
             return {
@@ -115,6 +116,7 @@ class Scene:
                 "ref count": self.__ref_count,
                 "material": self.__material.makeJson(),
                 "mesh": self.__mesh.makeJson(),
+                "env map": self.m_envmap,
             }
 
         @property
@@ -141,6 +143,14 @@ class Scene:
         @property
         def m_mesh(self):
             return self.__mesh
+
+        @property
+        def m_envmap(self):
+            return self.__envmap
+
+        @m_envmap.setter
+        def m_envmap(self, value: str):
+            self.__envmap = str(value)
 
     class JointType(enum.Enum):
         basic = 0
@@ -647,11 +657,13 @@ class Scene:
 
     class EnvMap:
         def __init__(self):
+            self.m_name = ""
             self.m_pos = smt.Vec3()
             self.m_volume: List[smt.Plane] = []
 
         def makeJson(self):
             return {
+                "name": self.m_name,
                 "pos": str(self.m_pos),
                 "plane size": len(self.m_volume),
                 "planes": [str(xx) for xx in self.m_volume],
