@@ -427,15 +427,18 @@ def _parse_light_spot(obj):
     return slight
 
 
-# Special objects
-def _is_water_plane(obj) -> bool:
+# Special meshes
+def _is_special_mesh(obj, prefix: str) -> bool:
     if BLENDER_OBJ_TYPE_MESH != str(obj.type):
         return False
 
-    if str(obj.name).startswith("%water"):
+    if str(obj.name).startswith(prefix):
         return True
     else:
         return False
+
+def _is_water_plane(obj) -> bool:
+    return _is_special_mesh(obj, "%water")
 
 def _parse_water_plane(obj) -> rwd.Scene.WaterPlane:
     unit = _parse_render_unit(obj, 0)
@@ -457,6 +460,29 @@ def _parse_water_plane(obj) -> rwd.Scene.WaterPlane:
 
     return water
 
+def _is_env_map(obj) -> bool:
+    return _is_special_mesh(obj, "%envmap")
+
+def _parse_env_map(obj) -> rwd.Scene.EnvMap:
+    transform = _parse_transform(obj)
+
+    envmap = rwd.Scene.EnvMap()
+
+    envmap.m_pos = _fix_rotation(smt.Vec3(obj.location.x, obj.location.y, obj.location.z))
+
+    for face in obj.data.polygons:
+        point = _fix_rotation(smt.Vec3(face.center.x, face.center.y, face.center.z))
+        normal = _fix_rotation(smt.Vec3(face.normal.x, face.normal.y, face.normal.z))
+
+        point = transform.transform(point)
+        normal = transform.transform0(normal)
+
+        plane = smt.Plane()
+        plane.setPointNormal(point, normal)
+        envmap.m_volume.append(plane)
+
+    return envmap
+
 
 def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None:
     for obj in objects:
@@ -470,6 +496,9 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
             if _is_water_plane(obj):
                 water = _parse_water_plane(obj)
                 scene.m_waters.append(water)
+            elif _is_env_map(obj):
+                envmap = _parse_env_map(obj)
+                scene.m_envmaps.append(envmap)
             else:
                 data_id = id(obj.data)
                 if data_id not in scene.m_render_units.keys():

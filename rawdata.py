@@ -644,6 +644,18 @@ class Scene:
                 "reflactance": self.m_reflectance,
             }
 
+    class EnvMap:
+        def __init__(self):
+            self.m_pos = smt.Vec3()
+            self.m_volume: List[smt.Plane] = []
+
+        def makeJson(self):
+            return {
+                "pos": str(self.m_pos),
+                "plane size": len(self.m_volume),
+                "planes": [str(xx) for xx in self.m_volume],
+            }
+
 
     def __init__(self):
         self.m_render_units: Dict[int, Scene.RenderUnit] = {}
@@ -652,6 +664,7 @@ class Scene:
         self.m_animations: List[Scene.Animation] = []
 
         self.m_waters: List[Scene.WaterPlane] = []
+        self.m_envmaps: List[Scene.EnvMap] = []
 
         self.m_plights: List[Scene.PointLight] = []
         self.m_dlights: List[Scene.DirectionalLight] = []
@@ -676,6 +689,9 @@ class Scene:
 
             "waters size": len(self.m_waters),
             "waters": [xx.makeJson() for xx in self.m_waters],
+
+            "env map size": len(self.m_envmaps),
+            "env maps": [xx.makeJson() for xx in self.m_envmaps],
 
             "point lights size": len(self.m_plights),
             "point lights": [xx.makeJson() for xx in self.m_plights],

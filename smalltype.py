@@ -1,5 +1,5 @@
 import math
-from typing import Union
+from typing import Union, Tuple
 
 
 EPSILON = 1.0 / 1000.0
@@ -287,6 +287,11 @@ class Transform:
         v = self.__quat.rotateVec(v)
         return v + self.__pos
 
+    def transform0(self, v: Vec3) -> Vec3:
+        v *= self.__scale
+        v = self.__quat.rotateVec(v)
+        return v
+
     @property
     def m_pos(self):
         return self.__pos
@@ -309,6 +314,31 @@ class Transform:
     @m_scale.setter
     def m_scale(self, v: float):
         self.__scale = float(v)
+
+
+class Plane:
+    def __init__(self):
+        self.__pos = Vec3()
+        self.__normal = Vec3(0, 1, 0)
+
+    def __str__(self):
+        coef = self.coef()
+        return "{:.6f}x + {:.6f}y + {:.6f}z + {:.6f} = 0".format(*coef)
+
+    def pos(self) -> Vec3:
+        return self.__pos
+
+    def normal(self) -> Vec3:
+        return self.__normal
+
+    def coef(self) -> Tuple[float, float, float, float]:
+        d = -self.normal().dot(self.pos())
+        return self.normal().x, self.normal().y, self.normal().z, d
+
+    def setPointNormal(self, point: Vec3, normal: Vec3) -> None:
+        self.__pos = point
+        self.__normal = normal
+        self.__normal.normalize()
 
 
 class AABB3:
