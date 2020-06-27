@@ -428,18 +428,6 @@ def _parse_light_spot(obj):
 
 
 # Special meshes
-def _is_special_mesh(obj, prefix: str) -> bool:
-    if BLENDER_OBJ_TYPE_MESH != str(obj.type):
-        return False
-
-    if str(obj.name).startswith(prefix):
-        return True
-    else:
-        return False
-
-def _is_water_plane(obj) -> bool:
-    return _is_special_mesh(obj, "%water")
-
 def _parse_water_plane(obj) -> rwd.Scene.WaterPlane:
     unit = _parse_render_unit(obj, 0)
     transform = _parse_transform(obj)
@@ -460,9 +448,6 @@ def _parse_water_plane(obj) -> rwd.Scene.WaterPlane:
 
     return water
 
-def _is_env_map(obj) -> bool:
-    return _is_special_mesh(obj, "%envmap")
-
 def _parse_env_map(obj) -> rwd.Scene.EnvMap:
     transform = _parse_transform(obj)
 
@@ -478,7 +463,7 @@ def _parse_env_map(obj) -> rwd.Scene.EnvMap:
 
         point = transform.transform(point)
         normal = transform.transform0(normal)
-        print(point, normal)
+        print("[DAL] Envmap plane: {}, {}".format(point, normal))
 
         plane = smt.Plane()
         plane.setPointNormal(point, normal)
@@ -490,19 +475,33 @@ def _parse_env_map(obj) -> rwd.Scene.EnvMap:
 def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None:
     for obj in objects:
         type_str = str(obj.type)
+        obj_name = str(obj.name)
 
         if (not obj.visible_get()) and ignore_hidden:
             scene.m_skipped_objs.append((obj.name, "Hiddel object"))
             continue
 
         if BLENDER_OBJ_TYPE_MESH == type_str:
-            if _is_water_plane(obj):
-                water = _parse_water_plane(obj)
-                scene.m_waters.append(water)
-            elif _is_env_map(obj):
-                envmap = _parse_env_map(obj)
-                scene.m_envmaps.append(envmap)
+            if "%" == obj_name[0]:
+                tail = obj_name.find("%", 1)
+                if -1 == tail:
+                    tail = len(obj_name)
+                special_mesh_type = obj_name[1:tail]
+
+                if "envmap" == special_mesh_type:
+                    print("[DAL] Parsing environment map: " + obj_name)
+                    envmap = _parse_env_map(obj)
+                    scene.m_envmaps.append(envmap)
+                elif "water" == special_mesh_type:
+                    print("[DAL] Parsing water: " + obj_name)
+                    water = _parse_water_plane(obj)
+                    scene.m_waters.append(water)
+                else:
+                    raise RuntimeError(
+                        "invalid special mesh type \'{}\' for object \'{}\'".format(special_mesh_type, obj_name)
+                    )
             else:
+                print("[DAL] Parsing actor: " + obj_name)
                 data_id = id(obj.data)
                 if data_id not in scene.m_render_units.keys():
                     scene.m_render_units[data_id] = _parse_render_unit(obj, data_id)
@@ -520,16 +519,20 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
 
                 scene.m_static_actors.append(actor)
         elif BLENDER_OBJ_TYPE_ARMATURE == type_str:
+            print("[DAL] Parsing skeleton: " + obj_name)
             skeleton = _parse_skeleton(obj.data)
             scene.m_skeletons.append(skeleton)
         elif BLENDER_OBJ_TYPE_LIGHT == type_str:
             if isinstance(obj.data, bpy.types.PointLight):
+                print("[DAL] Parsing point light: " + obj_name)
                 plight = _parse_light_point(obj)
                 scene.m_plights.append(plight)
             elif isinstance(obj.data, bpy.types.SunLight):
+                print("[DAL] Parsing sun light: " + obj_name)
                 dlight = _parse_light_directional(obj)
                 scene.m_dlights.append(dlight)
             elif isinstance(obj.data, bpy.types.SpotLight):
+                print("[DAL] Parsing : spot light" + obj_name)
                 slight = _parse_light_spot(obj)
                 scene.m_slights.append(slight)
             else:
