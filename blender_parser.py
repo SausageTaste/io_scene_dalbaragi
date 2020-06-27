@@ -457,17 +457,18 @@ def _parse_env_map(obj) -> rwd.Scene.EnvMap:
     envmap.m_name = str(obj.name)[name_start_index:]
     envmap.m_pos = _fix_rotation(smt.Vec3(obj.location.x, obj.location.y, obj.location.z))
 
-    for face in obj.data.polygons:
-        point = _fix_rotation(smt.Vec3(face.center.x, face.center.y, face.center.z))
-        normal = _fix_rotation(smt.Vec3(face.normal.x, face.normal.y, face.normal.z))
+    if "pcorrect" in obj and "true" == obj["pcorrect"]:
+        for face in obj.data.polygons:
+            point = _fix_rotation(smt.Vec3(face.center.x, face.center.y, face.center.z))
+            normal = _fix_rotation(smt.Vec3(face.normal.x, face.normal.y, face.normal.z))
 
-        point = transform.transform(point)
-        normal = transform.transform0(normal)
-        print("[DAL] Envmap plane: {}, {}".format(point, normal))
+            point = transform.transform(point)
+            normal = transform.transform0(normal)
+            normal.normalize()
 
-        plane = smt.Plane()
-        plane.setPointNormal(point, normal)
-        envmap.m_volume.append(plane)
+            plane = smt.Plane()
+            plane.setPointNormal(point, normal)
+            envmap.m_volume.append(plane)
 
     return envmap
 
