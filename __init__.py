@@ -107,9 +107,9 @@ class EmportDalModel(Operator, ExportHelper):
         print("[DAL] Started exporting Dalbaragi model")
 
         scene = bpa.parse_raw_data()
-        mfd.MaterialDuplacateRemover.process(scene.m_render_units, scene.m_static_actors)
+        # mfd.MaterialDuplacateRemover.process(scene.m_render_units, scene.m_static_actors)
         if self.optionBool_removeUselessJoints:
-            mfd.JointRemover.process(scene.m_skeletons[0], scene.m_animations, scene.m_render_units.values())
+            mfd.JointRemover.process(scene.m_skeletons[0], scene.m_animations, scene.m_models.values())
         print("[DAL] Building done")
 
         if self.optionBool_createReadable:

@@ -18,12 +18,12 @@ def _make_joints_id_map(skeleton: rwd.Scene.Skeleton) -> Dict[str, int]:
 
     return result
 
-def _make_aabb_of_meshes(meshes: Iterable[rwd.Scene.Mesh]) -> rwd.smt.AABB3:
+def _make_aabb_of_models(models: Iterable[rwd.Scene.Model]) -> rwd.smt.AABB3:
     aabb = rwd.smt.AABB3()
 
-    for mesh in meshes:
-        for v in mesh.vertices():
-            aabb.resizeToContain(v.m_vertex.x, v.m_vertex.y, v.m_vertex.z)
+    for model in models:
+        model_aabb = model.makeAABB()
+        aabb = aabb + model_aabb
 
     return aabb
 
@@ -226,7 +226,7 @@ def make_binary_dmd(scene: rwd.Scene):
     data = bytearray()
 
     # AABB
-    aabb = _make_aabb_of_meshes(xx.m_mesh for xx in scene.m_render_units.values())
+    aabb = _make_aabb_of_models(xx for xx in scene.m_models.values())
     data += _build_bin_aabb(aabb)
 
     joint_id_map = None
@@ -245,10 +245,16 @@ def make_binary_dmd(scene: rwd.Scene):
     else:
         raise RuntimeError("multiple armatures are not supported!")
 
-    # Render units
-    data += byt.to_int32(len(scene.m_static_actors))
+    # Models
+    units_count = 0
     for actor in scene.m_static_actors:
-        unit = scene.m_render_units[actor.m_renderUnitID]
-        data += _build_bin_render_unit(actor, unit, joint_id_map)
+        model = scene.m_models[actor.m_renderUnitID]
+        units_count += len(model.m_renderUnits)
+
+    data += byt.to_int32(units_count)
+    for actor in scene.m_static_actors:
+        model = scene.m_models[actor.m_renderUnitID]
+        for unit in model.m_renderUnits:
+            data += _build_bin_render_unit(actor, unit, joint_id_map)
 
     return data

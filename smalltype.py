@@ -361,6 +361,16 @@ class AABB3:
             elif p[i] > self.__max[i]:
                 self.__max[i] = p[i]
 
+    def __add__(self, other: "AABB3") -> "AABB3":
+        result = AABB3()
+
+        result.resizeToContain(self.m_min.x,  self.m_min.y,  self.m_min.z)
+        result.resizeToContain(self.m_max.x,  self.m_max.y,  self.m_max.z)
+        result.resizeToContain(other.m_min.x, other.m_min.y, other.m_min.z)
+        result.resizeToContain(other.m_max.x, other.m_max.y, other.m_max.z)
+
+        return result
+
     @property
     def m_min(self):
         return self.__min

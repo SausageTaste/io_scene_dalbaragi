@@ -106,8 +106,20 @@ def _build_bin_render_unit(unit: rwd.Scene.RenderUnit):
     # Mesh
     data += _build_bin_mesh(unit.m_mesh)
 
+    return data
+
+def _build_bin_model(model: rwd.Scene.Model) -> bytearray:
+    assert isinstance(model, rwd.Scene.Model)
+
+    data = bytearray()
+
+    # Render units
+    data += byt.to_int32(len(model.m_renderUnits))
+    for unit in model.m_renderUnits:
+        data += _build_bin_render_unit(unit)
+
     # AABB
-    aabb = unit.m_mesh.makeAABB()
+    aabb = model.makeAABB()
     data += _build_bin_aabb(aabb)
 
     return data
@@ -196,16 +208,16 @@ def make_binary_dmc(scene: rwd.Scene):
 
     uid_index_map: Dict[int, int] = {}
 
-    # Render units
-    data += byt.to_int32(len(scene.m_render_units))
-    for i, uid_n_unit in enumerate(scene.m_render_units.items()):
-        uid, unit = uid_n_unit
-        unit: rwd.Scene.RenderUnit
+    # Models
+    data += byt.to_int32(len(scene.m_models))
+    for i, mid_n_model in enumerate(scene.m_models.items()):
+        model_id, model = mid_n_model
+        model: rwd.Scene.Model
 
-        data += _build_bin_render_unit(unit)
+        data += _build_bin_model(model)
 
-        assert uid not in uid_index_map.keys()
-        uid_index_map[uid] = i
+        assert model_id not in uid_index_map.keys()
+        uid_index_map[model_id] = i
 
     # Static actors
     data += byt.to_int32(len(scene.m_static_actors))

@@ -103,31 +103,15 @@ class Scene:
             self.__skeletonName = str(name)
 
     class RenderUnit:
-        def __init__(self, uid: int):
-            self.__id = int(uid)
-            self.__ref_count = 0
+        def __init__(self):
             self.__material = Scene.Material()
             self.__mesh = Scene.Mesh()
 
         def makeJson(self):
             return {
-                "id": self.__id,
-                "ref count": self.__ref_count,
                 "material": self.__material.makeJson(),
                 "mesh": self.__mesh.makeJson(),
             }
-
-        @property
-        def m_id(self):
-            return self.__id
-
-        @property
-        def m_refCount(self):
-            return self.__ref_count
-
-        @m_refCount.setter
-        def m_refCount(self, value: int):
-            self.__ref_count = int(value)
 
         @property
         def m_material(self):
@@ -141,6 +125,52 @@ class Scene:
         @property
         def m_mesh(self):
             return self.__mesh
+
+    class Model:
+        def __init__(self, model_id: int):
+            self.__id = int(model_id)
+            self.__ref_count = 0
+            self.__units: List[Scene.RenderUnit] = []
+
+        def makeJson(self):
+            aabb = self.makeAABB()
+
+            return {
+                "id": self.__id,
+                "ref count": self.__ref_count,
+                "aabb min": str(aabb.m_min),
+                "aabb max": str(aabb.m_max),
+                "render units": [xx.makeJson() for xx in self.__units],
+            }
+
+        def addUnit(self, unit: "Scene.RenderUnit") -> None:
+            assert isinstance(unit, Scene.RenderUnit)
+            self.__units.append(unit)
+
+        def makeAABB(self) -> smt.AABB3:
+            result = smt.AABB3()
+
+            for unit in self.m_renderUnits:
+                unit_aabb = unit.m_mesh.makeAABB()
+                result = result + unit_aabb
+
+            return result
+
+        @property
+        def m_renderUnits(self):
+            return self.__units
+
+        @property
+        def m_id(self):
+            return self.__id
+
+        @property
+        def m_refCount(self):
+            return self.__ref_count
+
+        @m_refCount.setter
+        def m_refCount(self, value: int):
+            self.__ref_count = int(value)
 
     class JointType(enum.Enum):
         basic = 0
@@ -671,7 +701,7 @@ class Scene:
 
 
     def __init__(self):
-        self.m_render_units: Dict[int, Scene.RenderUnit] = {}
+        self.m_models: Dict[int, Scene.Model] = {}
         self.m_static_actors: List[Scene.StaticActor] = []
         self.m_skeletons: List[Scene.Skeleton] = []
         self.m_animations: List[Scene.Animation] = []
@@ -688,8 +718,8 @@ class Scene:
 
     def makeJson(self):
         data = {
-            "render units size": len(self.m_render_units),
-            "render units": [xx.makeJson() for xx in self.m_render_units.values()],
+            "models size": len(self.m_models),
+            "models": [xx.makeJson() for xx in self.m_models.values()],
 
             "static actors size": len(self.m_static_actors),
             "static actors": [xx.makeJson() for xx in self.m_static_actors],
@@ -724,9 +754,12 @@ class Scene:
         return data
 
     def printInfo(self, println: Callable) -> None:
-        for uid, unit in self.m_render_units.items():
-            println('[DAL] Render unit{{ id={}, ref_count={}, verts={}, skeleton="{}" }}'.format(
-                uid, unit.m_refCount, unit.m_mesh.size(), unit.m_mesh.m_skeletonName))
+        for model_id, model in self.m_models.items():
+            println(
+                '[DAL] Render unit{{ id={}, ref_count={}, render units={} }}'.format(
+                    model_id, model.m_refCount, len(model.m_renderUnits)
+                )
+            )
         for actor in self.m_static_actors:
             println('[DAL] Static actor{{ name="{}", uid={} }}'.format(actor.m_name, actor.m_renderUnitID))
         for skeleton in self.m_skeletons:
@@ -750,11 +783,12 @@ class Scene:
     def imageNames(self) -> Set[str]:
         img_names = set()
 
-        for unit in self.m_render_units.values():
-            img_names.add(unit.m_material.m_albedoMap)
-            img_names.add(unit.m_material.m_roughnessMap)
-            img_names.add(unit.m_material.m_metallicMap)
-            img_names.add(unit.m_material.m_normalMap)
+        for model in self.m_models.values():
+            for unit in model.m_renderUnits:
+                img_names.add(unit.m_material.m_albedoMap)
+                img_names.add(unit.m_material.m_roughnessMap)
+                img_names.add(unit.m_material.m_metallicMap)
+                img_names.add(unit.m_material.m_normalMap)
 
         try:
             img_names.remove("")

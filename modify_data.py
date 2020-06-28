@@ -29,7 +29,7 @@ class JointRemover:
             return self.__map
 
     @classmethod
-    def process(cls, skel: rwd.Scene.Skeleton, anims: List[rwd.Scene.Animation], units: Iterable[rwd.Scene.RenderUnit]):
+    def process(cls, skel: rwd.Scene.Skeleton, anims: List[rwd.Scene.Animation], models: Iterable[rwd.Scene.Model]):
         # There is a better idea. Remove all useless joints in animations, and use that info to determine if remove
         # the joint from skeleton or not.
 
@@ -43,16 +43,17 @@ class JointRemover:
         for anim in anims:
             anim.removeJoints(uselesses)
 
-        for unit in units:
-            if unit.m_mesh.m_skeletonName != skel.m_name:
-                continue
+        for model in models:
+            for unit in model.m_renderUnits:
+                if unit.m_mesh.m_skeletonName != skel.m_name:
+                    continue
 
-            for vert in unit.m_mesh.vertices():
-                for i, vert_joint in enumerate(vert.m_joints):
-                    try:
-                        vert.m_joints[i] = (vert_joint[0], replace_map[vert_joint[1]])
-                    except KeyError:
-                        pass
+                for vert in unit.m_mesh.vertices():
+                    for i, vert_joint in enumerate(vert.m_joints):
+                        try:
+                            vert.m_joints[i] = (vert_joint[0], replace_map[vert_joint[1]])
+                        except KeyError:
+                            pass
 
     @classmethod
     def __getSetOfNamesOfUselesses(cls, animation: rwd.Scene.Animation) -> Set[str]:
@@ -87,6 +88,7 @@ class JointRemover:
         return replace_map.data()
 
 
+'''
 class MaterialDuplacateRemover:
     @classmethod
     def process(cls, units: Dict[int, rwd.Scene.RenderUnit], static_actors: List[rwd.Scene.StaticActor]) -> None:
@@ -127,3 +129,4 @@ class MaterialDuplacateRemover:
                 preserved.add(uid)
 
         return replace_map
+'''

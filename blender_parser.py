@@ -298,19 +298,24 @@ def _parse_skeleton(blender_armature) -> rwd.Scene.Skeleton:
 
     return skeleton
 
-def _parse_render_unit(obj, data_id: int) -> rwd.Scene.RenderUnit:
+def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
     assert isinstance(obj.data, bpy.types.Mesh)
 
-    unit = rwd.Scene.RenderUnit(data_id)
-
-    if len(obj.data.materials) and obj.data.materials[0] is not None:
-        unit.m_material = _MaterialParser.parse(obj.data.materials[0])
+    model = rwd.Scene.Model(data_id)
 
     armature = obj.find_armature()
-    if armature is not None:
-        unit.m_mesh.m_skeletonName = armature.name
+    armature_name = "" if armature is None else armature.name
+    del armature
+
+    for i in range(len(obj.data.materials)):
+        unit = rwd.Scene.RenderUnit()
+        unit.m_material = _MaterialParser.parse(obj.data.materials[i])
+        unit.m_mesh.m_skeletonName = armature_name
+        model.addUnit(unit)
+    del unit
 
     for face in obj.data.polygons:
+        material_index = int(face.material_index)
         verts_per_face = len(face.vertices)
         assert len(face.loop_indices) == verts_per_face
         if 3 == verts_per_face:
@@ -352,9 +357,9 @@ def _parse_render_unit(obj, data_id: int) -> rwd.Scene.RenderUnit:
                 group_name = str(obj.vertex_groups[g.group].name)
                 vdata.addJoint(group_name, g.weight)
 
-            unit.m_mesh.addVertex(vdata)
+            model.m_renderUnits[material_index].m_mesh.addVertex(vdata)
 
-    return unit
+    return model
 
 def _parse_light_base(obj, light: rwd.Scene.ILight) -> None:
     light.m_name = obj.name
@@ -429,9 +434,9 @@ def _parse_light_spot(obj):
 
 # Special meshes
 def _parse_water_plane(obj) -> rwd.Scene.WaterPlane:
-    unit = _parse_render_unit(obj, 0)
+    model = _parse_model(obj, 0)
     transform = _parse_transform(obj)
-    aabb = unit.m_mesh.makeAABB()
+    aabb = model.makeAABB()
     aabb.m_min = transform.transform(aabb.m_min)
     aabb.m_max = transform.transform(aabb.m_max)
 
@@ -504,9 +509,9 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
             else:
                 print("[DAL] Parsing actor: " + obj_name)
                 data_id = id(obj.data)
-                if data_id not in scene.m_render_units.keys():
-                    scene.m_render_units[data_id] = _parse_render_unit(obj, data_id)
-                scene.m_render_units[data_id].m_refCount += 1
+                if data_id not in scene.m_models.keys():
+                    scene.m_models[data_id] = _parse_model(obj, data_id)
+                scene.m_models[data_id].m_refCount += 1
 
                 actor = rwd.Scene.StaticActor()
                 actor.m_name = obj.name
