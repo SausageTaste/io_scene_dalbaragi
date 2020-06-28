@@ -12,6 +12,9 @@ MAX_DLIGHT_COUNT = 3
 
 
 def _find_envmap_index(name: str, envmaps: Iterable[rwd.Scene.EnvMap]) -> int:
+    if not name:
+        return -1
+
     for i, m in enumerate(envmaps):
         if m.m_name == name:
             return i
@@ -225,8 +228,12 @@ def make_binary_dmc(scene: rwd.Scene):
         data += _build_bin_static_actor(actor)
         data += byt.to_int32(uid_index_map[actor.m_renderUnitID])
 
-        envmap_index = _find_envmap_index(actor.m_envmap, scene.m_envmaps) if actor.m_envmap else -1
-        data += byt.to_int32(envmap_index)
+        num_units = len(scene.m_models[actor.m_renderUnitID].m_renderUnits)
+        data += byt.to_int32(num_units)
+        for i in range(num_units):
+            envmap_name = actor.envmapOf(i)
+            envmap_index = _find_envmap_index(envmap_name, scene.m_envmaps)
+            data += byt.to_int32(envmap_index)
 
     # Waters
     data += byt.to_int32(len(scene.m_waters))

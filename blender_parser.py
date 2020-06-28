@@ -546,9 +546,22 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
                 actor.m_transform = _parse_transform(obj)
 
                 try:
-                    actor.m_envmap = obj["envmap"]
+                    actor.setDefaultEnv(obj["envmap"])
                 except KeyError:
-                    actor.m_envmap = ""
+                    actor.setDefaultEnv("")
+
+                for x in obj.keys():
+                    key = str(x)
+                    if not key.startswith("envmap"):
+                        continue
+                    postfix = key[6:]
+
+                    if not postfix:
+                        actor.setDefaultEnv(obj[key])
+                    elif postfix.isnumeric():
+                        actor.setEnvmapOf(int(postfix), obj[key])
+                    else:
+                        raise RuntimeError("Invalid envmap syntax \'{}\' for \'{}\'".format(key, obj.name))
 
                 scene.m_static_actors.append(actor)
         elif BLENDER_OBJ_TYPE_ARMATURE == type_str:

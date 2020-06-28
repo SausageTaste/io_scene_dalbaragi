@@ -497,15 +497,29 @@ class Scene:
             self.m_name = ""
             self.m_renderUnitID = 0
             self.__transform = smt.Transform()
-            self.__envmap = ""
+            self.__defaultEnv = ""
+            self.__envmaps: Dict[int, str] = {}
 
         def makeJson(self):
             return {
                 "name": self.m_name,
                 "render unit id": self.m_renderUnitID,
                 "transform": self.__transform.makeJson(),
-                "env map": self.m_envmap,
+                "default envmap": self.__defaultEnv,
+                "envmaps": self.__envmaps,
             }
+
+        def envmapOf(self, index: int) -> str:
+            try:
+                return self.__envmaps[index]
+            except KeyError:
+                return self.__defaultEnv
+
+        def setEnvmapOf(self, index: int, envmap_name: str) -> None:
+            self.__envmaps[index] = str(envmap_name)
+
+        def setDefaultEnv(self, envmap_name: str) -> None:
+            self.__defaultEnv = str(envmap_name)
 
         @property
         def m_transform(self):
@@ -514,14 +528,6 @@ class Scene:
         def m_transform(self, v: smt.Transform):
             assert isinstance(v, smt.Transform)
             self.__transform = v
-
-        @property
-        def m_envmap(self):
-            return self.__envmap
-
-        @m_envmap.setter
-        def m_envmap(self, value: str):
-            self.__envmap = str(value)
 
     class ILight:
         def __init__(self):
