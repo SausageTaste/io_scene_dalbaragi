@@ -56,14 +56,13 @@ class _MaterialParser:
 
         shader_output = cls.__findNodeNamed(cls.NODE_MATERIAL_OUTPUT, blender_material.node_tree.nodes)
         linked_shader = shader_output.inputs["Surface"].links[0].from_node
-        print(linked_shader)
 
         if cls.NODE_BSDF == linked_shader.bl_idname:
             pass
         elif cls.NODE_HOLDOUT == linked_shader.bl_idname:
             return None
         else:
-            raise RuntimeError("[DAL] Only Principled BSDF or Holdout are supported: {}".format(linked_shader.bl_idname))
+            raise RuntimeError("[DAL] Only Principled BSDF, Holdout are supported: {}".format(linked_shader.bl_idname))
 
         bsdf = linked_shader
         material = rwd.Scene.Material()
@@ -322,6 +321,7 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
 
     units: List[Optional[rwd.Scene.RenderUnit]] = []
 
+    # Generate render units with materials
     for i in range(len(obj.data.materials)):
         material = _MaterialParser.parse(obj.data.materials[i])
         if material is None:
@@ -333,6 +333,7 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
             units.append(unit)
     del unit
 
+    # Generate mesh
     for face in obj.data.polygons:
         material_index = int(face.material_index)
         if units[material_index] is None:
