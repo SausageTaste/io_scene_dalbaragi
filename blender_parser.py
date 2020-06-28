@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List, Tuple, Iterable
+from typing import Dict, List, Tuple, Optional
 
 import bpy
 
@@ -45,14 +45,27 @@ def _get_objects():
 
 
 class _MaterialParser:
+    NODE_BSDF            = "ShaderNodeBsdfPrincipled"
+    NODE_HOLDOUT         = "ShaderNodeHoldout"
+    NODE_MATERIAL_OUTPUT = "ShaderNodeOutputMaterial"
+    NODE_TEX_IMAGE       = "ShaderNodeTexImage"
+
     @classmethod
-    def parse(cls, blender_material):
+    def parse(cls, blender_material) -> Optional[rwd.Scene.Material]:
         assert blender_material is not None
 
-        bsdf = cls.__findPrincipledBSDFNode(blender_material.node_tree.nodes)
-        if bsdf is None:
-            raise RuntimeError("[DAL] Only Principled BSDF node is supported.")
+        shader_output = cls.__findNodeNamed(cls.NODE_MATERIAL_OUTPUT, blender_material.node_tree.nodes)
+        linked_shader = shader_output.inputs["Surface"].links[0].from_node
+        print(linked_shader)
 
+        if cls.NODE_BSDF == linked_shader.bl_idname:
+            pass
+        elif cls.NODE_HOLDOUT == linked_shader.bl_idname:
+            return None
+        else:
+            raise RuntimeError("[DAL] Only Principled BSDF or Holdout are supported: {}".format(linked_shader.bl_idname))
+
+        bsdf = linked_shader
         material = rwd.Scene.Material()
 
         node_base_color = bsdf.inputs["Base Color"]
@@ -64,45 +77,45 @@ class _MaterialParser:
         material.m_roughness = node_roughness.default_value
         material.m_metallic = node_metallic.default_value
 
-        image_node = cls.__findImageNodeRecur(node_base_color)
+        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, node_base_color)
         if image_node is not None:
             material.m_albedoMap = image_node.image.name
 
-        image_node = cls.__findImageNodeRecur(node_metallic)
+        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, node_metallic)
         if image_node is not None:
             material.m_metallicMap = image_node.image.name
 
-        image_node = cls.__findImageNodeRecur(node_roughness)
+        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, node_roughness)
         if image_node is not None:
             material.m_roughnessMap = image_node.image.name
 
-        image_node = cls.__findImageNodeRecur(node_normal)
+        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, node_normal)
         if image_node is not None:
             material.m_normalMap = image_node.image.name
 
         return material
 
     @staticmethod
-    def __findPrincipledBSDFNode(nodes):
+    def __findNodeNamed(name: str, nodes):
         for node in nodes:
-            if "ShaderNodeBsdfPrincipled" == node.bl_idname:
+            if name == node.bl_idname:
                 return node
         return None
 
     @classmethod
-    def __findImageNodeRecur(cls, parent_node):
+    def __findNodeRecurNamed(cls, name, parent_node):
         if hasattr(parent_node, "links"):
             for linked in parent_node.links:
                 node = linked.from_node
-                if "ShaderNodeTexImage" == node.bl_idname:
+                if name == node.bl_idname:
                     return node
                 else:
-                    res = cls.__findImageNodeRecur(node)
+                    res = cls.__findNodeRecurNamed(name, node)
                     if res is not None:
                         return res
         if hasattr(parent_node, "inputs"):
             for nodeinput in parent_node.inputs:
-                res = cls.__findImageNodeRecur(nodeinput)
+                res = cls.__findNodeRecurNamed(name, nodeinput)
                 if res is not None:
                     return res
             
@@ -307,15 +320,24 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
     armature_name = "" if armature is None else armature.name
     del armature
 
+    units: List[Optional[rwd.Scene.RenderUnit]] = []
+
     for i in range(len(obj.data.materials)):
-        unit = rwd.Scene.RenderUnit()
-        unit.m_material = _MaterialParser.parse(obj.data.materials[i])
-        unit.m_mesh.m_skeletonName = armature_name
-        model.addUnit(unit)
+        material = _MaterialParser.parse(obj.data.materials[i])
+        if material is None:
+            units.append(None)
+        else:
+            unit = rwd.Scene.RenderUnit()
+            unit.m_material = material
+            unit.m_mesh.m_skeletonName = armature_name
+            units.append(unit)
     del unit
 
     for face in obj.data.polygons:
         material_index = int(face.material_index)
+        if units[material_index] is None:
+            continue
+
         verts_per_face = len(face.vertices)
         assert len(face.loop_indices) == verts_per_face
         if 3 == verts_per_face:
@@ -357,7 +379,11 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
                 group_name = str(obj.vertex_groups[g.group].name)
                 vdata.addJoint(group_name, g.weight)
 
-            model.m_renderUnits[material_index].m_mesh.addVertex(vdata)
+            units[material_index].m_mesh.addVertex(vdata)
+
+    for unit in units:
+        if unit is not None:
+            model.addUnit(unit)
 
     return model
 
