@@ -136,6 +136,7 @@ class EmportDalModel(Operator, ExportHelper):
             print("[DAL] Image copied")
 
         print("[DAL] Finished")
+        self.report({'INFO'}, "Export done: dmd")
         return {'FINISHED'}
 
 class ExportDalMap(Operator, ExportHelper):
@@ -191,6 +192,7 @@ class ExportDalMap(Operator, ExportHelper):
             print("[DAL] Map chunk exported: " + chunk_path)
 
         print("[DAL] Finished")
+        self.report({'INFO'}, "Export done: dlb")
         return {'FINISHED'}
 
 
