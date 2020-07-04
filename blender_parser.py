@@ -26,6 +26,11 @@ BLENDER_MATERIAL_BLEND_CLIP   = "CLIP"
 BLENDER_MATERIAL_BLEND_HASHED = "HASHED"
 BLENDER_MATERIAL_BLEND_BLEND  = "BLEND"
 
+PROPERTIES_TO_IGNORE = (
+    "_RNA_UI",
+    "cycles"
+)
+
 
 # In blender's coordinate system, -z is down.
 # But in Dalbaragi engine, -y is down and -z is far direction.
@@ -346,7 +351,7 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
         elif 4 == verts_per_face:
             vert_indices = (0, 1, 2, 0, 2, 3)
         else:
-            print("[DAL] WARNING:: Loop with {} vertices is not supported, thus omitted".format(verts_per_face))
+            print("[DAL] WARN: Loop with {} vertices is not supported, thus omitted".format(verts_per_face))
             continue
 
         for i in vert_indices:
@@ -545,23 +550,19 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
                 actor.m_renderUnitID = data_id
                 actor.m_transform = _parse_transform(obj)
 
-                try:
-                    actor.setDefaultEnv(obj["envmap"])
-                except KeyError:
-                    actor.setDefaultEnv("")
-
-                for x in obj.keys():
-                    key = str(x)
-                    if not key.startswith("envmap"):
+                for key in (str(xx) for xx in obj.keys()):
+                    if key in PROPERTIES_TO_IGNORE:
                         continue
-                    postfix = key[6:]
-
-                    if not postfix:
-                        actor.setDefaultEnv(obj[key])
-                    elif postfix.isnumeric():
-                        actor.setEnvmapOf(int(postfix), obj[key])
+                    elif key.startswith("envmap"):
+                        postfix = key[6:]
+                        if "" == postfix:
+                            actor.setDefaultEnv(obj[key])
+                        elif postfix.isnumeric():
+                            actor.setEnvmapOf(int(postfix), obj[key])
+                        else:
+                            raise RuntimeError("Invalid envmap syntax \'{}\' for \'{}\'".format(key, obj.name))
                     else:
-                        raise RuntimeError("Invalid envmap syntax \'{}\' for \'{}\'".format(key, obj.name))
+                        print("[DAL] WARN: property '{}' ignored in object '{}'".format(key, obj_name))
 
                 scene.m_static_actors.append(actor)
         elif BLENDER_OBJ_TYPE_ARMATURE == type_str:
@@ -578,7 +579,7 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
                 dlight = _parse_light_directional(obj)
                 scene.m_dlights.append(dlight)
             elif isinstance(obj.data, bpy.types.SpotLight):
-                print("[DAL] Parsing : spot light" + obj_name)
+                print("[DAL] Parsing spot light: " + obj_name)
                 slight = _parse_light_spot(obj)
                 scene.m_slights.append(slight)
             else:
