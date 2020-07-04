@@ -553,6 +553,14 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
                 for key in (str(xx) for xx in obj.keys()):
                     if key in PROPERTIES_TO_IGNORE:
                         continue
+                    elif "collider" == key:
+                        value = obj[key]
+                        if "" == value:
+                            actor.m_collider = rwd.Scene.StaticActor.ColliderType.aabb
+                        elif value in rwd.Scene.StaticActor.COLLIDER_TYPE_MAP.keys():
+                            actor.m_collider = rwd.Scene.StaticActor.COLLIDER_TYPE_MAP[value]
+                        else:
+                            raise RuntimeError("Unidentified collider type '{}' in object '{}'".format(value, obj_name))
                     elif key.startswith("envmap"):
                         postfix = key[6:]
                         if "" == postfix:

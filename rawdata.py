@@ -493,12 +493,24 @@ class Scene:
             return self.__keyframes
 
     class StaticActor:
+        class ColliderType(enum.Enum):
+            aabb = 0
+            none = 1
+            mesh = 2
+
+        COLLIDER_TYPE_MAP = {
+            "aabb": ColliderType.aabb,
+            "none": ColliderType.none,
+            "mesh": ColliderType.mesh,
+        }
+
         def __init__(self):
             self.m_name = ""
             self.m_renderUnitID = 0
             self.__transform = smt.Transform()
             self.__defaultEnv = ""
             self.__envmaps: Dict[int, str] = {}
+            self.__colliderType = Scene.StaticActor.ColliderType.aabb
 
         def makeJson(self):
             return {
@@ -507,6 +519,7 @@ class Scene:
                 "transform": self.__transform.makeJson(),
                 "default envmap": self.__defaultEnv,
                 "envmaps": self.__envmaps,
+                "collider": self.m_collider.name,
             }
 
         def envmapOf(self, index: int) -> str:
@@ -528,6 +541,14 @@ class Scene:
         def m_transform(self, v: smt.Transform):
             assert isinstance(v, smt.Transform)
             self.__transform = v
+
+        @property
+        def m_collider(self):
+            return self.__colliderType
+        @m_collider.setter
+        def m_collider(self, value: "Scene.StaticActor.ColliderType"):
+            assert isinstance(value, Scene.StaticActor.ColliderType)
+            self.__colliderType = value
 
     class ILight:
         def __init__(self):
