@@ -561,6 +561,9 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
                             actor.m_collider = rwd.Scene.StaticActor.COLLIDER_TYPE_MAP[value]
                         else:
                             raise RuntimeError("Unidentified collider type '{}' in object '{}'".format(value, obj_name))
+
+                        if rwd.Scene.StaticActor.ColliderType.mesh == actor.m_collider:
+                            scene.m_models[data_id].m_hasMeshCollider = True
                     elif key.startswith("envmap"):
                         postfix = key[6:]
                         if "" == postfix:

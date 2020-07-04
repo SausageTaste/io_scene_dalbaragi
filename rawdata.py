@@ -132,6 +132,10 @@ class Scene:
             self.__ref_count = 0
             self.__units: List[Scene.RenderUnit] = []
 
+            # Info about actors
+            self.m_hasRotate = False
+            self.m_hasMeshCollider = False
+
         def makeJson(self):
             aabb = self.makeAABB()
 
@@ -141,6 +145,8 @@ class Scene:
                 "aabb min": str(aabb.m_min),
                 "aabb max": str(aabb.m_max),
                 "render units": [xx.makeJson() for xx in self.__units],
+                "have any actors rotation": self.m_hasRotate,
+                "have any actors mesh collider": self.m_hasMeshCollider,
             }
 
         def addUnit(self, unit: "Scene.RenderUnit") -> None:

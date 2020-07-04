@@ -125,6 +125,10 @@ def _build_bin_model(model: rwd.Scene.Model) -> bytearray:
     aabb = model.makeAABB()
     data += _build_bin_aabb(aabb)
 
+    # Info
+    data += byt.to_bool1(model.m_hasRotate)
+    data += byt.to_bool1(model.m_hasMeshCollider)
+
     return data
 
 def _build_bin_static_actor(actor: rwd.Scene.StaticActor):
@@ -134,6 +138,7 @@ def _build_bin_static_actor(actor: rwd.Scene.StaticActor):
 
     result += byt.to_nullTerminated(actor.m_name)
     result += _build_bin_transform(actor.m_transform)
+    result += byt.to_int32(actor.m_collider.value)
 
     return result
 
