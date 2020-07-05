@@ -201,9 +201,8 @@ class DalExportSubMenu(bpy.types.Menu):
     bl_label = "Dalbaragi Tools"
 
     def draw(self, context):
-        layout = self.layout
-        layout.operator(EmportDalModel.bl_idname, text="Model (.dmd)")
-        layout.operator(ExportDalMap.bl_idname, text="Map (.dlb)")
+        self.layout.operator(EmportDalModel.bl_idname, text="Model (.dmd)")
+        self.layout.operator(ExportDalMap.bl_idname, text="Map (.dlb)")
 
 
 def menu_func_export(self, context):

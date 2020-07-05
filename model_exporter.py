@@ -22,8 +22,7 @@ def _make_aabb_of_models(models: Iterable[rwd.Scene.Model]) -> rwd.smt.AABB3:
     aabb = rwd.smt.AABB3()
 
     for model in models:
-        model_aabb = model.makeAABB()
-        aabb = aabb + model_aabb
+        aabb = aabb + model.m_aabb
 
     return aabb
 
