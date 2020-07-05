@@ -40,6 +40,8 @@ class Level:
                 self.__aabb.resizeToContain(p0.x, p0.y, p0.z)
                 self.__aabb.resizeToContain(p1.x, p1.y, p1.z)
 
+            self.__aabb.m_max.y += 50
+
 
     def __init__(self, scenes: Dict[str, rwd.Scene], level_name: str):
         self.__data: Dict[str, Level.MapChunk] = {}
