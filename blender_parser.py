@@ -327,6 +327,8 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
     units: List[Optional[rwd.Scene.RenderUnit]] = []
 
     # Generate render units with materials
+    if 0 == len(obj.data.materials):
+        raise RuntimeError("Object '{}' has no material".format(obj.name))
     for i in range(len(obj.data.materials)):
         material = _MaterialParser.parse(obj.data.materials[i])
         if material is None:
@@ -336,7 +338,7 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
             unit.m_material = material
             unit.m_mesh.m_skeletonName = armature_name
             units.append(unit)
-    del unit
+            del unit
 
     # Generate mesh
     for face in obj.data.polygons:
