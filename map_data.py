@@ -34,7 +34,7 @@ class Level:
         def __updateAABB(self) -> None:
             for actor in self.__data.m_static_actors:
                 model = self.__data.m_models[actor.m_renderUnitID]
-                model_aabb = model.makeAABB()
+                model_aabb = model.m_aabb
                 p0 = actor.m_transform.transform(model_aabb.m_min)
                 p1 = actor.m_transform.transform(model_aabb.m_max)
                 self.__aabb.resizeToContain(p0.x, p0.y, p0.z)

@@ -122,8 +122,7 @@ def _build_bin_model(model: rwd.Scene.Model) -> bytearray:
         data += _build_bin_render_unit(unit)
 
     # AABB
-    aabb = model.makeAABB()
-    data += _build_bin_aabb(aabb)
+    data += _build_bin_aabb(model.m_aabb)
 
     # Info
     data += byt.to_bool1(model.m_hasRotate)

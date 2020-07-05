@@ -131,19 +131,18 @@ class Scene:
             self.__id = int(model_id)
             self.__ref_count = 0
             self.__units: List[Scene.RenderUnit] = []
+            self.m_aabb = smt.AABB3()
 
             # Info about actors
             self.m_hasRotate = False
             self.m_hasMeshCollider = False
 
         def makeJson(self):
-            aabb = self.makeAABB()
-
             return {
                 "id": self.__id,
                 "ref count": self.__ref_count,
-                "aabb min": str(aabb.m_min),
-                "aabb max": str(aabb.m_max),
+                "aabb min": str(self.m_aabb.m_min),
+                "aabb max": str(self.m_aabb.m_max),
                 "render units": [xx.makeJson() for xx in self.__units],
                 "have any actors rotation": self.m_hasRotate,
                 "have any actors mesh collider": self.m_hasMeshCollider,
@@ -152,15 +151,6 @@ class Scene:
         def addUnit(self, unit: "Scene.RenderUnit") -> None:
             assert isinstance(unit, Scene.RenderUnit)
             self.__units.append(unit)
-
-        def makeAABB(self) -> smt.AABB3:
-            result = smt.AABB3()
-
-            for unit in self.m_renderUnits:
-                unit_aabb = unit.m_mesh.makeAABB()
-                result = result + unit_aabb
-
-            return result
 
         @property
         def m_renderUnits(self):

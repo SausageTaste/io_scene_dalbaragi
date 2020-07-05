@@ -343,8 +343,6 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
     # Generate mesh
     for face in obj.data.polygons:
         material_index = int(face.material_index)
-        if units[material_index] is None:
-            continue
 
         verts_per_face = len(face.vertices)
         assert len(face.loop_indices) == verts_per_face
@@ -362,6 +360,10 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
             vertex_data = obj.data.vertices[vert_index].co
             vertex = smt.Vec3(vertex_data[0], vertex_data[1], vertex_data[2])
             vertex = _fix_rotation(vertex)
+
+            model.m_aabb.resizeToContain(vertex.x, vertex.y, vertex.z)
+            if units[material_index] is None:
+                continue
 
             # UV coord
             loop: int = face.loop_indices[i]
@@ -470,7 +472,7 @@ def _parse_light_spot(obj):
 def _parse_water_plane(obj) -> rwd.Scene.WaterPlane:
     model = _parse_model(obj, 0)
     transform = _parse_transform(obj)
-    aabb = model.makeAABB()
+    aabb = model.m_aabb
     aabb.m_min = transform.transform(aabb.m_min)
     aabb.m_max = transform.transform(aabb.m_max)
 
