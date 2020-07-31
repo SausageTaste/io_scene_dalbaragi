@@ -327,6 +327,8 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
     units: List[Optional[rwd.Scene.RenderUnit]] = []
 
     # Generate render units with materials
+    if 0 == len(obj.data.materials):
+        raise RuntimeError("Object '{}' has no material".format(obj.name))
     for i in range(len(obj.data.materials)):
         material = _MaterialParser.parse(obj.data.materials[i])
         if material is None:
@@ -336,13 +338,11 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
             unit.m_material = material
             unit.m_mesh.m_skeletonName = armature_name
             units.append(unit)
-    del unit
+            del unit
 
     # Generate mesh
     for face in obj.data.polygons:
         material_index = int(face.material_index)
-        if units[material_index] is None:
-            continue
 
         verts_per_face = len(face.vertices)
         assert len(face.loop_indices) == verts_per_face
@@ -360,6 +360,10 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
             vertex_data = obj.data.vertices[vert_index].co
             vertex = smt.Vec3(vertex_data[0], vertex_data[1], vertex_data[2])
             vertex = _fix_rotation(vertex)
+
+            model.m_aabb.resizeToContain(vertex.x, vertex.y, vertex.z)
+            if units[material_index] is None:
+                continue
 
             # UV coord
             loop: int = face.loop_indices[i]
@@ -468,7 +472,7 @@ def _parse_light_spot(obj):
 def _parse_water_plane(obj) -> rwd.Scene.WaterPlane:
     model = _parse_model(obj, 0)
     transform = _parse_transform(obj)
-    aabb = model.makeAABB()
+    aabb = model.m_aabb
     aabb.m_min = transform.transform(aabb.m_min)
     aabb.m_max = transform.transform(aabb.m_max)
 
@@ -553,6 +557,17 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
                 for key in (str(xx) for xx in obj.keys()):
                     if key in PROPERTIES_TO_IGNORE:
                         continue
+                    elif "collider" == key:
+                        value = obj[key]
+                        if "" == value:
+                            actor.m_collider = rwd.Scene.StaticActor.ColliderType.aabb
+                        elif value in rwd.Scene.StaticActor.COLLIDER_TYPE_MAP.keys():
+                            actor.m_collider = rwd.Scene.StaticActor.COLLIDER_TYPE_MAP[value]
+                        else:
+                            raise RuntimeError("Unidentified collider type '{}' in object '{}'".format(value, obj_name))
+
+                        if rwd.Scene.StaticActor.ColliderType.mesh == actor.m_collider:
+                            scene.m_models[data_id].m_hasMeshCollider = True
                     elif key.startswith("envmap"):
                         postfix = key[6:]
                         if "" == postfix:

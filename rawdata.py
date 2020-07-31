@@ -131,30 +131,26 @@ class Scene:
             self.__id = int(model_id)
             self.__ref_count = 0
             self.__units: List[Scene.RenderUnit] = []
+            self.m_aabb = smt.AABB3()
+
+            # Info about actors
+            self.m_hasRotate = False
+            self.m_hasMeshCollider = False
 
         def makeJson(self):
-            aabb = self.makeAABB()
-
             return {
                 "id": self.__id,
                 "ref count": self.__ref_count,
-                "aabb min": str(aabb.m_min),
-                "aabb max": str(aabb.m_max),
+                "aabb min": str(self.m_aabb.m_min),
+                "aabb max": str(self.m_aabb.m_max),
                 "render units": [xx.makeJson() for xx in self.__units],
+                "have any actors rotation": self.m_hasRotate,
+                "have any actors mesh collider": self.m_hasMeshCollider,
             }
 
         def addUnit(self, unit: "Scene.RenderUnit") -> None:
             assert isinstance(unit, Scene.RenderUnit)
             self.__units.append(unit)
-
-        def makeAABB(self) -> smt.AABB3:
-            result = smt.AABB3()
-
-            for unit in self.m_renderUnits:
-                unit_aabb = unit.m_mesh.makeAABB()
-                result = result + unit_aabb
-
-            return result
 
         @property
         def m_renderUnits(self):
@@ -493,12 +489,24 @@ class Scene:
             return self.__keyframes
 
     class StaticActor:
+        class ColliderType(enum.Enum):
+            aabb = 0
+            none = 1
+            mesh = 2
+
+        COLLIDER_TYPE_MAP = {
+            "aabb": ColliderType.aabb,
+            "none": ColliderType.none,
+            "mesh": ColliderType.mesh,
+        }
+
         def __init__(self):
             self.m_name = ""
             self.m_renderUnitID = 0
             self.__transform = smt.Transform()
             self.__defaultEnv = ""
             self.__envmaps: Dict[int, str] = {}
+            self.__colliderType = Scene.StaticActor.ColliderType.aabb
 
         def makeJson(self):
             return {
@@ -507,6 +515,7 @@ class Scene:
                 "transform": self.__transform.makeJson(),
                 "default envmap": self.__defaultEnv,
                 "envmaps": self.__envmaps,
+                "collider": self.m_collider.name,
             }
 
         def envmapOf(self, index: int) -> str:
@@ -528,6 +537,14 @@ class Scene:
         def m_transform(self, v: smt.Transform):
             assert isinstance(v, smt.Transform)
             self.__transform = v
+
+        @property
+        def m_collider(self):
+            return self.__colliderType
+        @m_collider.setter
+        def m_collider(self, value: "Scene.StaticActor.ColliderType"):
+            assert isinstance(value, Scene.StaticActor.ColliderType)
+            self.__colliderType = value
 
     class ILight:
         def __init__(self):
