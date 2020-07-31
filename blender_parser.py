@@ -26,6 +26,11 @@ BLENDER_MATERIAL_BLEND_CLIP   = "CLIP"
 BLENDER_MATERIAL_BLEND_HASHED = "HASHED"
 BLENDER_MATERIAL_BLEND_BLEND  = "BLEND"
 
+PROPERTIES_TO_IGNORE = (
+    "_RNA_UI",
+    "cycles"
+)
+
 
 # In blender's coordinate system, -z is down.
 # But in Dalbaragi engine, -y is down and -z is far direction.
@@ -322,6 +327,8 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
     units: List[Optional[rwd.Scene.RenderUnit]] = []
 
     # Generate render units with materials
+    if 0 == len(obj.data.materials):
+        raise RuntimeError("Object '{}' has no material".format(obj.name))
     for i in range(len(obj.data.materials)):
         material = _MaterialParser.parse(obj.data.materials[i])
         if material is None:
@@ -331,13 +338,11 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
             unit.m_material = material
             unit.m_mesh.m_skeletonName = armature_name
             units.append(unit)
-    del unit
+            del unit
 
     # Generate mesh
     for face in obj.data.polygons:
         material_index = int(face.material_index)
-        if units[material_index] is None:
-            continue
 
         verts_per_face = len(face.vertices)
         assert len(face.loop_indices) == verts_per_face
@@ -346,7 +351,7 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
         elif 4 == verts_per_face:
             vert_indices = (0, 1, 2, 0, 2, 3)
         else:
-            print("[DAL] WARNING:: Loop with {} vertices is not supported, thus omitted".format(verts_per_face))
+            print("[DAL] WARN: Loop with {} vertices is not supported, thus omitted".format(verts_per_face))
             continue
 
         for i in vert_indices:
@@ -355,6 +360,10 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
             vertex_data = obj.data.vertices[vert_index].co
             vertex = smt.Vec3(vertex_data[0], vertex_data[1], vertex_data[2])
             vertex = _fix_rotation(vertex)
+
+            model.m_aabb.resizeToContain(vertex.x, vertex.y, vertex.z)
+            if units[material_index] is None:
+                continue
 
             # UV coord
             loop: int = face.loop_indices[i]
@@ -463,7 +472,7 @@ def _parse_light_spot(obj):
 def _parse_water_plane(obj) -> rwd.Scene.WaterPlane:
     model = _parse_model(obj, 0)
     transform = _parse_transform(obj)
-    aabb = model.makeAABB()
+    aabb = model.m_aabb
     aabb.m_min = transform.transform(aabb.m_min)
     aabb.m_max = transform.transform(aabb.m_max)
 
@@ -545,23 +554,30 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
                 actor.m_renderUnitID = data_id
                 actor.m_transform = _parse_transform(obj)
 
-                try:
-                    actor.setDefaultEnv(obj["envmap"])
-                except KeyError:
-                    actor.setDefaultEnv("")
-
-                for x in obj.keys():
-                    key = str(x)
-                    if not key.startswith("envmap"):
+                for key in (str(xx) for xx in obj.keys()):
+                    if key in PROPERTIES_TO_IGNORE:
                         continue
-                    postfix = key[6:]
+                    elif "collider" == key:
+                        value = obj[key]
+                        if "" == value:
+                            actor.m_collider = rwd.Scene.StaticActor.ColliderType.aabb
+                        elif value in rwd.Scene.StaticActor.COLLIDER_TYPE_MAP.keys():
+                            actor.m_collider = rwd.Scene.StaticActor.COLLIDER_TYPE_MAP[value]
+                        else:
+                            raise RuntimeError("Unidentified collider type '{}' in object '{}'".format(value, obj_name))
 
-                    if not postfix:
-                        actor.setDefaultEnv(obj[key])
-                    elif postfix.isnumeric():
-                        actor.setEnvmapOf(int(postfix), obj[key])
+                        if rwd.Scene.StaticActor.ColliderType.mesh == actor.m_collider:
+                            scene.m_models[data_id].m_hasMeshCollider = True
+                    elif key.startswith("envmap"):
+                        postfix = key[6:]
+                        if "" == postfix:
+                            actor.setDefaultEnv(obj[key])
+                        elif postfix.isnumeric():
+                            actor.setEnvmapOf(int(postfix), obj[key])
+                        else:
+                            raise RuntimeError("Invalid envmap syntax \'{}\' for \'{}\'".format(key, obj.name))
                     else:
-                        raise RuntimeError("Invalid envmap syntax \'{}\' for \'{}\'".format(key, obj.name))
+                        print("[DAL] WARN: property '{}' ignored in object '{}'".format(key, obj_name))
 
                 scene.m_static_actors.append(actor)
         elif BLENDER_OBJ_TYPE_ARMATURE == type_str:
@@ -578,7 +594,7 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
                 dlight = _parse_light_directional(obj)
                 scene.m_dlights.append(dlight)
             elif isinstance(obj.data, bpy.types.SpotLight):
-                print("[DAL] Parsing : spot light" + obj_name)
+                print("[DAL] Parsing spot light: " + obj_name)
                 slight = _parse_light_spot(obj)
                 scene.m_slights.append(slight)
             else:

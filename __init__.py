@@ -136,6 +136,7 @@ class EmportDalModel(Operator, ExportHelper):
             print("[DAL] Image copied")
 
         print("[DAL] Finished")
+        self.report({'INFO'}, "Export done: dmd")
         return {'FINISHED'}
 
 class ExportDalMap(Operator, ExportHelper):
@@ -191,6 +192,7 @@ class ExportDalMap(Operator, ExportHelper):
             print("[DAL] Map chunk exported: " + chunk_path)
 
         print("[DAL] Finished")
+        self.report({'INFO'}, "Export done: dlb")
         return {'FINISHED'}
 
 
@@ -199,9 +201,8 @@ class DalExportSubMenu(bpy.types.Menu):
     bl_label = "Dalbaragi Tools"
 
     def draw(self, context):
-        layout = self.layout
-        layout.operator(EmportDalModel.bl_idname, text="Model (.dmd)")
-        layout.operator(ExportDalMap.bl_idname, text="Map (.dlb)")
+        self.layout.operator(EmportDalModel.bl_idname, text="Model (.dmd)")
+        self.layout.operator(ExportDalMap.bl_idname, text="Map (.dlb)")
 
 
 def menu_func_export(self, context):
