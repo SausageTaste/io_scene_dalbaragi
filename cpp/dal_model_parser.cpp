@@ -65,23 +65,32 @@ namespace {
 
 namespace dal::parser {
 
-    std::optional<Model_Straight> parse_model_straight(const uint8_t* const buf, const size_t buf_size) {
+    dal::parser::ModelParseResult parse_model_straight(const uint8_t* const buf, const size_t buf_size, Model_Straight& output) {
         // Check magic numbers
         if (!::is_magic_numbers_correct(buf)) {
-            return std::nullopt;
+            return ModelParseResult::magic_numbers_dont_match;
         }
 
         // Decompress
         const auto unzipped = ::unzip_dal_model(buf, buf_size);
         if (!unzipped) {
-            return std::nullopt;
+            return ModelParseResult::decompression_failed;
         }
 
-        Model_Straight result{};
+        output.result_code = unzipped->size();
 
-        result.result_code = unzipped->size();
+        return ModelParseResult::success;
+    }
 
-        return result;
+    std::optional<Model_Straight> parse_model_straight(const uint8_t* const buf, const size_t buf_size) {
+        Model_Straight result;
+
+        if (ModelParseResult::success != parse_model_straight(buf, buf_size, result)) {
+            return std::nullopt;
+        }
+        else {
+            return result;
+        }
     }
 
 }
