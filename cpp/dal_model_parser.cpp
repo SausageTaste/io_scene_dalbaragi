@@ -3,15 +3,13 @@
 #include <zlib.h>
 
 #include "dal_byte_tool.h"
+#include "konst.h"
 
 
 namespace dalp = dal::parser;
 
 
 namespace {
-
-    constexpr size_t MAGIC_NUMBER_COUNT = 6;
-    constexpr char MAGIC_NUMBERS[] = "dalmdl";
 
     size_t unzip(uint8_t* const dst, const size_t dst_size, const uint8_t* const src, const size_t src_size) {
         static_assert(sizeof(Bytef) == sizeof(uint8_t));
@@ -40,8 +38,8 @@ namespace {
     }
 
     std::optional<std::vector<uint8_t>> unzip_dal_model(const uint8_t* const buf, const size_t buf_size) {
-        const auto expected_unzipped_size = dal::parser::make_int32(buf + ::MAGIC_NUMBER_COUNT);
-        const auto zipped_data_offset = ::MAGIC_NUMBER_COUNT + 4;
+        const auto expected_unzipped_size = dal::parser::make_int32(buf + dalp::MAGIC_NUMBER_SIZE);
+        const auto zipped_data_offset = dalp::MAGIC_NUMBER_SIZE + 4;
 
         std::vector<uint8_t> unzipped(expected_unzipped_size);
         const auto actual_unzip_size = ::unzip(unzipped.data(), unzipped.size(), buf + zipped_data_offset, buf_size - zipped_data_offset);
@@ -54,8 +52,8 @@ namespace {
     }
 
     bool is_magic_numbers_correct(const uint8_t* const buf) {
-        for (int i = 0; i < ::MAGIC_NUMBER_COUNT; ++i) {
-            if (buf[i] != ::MAGIC_NUMBERS[i]) {
+        for (int i = 0; i < dalp::MAGIC_NUMBER_SIZE; ++i) {
+            if (buf[i] != dalp::MAGIC_NUMBERS_DAL_MODEL[i]) {
                 return false;
             }
         }
