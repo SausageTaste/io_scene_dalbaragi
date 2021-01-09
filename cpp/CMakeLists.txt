@@ -10,6 +10,7 @@ add_library(dalbaragi_model_parser
     dal_struct.h              dal_struct.cpp
     dal_byte_tool.h           dal_byte_tool.cpp
     dal_modifier.h            dal_modifier.cpp
+    dal_model_exporter.h      dal_model_exporter.cpp
 )
 target_include_directories(dalbaragi_model_parser PUBLIC .)
 target_compile_features(dalbaragi_model_parser PUBLIC cxx_std_17)
