@@ -43,4 +43,10 @@ namespace dal::parser {
         return src;
     }
 
+
+    uint8_t to_bool8(const bool v);
+    void to_int16(const int32_t v, uint8_t* const buffer);
+    void to_int32(const int32_t v, uint8_t* const buffer);
+    void to_float32(const float v, uint8_t* const buffer);
+
 }
