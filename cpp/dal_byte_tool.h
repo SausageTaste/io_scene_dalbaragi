@@ -11,6 +11,7 @@ namespace dal::parser {
     bool make_bool8(const uint8_t* begin);
     int32_t make_int16(const uint8_t* begin);
     int32_t make_int32(const uint8_t* begin);
+    float make_float32(const uint8_t* begin);
 
     template <typename T>
     T assemble_4_bytes(const uint8_t* const begin) {

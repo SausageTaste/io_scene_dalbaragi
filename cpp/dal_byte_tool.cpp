@@ -41,4 +41,8 @@ namespace dal::parser {
         return assemble_4_bytes<int32_t>(begin);
     }
 
+    float make_float32(const uint8_t* begin) {
+        return assemble_4_bytes<float>(begin);
+    }
+
 }

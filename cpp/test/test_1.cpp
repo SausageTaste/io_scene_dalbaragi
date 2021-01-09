@@ -59,6 +59,11 @@ int main() {
     const auto model_path = ::find_cpp_path() + "/test/irin.dmd";
     const auto model_data = ::read_file(model_path.c_str());
 
-    const auto result = dal::parser::parse_model_straight(model_data.data(), model_data.size());
-    std::cout << "Unzipped data size: " << result->result_code << std::endl;
+    dal::parser::Model_Straight model;
+    const auto result = dal::parser::parse_model_straight(model_data.data(), model_data.size(), model);
+
+    std::cout << "Result code: " << static_cast<int>(result) << std::endl;
+    std::cout << "Render unit count: " << model.m_render_units.size() << std::endl;
+    std::cout << "Joint count: " << model.m_skeleton.m_joints.size() << std::endl;
+    std::cout << "Animation count: " << model.m_animations.size() << std::endl;
 }
