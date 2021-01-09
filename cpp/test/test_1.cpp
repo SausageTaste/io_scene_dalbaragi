@@ -4,6 +4,8 @@
 #include <filesystem>
 
 #include "dal_model_parser.h"
+#include "dal_modifier.h"
+
 
 namespace {
 
@@ -66,4 +68,8 @@ int main() {
     std::cout << "Render unit count: " << model.m_render_units.size() << std::endl;
     std::cout << "Joint count: " << model.m_skeleton.m_joints.size() << std::endl;
     std::cout << "Animation count: " << model.m_animations.size() << std::endl;
+
+    const auto indexed_mesh = dal::parser::convert_to_indexed(model.m_render_units[0].m_mesh);
+    std::cout << "Before indexing: " << model.m_render_units[0].m_mesh.m_vertices.size() / 3 << std::endl;
+    std::cout << "After indexing: " << indexed_mesh.m_vertices.size() << std::endl;
 }

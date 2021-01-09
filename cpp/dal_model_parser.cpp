@@ -213,7 +213,7 @@ namespace {
         return header;
     }
 
-    const uint8_t* parse_render_unit_straight(const uint8_t* header, const uint8_t* const end, dalp::RenderUnit_Straight& unit) {
+    const uint8_t* parse_render_unit_straight(const uint8_t* header, const uint8_t* const end, dalp::RenderUnit<dalp::Mesh_Straight>& unit) {
         // Name
         unit.m_name = reinterpret_cast<const char*>(header);
         header += unit.m_name.size() + 1;
