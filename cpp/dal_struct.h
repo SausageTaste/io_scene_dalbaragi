@@ -14,11 +14,16 @@ namespace dal::parser {
         glm::vec3 m_min, m_max;
     };
 
+    struct Vertex {
+        glm::ivec3 m_joint_indices;
+        glm::vec3 m_joint_weights;
+        glm::vec3 m_position;
+        glm::vec3 m_normal;
+        glm::vec2 m_uv_coords;
 
-    struct Mesh_Straight {
-        std::vector<float> m_vertices, m_texcoords, m_normals, m_boneWeights;
-        std::vector<int32_t> m_boneIndex;
+        bool operator==(const Vertex& other) const;
     };
+
 
     struct Material {
         std::string m_albedo_map;
@@ -30,9 +35,22 @@ namespace dal::parser {
         float m_metallic = 1;
     };
 
-    struct RenderUnit_Straight {
+    struct Mesh_Straight {
+        std::vector<float> m_vertices, m_texcoords, m_normals, m_boneWeights;
+        std::vector<int32_t> m_boneIndex;
+    };
+
+    struct Mesh_Indexed {
+        std::vector<Vertex> m_vertices;
+        std::vector<uint32_t> m_indices;
+
+        void add_vertex(const Vertex& vert);
+    };
+
+    template <typename _Mesh>
+    struct RenderUnit {
         std::string m_name;
-        Mesh_Straight m_mesh;
+        _Mesh m_mesh;
         Material m_material;
     };
 
@@ -74,11 +92,15 @@ namespace dal::parser {
     };
 
 
-    struct Model_Straight {
-        std::vector<RenderUnit_Straight> m_render_units;
+    template <typename _Mesh>
+    struct IModel {
+        std::vector<RenderUnit<_Mesh>> m_render_units;
         std::vector<Animation> m_animations;
         Skeleton m_skeleton;
         AABB3 m_aabb;
     };
+
+    using Model_Straight = IModel<Mesh_Straight>;
+    using Model_Indexed = IModel<Mesh_Indexed>;
 
 }

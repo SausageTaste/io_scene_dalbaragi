@@ -46,3 +46,52 @@ namespace dal::parser {
     }
 
 }
+
+
+namespace dal::parser {
+
+    uint8_t to_bool8(const bool v) {
+        return v ? 1 : 0;
+    }
+
+    void to_int16(const int32_t v, uint8_t* const buffer) {
+        const auto src_loc = reinterpret_cast<const uint8_t*>(&v);
+
+        if (is_big_endian()) {
+            buffer[0] = src_loc[1];
+            buffer[1] = src_loc[0];
+        }
+        else {
+            std::memcpy(buffer, src_loc, 2);
+        }
+    }
+
+    void to_int32(const int32_t v, uint8_t* const buffer) {
+        const auto src_loc = reinterpret_cast<const uint8_t*>(&v);
+
+        if (is_big_endian()) {
+            buffer[0] = src_loc[3];
+            buffer[1] = src_loc[2];
+            buffer[2] = src_loc[1];
+            buffer[3] = src_loc[0];
+        }
+        else {
+            std::memcpy(buffer, src_loc, 4);
+        }
+    }
+
+    void to_float32(const float v, uint8_t* const buffer) {
+        const auto src_loc = reinterpret_cast<const uint8_t*>(&v);
+
+        if (is_big_endian()) {
+            buffer[0] = src_loc[3];
+            buffer[1] = src_loc[2];
+            buffer[2] = src_loc[1];
+            buffer[3] = src_loc[0];
+        }
+        else {
+            std::memcpy(buffer, src_loc, 4);
+        }
+    }
+
+}
