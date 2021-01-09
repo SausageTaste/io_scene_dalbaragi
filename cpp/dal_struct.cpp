@@ -16,7 +16,7 @@ namespace dal::parser {
 
     void Mesh_Indexed::add_vertex(const Vertex& vert) {
         for (size_t i = 0; i < this->m_vertices.size(); ++i) {
-            if (vert == this->m_vertices.at(i)) {
+            if (vert == this->m_vertices[i]) {
                 this->m_indices.push_back(i);
                 return;
             }
