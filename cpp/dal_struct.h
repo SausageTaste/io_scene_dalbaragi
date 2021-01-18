@@ -41,6 +41,7 @@ namespace dal::parser {
     };
 
     struct Mesh_Indexed {
+        bool m_has_joints = false;
         std::vector<Vertex> m_vertices;
         std::vector<uint32_t> m_indices;
 
