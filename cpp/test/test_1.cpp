@@ -103,6 +103,10 @@ namespace {
         const auto indexed_mesh = dal::parser::convert_to_indexed(model.m_render_units[0].m_mesh);
         std::cout << "\tBefore indexing: " << model.m_render_units[0].m_mesh.m_vertices.size() / 3 << std::endl;
         std::cout << "\tAfter indexing: " << indexed_mesh.m_vertices.size() << std::endl;
+
+        const auto merged_by_mat = dal::parser::merge_by_material(model);
+        std::cout << "\tBefore merging: " << model.m_render_units.size() << std::endl;
+        std::cout << "\tAfter merging: " << merged_by_mat.m_render_units.size() << std::endl;
     }
 
     void test_a_model(const std::string& model_path) {
