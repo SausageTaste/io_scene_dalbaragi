@@ -13,6 +13,27 @@ namespace dal::parser {
         );
     }
 
+    bool Material::operator==(const Material& other) const {
+        return (
+            this->m_albedo_map    == other.m_albedo_map &&
+            this->m_roughness_map == other.m_roughness_map &&
+            this->m_metallic_map  == other.m_metallic_map &&
+            this->m_normal_map    == other.m_normal_map &&
+            this->m_emision_map   == other.m_emision_map &&
+            this->m_roughness     == other.m_roughness &&
+            this->m_metallic      == other.m_metallic
+        );
+    }
+
+
+    void Mesh_Straight::concat(const Mesh_Straight& other) {
+        this->m_vertices.insert(m_vertices.end(), other.m_vertices.begin(), other.m_vertices.end());
+        this->m_texcoords.insert(m_texcoords.end(), other.m_texcoords.begin(), other.m_texcoords.end());
+        this->m_normals.insert(m_normals.end(), other.m_normals.begin(), other.m_normals.end());
+        this->m_boneWeights.insert(m_boneWeights.end(), other.m_boneWeights.begin(), other.m_boneWeights.end());
+        this->m_boneIndex.insert(m_boneIndex.end(), other.m_boneIndex.begin(), other.m_boneIndex.end());
+    }
+
 
     void Mesh_Indexed::add_vertex(const Vertex& vert) {
         for (size_t i = 0; i < this->m_vertices.size(); ++i) {
