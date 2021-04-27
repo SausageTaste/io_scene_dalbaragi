@@ -108,7 +108,6 @@ class _MaterialParser:
 
         node_roughness = bsdf.inputs["Roughness"]
         node_metallic  = bsdf.inputs["Metallic"]
-        cls.__print_props(bsdf.inputs["Base Color"])
 
         material.m_alphaBlend = alpha_blend
         material.m_roughness = node_roughness.default_value
