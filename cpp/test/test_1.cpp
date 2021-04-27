@@ -97,10 +97,10 @@ namespace {
 
         std::cout << "    * Loaded and parsed" << std::endl;
         std::cout << "        result code: " << static_cast<int>(result) << std::endl;
-        std::cout << "        render units straight      : " << model.m_units_straight.size() << std::endl;
+        std::cout << "        render units straight:       " << model.m_units_straight.size() << std::endl;
         std::cout << "        render units straight joint: " << model.m_units_straight_joint.size() << std::endl;
-        std::cout << "        render units indexed       : " << model.m_units_indexed.size() << std::endl;
-        std::cout << "        render units indexed joint : " << model.m_units_indexed_joint.size() << std::endl;
+        std::cout << "        render units indexed:        " << model.m_units_indexed.size() << std::endl;
+        std::cout << "        render units indexed joint:  " << model.m_units_indexed_joint.size() << std::endl;
         std::cout << "        joints: " << model.m_skeleton.m_joints.size() << std::endl;
         std::cout << "        animations: " << model.m_animations.size() << std::endl;
 
@@ -138,8 +138,7 @@ namespace {
 }
 
 
-int main() try {
+int main() {
     std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/irin.dmd");
-    std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/sphere.dmd");
     std::cout << std::endl; ::test_byte_tools();
 }

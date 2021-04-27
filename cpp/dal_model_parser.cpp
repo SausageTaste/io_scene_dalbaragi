@@ -211,62 +211,61 @@ namespace {
         return header;
     }
 
+    const uint8_t* parse_mesh_without_joint(const uint8_t* header, const uint8_t* const end, dalp::Mesh_Straight& mesh) {
+        const auto vert_count = dalp::make_int32(header); header += 4;
+        const auto vert_count_times_3 = vert_count * 3;
+        const auto vert_count_times_2 = vert_count * 2;
+
+        mesh.m_vertices.resize(vert_count_times_3);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_vertices.data(), vert_count_times_3);
+
+        mesh.m_texcoords.resize(vert_count_times_2);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_texcoords.data(), vert_count_times_2);
+
+        mesh.m_normals.resize(vert_count_times_3);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_normals.data(), vert_count_times_3);
+
+        return header;
+    }
+
+    const uint8_t* _build_bin_mesh_with_joint(const uint8_t* header, const uint8_t* const end, dalp::Mesh_StraightJoint& mesh) {
+        const auto vert_count = dalp::make_int32(header); header += 4;
+        const auto vert_count_times_3 = vert_count * 3;
+        const auto vert_count_times_2 = vert_count * 2;
+
+        mesh.m_vertices.resize(vert_count_times_3);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_vertices.data(), vert_count_times_3);
+
+        mesh.m_texcoords.resize(vert_count_times_2);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_texcoords.data(), vert_count_times_2);
+
+        mesh.m_normals.resize(vert_count_times_3);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_normals.data(), vert_count_times_3);
+
+        mesh.m_boneWeights.resize(vert_count_times_3);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_boneWeights.data(), vert_count_times_3);
+
+        mesh.m_boneIndex.resize(vert_count_times_3);
+        header = dalp::assemble_4_bytes_array<int32_t>(header, mesh.m_boneIndex.data(), vert_count_times_3);
+
+        return header;
+    }
+
     const uint8_t* parse_render_unit_straight(const uint8_t* header, const uint8_t* const end, dalp::RenderUnit<dalp::Mesh_Straight>& unit) {
-        // Name
         unit.m_name = reinterpret_cast<const char*>(header);
         header += unit.m_name.size() + 1;
-
-        // Material
         header = ::parse_material(header, end, unit.m_material);
-
-        // Vertices
-        {
-            const auto vert_count = dalp::make_int32(header); header += 4;
-            const auto vert_count_times_3 = vert_count * 3;
-            const auto vert_count_times_2 = vert_count * 2;
-
-            unit.m_mesh.m_vertices.resize(vert_count_times_3);
-            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_vertices.data(), vert_count_times_3);
-
-            unit.m_mesh.m_texcoords.resize(vert_count_times_2);
-            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_texcoords.data(), vert_count_times_2);
-
-            unit.m_mesh.m_normals.resize(vert_count_times_3);
-            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_normals.data(), vert_count_times_3);
-        }
+        header = ::parse_mesh_without_joint(header, end, unit.m_mesh);
 
         return header;
     }
 
     const uint8_t* parse_render_unit_straight_joint(const uint8_t* header, const uint8_t* const end, dalp::RenderUnit<dalp::Mesh_StraightJoint>& unit) {
-        // Name
         unit.m_name = reinterpret_cast<const char*>(header);
         header += unit.m_name.size() + 1;
 
-        // Material
         header = ::parse_material(header, end, unit.m_material);
-
-        // Vertices
-        {
-            const auto vert_count = dalp::make_int32(header); header += 4;
-            const auto vert_count_times_3 = vert_count * 3;
-            const auto vert_count_times_2 = vert_count * 2;
-
-            unit.m_mesh.m_vertices.resize(vert_count_times_3);
-            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_vertices.data(), vert_count_times_3);
-
-            unit.m_mesh.m_texcoords.resize(vert_count_times_2);
-            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_texcoords.data(), vert_count_times_2);
-
-            unit.m_mesh.m_normals.resize(vert_count_times_3);
-            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_normals.data(), vert_count_times_3);
-
-            unit.m_mesh.m_boneWeights.resize(vert_count_times_3);
-            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_boneWeights.data(), vert_count_times_3);
-
-            unit.m_mesh.m_boneIndex.resize(vert_count_times_3);
-            header = dalp::assemble_4_bytes_array<int32_t>(header, unit.m_mesh.m_boneIndex.data(), vert_count_times_3);
-        }
+        header = ::_build_bin_mesh_with_joint(header, end, unit.m_mesh);
 
         return header;
     }
