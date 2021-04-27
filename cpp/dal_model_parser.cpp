@@ -275,58 +275,66 @@ namespace {
 
 namespace dal::parser {
 
-    dal::parser::ModelParseResult parse_model_straight(const uint8_t* const buf, const size_t buf_size, Model& output) {
+    ModelParseResult unzip_dmd(std::vector<uint8_t>& output, const uint8_t* const file_content, const size_t content_size) {
         // Check magic numbers
-        if (!::is_magic_numbers_correct(buf)) {
+        if (!::is_magic_numbers_correct(file_content))
             return ModelParseResult::magic_numbers_dont_match;
-        }
 
         // Decompress
-        const auto unzipped = ::unzip_dal_model(buf, buf_size);
-        if (!unzipped) {
+        auto unzipped = ::unzip_dal_model(file_content, content_size);
+        if (!unzipped)
             return ModelParseResult::decompression_failed;
-        }
 
-        // Parsing
-        {
-            const uint8_t* const end = unzipped->data() + unzipped->size();
-            const uint8_t* header = unzipped->data();
-
-            header = ::parse_aabb(header, end, output.m_aabb);
-            header = ::parse_skeleton(header, end, output.m_skeleton);
-            header = ::parse_animations(header, end, output.m_animations);
-
-            {
-                const auto render_unit_without_joint_count = dalp::make_int32(header); header += 4;
-                output.m_units_straight.resize(render_unit_without_joint_count);
-                for (uint32_t i = 0; i < render_unit_without_joint_count; ++i)
-                    header = ::parse_render_unit_straight(header, end, output.m_units_straight[i]);
-            }
-
-            {
-                const auto render_unit_with_joint_count = dalp::make_int32(header); header += 4;
-                output.m_units_straight_joint.resize(render_unit_with_joint_count);
-                for (uint32_t i = 0; i < render_unit_with_joint_count; ++i)
-                    header = ::parse_render_unit_straight_joint(header, end, output.m_units_straight_joint[i]);
-            }
-
-            if (header != end) {
-                return ModelParseResult::corrupted_content;
-            }
-        }
-
+        output = std::move(*unzipped);
         return ModelParseResult::success;
     }
 
-    std::optional<Model> parse_model_straight(const uint8_t* const buf, const size_t buf_size) {
-        Model result;
+    std::optional<std::vector<uint8_t>> unzip_dmd(const uint8_t* const file_content, const size_t content_size) {
+        std::vector<uint8_t> output;
 
-        if (ModelParseResult::success != parse_model_straight(buf, buf_size, result)) {
+        if (ModelParseResult::success != dalp::unzip_dmd(output, file_content, content_size))
             return std::nullopt;
+        else
+            return output;
+    }
+
+    ModelParseResult parse_dmd(Model& output, const uint8_t* const unzipped_content, const size_t content_size) {
+        const uint8_t* const end = unzipped_content + content_size;
+        const uint8_t* header = unzipped_content;
+
+        header = ::parse_aabb(header, end, output.m_aabb);
+        header = ::parse_skeleton(header, end, output.m_skeleton);
+        header = ::parse_animations(header, end, output.m_animations);
+
+        {
+            const auto render_unit_without_joint_count = dalp::make_int32(header); header += 4;
+            output.m_units_straight.resize(render_unit_without_joint_count);
+            for (uint32_t i = 0; i < render_unit_without_joint_count; ++i) {
+                header = ::parse_render_unit_straight(header, end, output.m_units_straight[i]);
+            }
         }
-        else {
-            return result;
+
+        {
+            const auto render_unit_with_joint_count = dalp::make_int32(header); header += 4;
+            output.m_units_straight_joint.resize(render_unit_with_joint_count);
+            for (uint32_t i = 0; i < render_unit_with_joint_count; ++i) {
+                header = ::parse_render_unit_straight_joint(header, end, output.m_units_straight_joint[i]);
+            }
         }
+
+        if (header != end)
+            return ModelParseResult::corrupted_content;
+        else
+            return ModelParseResult::success;
+    }
+
+    std::optional<Model> parse_dmd(const uint8_t* const unzipped_content, const size_t content_size) {
+        Model output;
+
+        if (ModelParseResult::success != dalp::parse_dmd(output, unzipped_content, content_size))
+            return std::nullopt;
+        else
+            return output;
     }
 
 }
