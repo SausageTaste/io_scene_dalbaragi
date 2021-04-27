@@ -13,7 +13,9 @@ namespace dal::parser {
 
     bool VertexJoint::is_equal(const VertexJoint& other) const {
         return (
-            this->Vertex::is_equal(other) &&
+            this->m_position == other.m_position &&
+            this->m_uv_coords == other.m_uv_coords &&
+            this->m_normal == other.m_normal &&
             this->m_joint_weights == other.m_joint_weights &&
             this->m_joint_indices == other.m_joint_indices
         );

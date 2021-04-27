@@ -26,9 +26,12 @@ namespace dal::parser {
         bool is_equal(const Vertex& other) const;
     };
 
-    struct VertexJoint : public Vertex {
+    struct VertexJoint {
         glm::ivec3 m_joint_indices;
         glm::vec3 m_joint_weights;
+        glm::vec3 m_position;
+        glm::vec3 m_normal;
+        glm::vec2 m_uv_coords;
 
         bool operator==(const VertexJoint& other) const {
             return this->is_equal(other);
@@ -68,6 +71,8 @@ namespace dal::parser {
     struct TMesh_Indexed {
         std::vector<_Vertex> m_vertices;
         std::vector<uint32_t> m_indices;
+
+        using VERT_TYPE = _Vertex;
 
         void add_vertex(const _Vertex& vert) {
             for (size_t i = 0; i < this->m_vertices.size(); ++i) {

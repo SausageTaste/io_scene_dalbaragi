@@ -17,7 +17,7 @@ namespace {
 
     public:
         BinaryBuildBuffer() {
-            this->m_data.reserve(1024);
+            this->reserve(1024);
         }
 
         BinaryBuildBuffer& operator+=(const BinaryBuildBuffer& other) {
@@ -70,6 +70,16 @@ namespace {
             }
 
             this->append_float32_array(fbuf, 16);
+        }
+
+        void append_raw_array(const uint8_t* const arr, const size_t arr_size) {
+            this->m_data.insert(this->m_data.end(), arr, arr + arr_size);
+        }
+
+        //
+
+        void reserve(const size_t reserve_size) {
+            this->m_data.reserve(reserve_size);
         }
 
         auto&& move() {
@@ -249,6 +259,46 @@ namespace {
         return output;
     }
 
+    ::BinaryBuildBuffer build_bin_mesh_indexed(const dalp::Mesh_Indexed& mesh) {
+        ::BinaryBuildBuffer output;
+        static_assert(32 == sizeof(dalp::Mesh_Indexed::VERT_TYPE));
+
+        output.append_int32(mesh.m_vertices.size());
+        for (auto& vert : mesh.m_vertices) {
+            output.append_float32_array(&vert.m_position[0],   sizeof(vert.m_position) / sizeof(float));
+            output.append_float32_array(&vert.m_normal[0],       sizeof(vert.m_normal) / sizeof(float));
+            output.append_float32_array(&vert.m_uv_coords[0], sizeof(vert.m_uv_coords) / sizeof(float));
+        }
+
+        output.append_int32(mesh.m_indices.size());
+        for (auto index : mesh.m_indices) {
+            output.append_int32(index);
+        }
+
+        return output;
+    }
+
+    ::BinaryBuildBuffer build_bin_mesh_indexed_joint(const dalp::Mesh_IndexedJoint& mesh) {
+        ::BinaryBuildBuffer output;
+        static_assert(56 == sizeof(dalp::Mesh_IndexedJoint::VERT_TYPE));
+
+        output.append_int32(mesh.m_vertices.size());
+        for (auto& vert : mesh.m_vertices) {
+            output.append_float32_array(&vert.m_position[0],       sizeof(vert.m_position) / sizeof(float));
+            output.append_float32_array(&vert.m_normal[0],           sizeof(vert.m_normal) / sizeof(float));
+            output.append_float32_array(&vert.m_uv_coords[0],     sizeof(vert.m_uv_coords) / sizeof(float));
+            output.append_float32_array(&vert.m_joint_weights[0], sizeof(vert.m_uv_coords) / sizeof(float));
+            output.append_int32_array(&vert.m_joint_indices[0],   sizeof(vert.m_uv_coords) / sizeof(int32_t));
+        }
+
+        output.append_int32(mesh.m_indices.size());
+        for (auto index : mesh.m_indices) {
+            output.append_int32(index);
+        }
+
+        return output;
+    }
+
 }
 
 
@@ -273,6 +323,20 @@ namespace dal::parser {
             buffer.append_str(unit.m_name);
             buffer += ::build_bin_material(unit.m_material);
             buffer += ::build_bin_mesh_straight_joint(unit.m_mesh);
+        }
+
+        buffer.append_int32(input.m_units_indexed.size());
+        for (auto& unit : input.m_units_indexed) {
+            buffer.append_str(unit.m_name);
+            buffer += ::build_bin_material(unit.m_material);
+            buffer += ::build_bin_mesh_indexed(unit.m_mesh);
+        }
+
+        buffer.append_int32(input.m_units_indexed_joint.size());
+        for (auto& unit : input.m_units_indexed_joint) {
+            buffer.append_str(unit.m_name);
+            buffer += ::build_bin_material(unit.m_material);
+            buffer += ::build_bin_mesh_indexed_joint(unit.m_mesh);
         }
 
         output = buffer.move();

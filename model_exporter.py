@@ -263,5 +263,9 @@ def make_binary_dmd(scene: rwd.Scene):
         data += byt.to_nullTerminated(name)
         data += _build_bin_material(unit.m_material)
         data += _build_bin_mesh_with_joint(unit.m_mesh, joint_id_map)
-        
+
+    # Placeholders for indexed mesh list
+    data += byt.to_int32(0)
+    data += byt.to_int32(0)
+
     return data
