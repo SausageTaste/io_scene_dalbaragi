@@ -546,11 +546,6 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
         type_str = str(obj.type)
         obj_name = str(obj.name)
 
-#       if (not obj.visible_get()) and ignore_hidden:
-#           print("[DAL] Ignoring hidden object: {}, {}".format(obj_name, type_str))
-#           scene.m_skipped_objs.append((obj.name, "Hidden object"))
-#           continue
-
         if BLENDER_OBJ_TYPE_MESH == type_str:
             if "%" == obj_name[0]:
                 tail = obj_name.find("%", 1)
@@ -571,6 +566,11 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
                         "invalid special mesh type \'{}\' for object \'{}\'".format(special_mesh_type, obj_name)
                     )
             else:
+                if (not obj.visible_get()) and ignore_hidden:
+                    print("[DAL] Ignoring hidden actor: {}, {}".format(obj_name, type_str))
+                    scene.m_skipped_objs.append((obj.name, "Hidden object"))
+                    continue
+
                 print("[DAL] Parsing actor: " + obj_name)
                 data_id = id(obj.data)
                 if data_id not in scene.m_models.keys():
