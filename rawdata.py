@@ -3,7 +3,8 @@ import enum
 
 from . import smalltype as smt
 
-MAX_JOINT_COUNT = 130
+
+MAX_JOINT_COUNT = 1024
 
 
 class Scene:
@@ -244,8 +245,6 @@ class Scene:
             }
 
         def newJoint(self, name: str, parent_name: str) -> "Scene.Joint":
-            if len(self.__joints) > MAX_JOINT_COUNT:
-                raise RuntimeError("the number of joints cannot exceed {}.".format(MAX_JOINT_COUNT))
             if self.__doesNameExist(name):
                 raise RuntimeError('tried to add joint "{}" which already exists'.format(name))
 

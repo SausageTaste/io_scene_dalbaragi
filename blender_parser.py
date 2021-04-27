@@ -54,6 +54,7 @@ class _MaterialParser:
     NODE_HOLDOUT         = "ShaderNodeHoldout"
     NODE_MATERIAL_OUTPUT = "ShaderNodeOutputMaterial"
     NODE_TEX_IMAGE       = "ShaderNodeTexImage"
+    NODE_GROUP           = "ShaderNodeGroup"
 
     @classmethod
     def parse(cls, blender_material) -> Optional[rwd.Scene.Material]:
@@ -61,43 +62,19 @@ class _MaterialParser:
 
         shader_output = cls.__findNodeNamed(cls.NODE_MATERIAL_OUTPUT, blender_material.node_tree.nodes)
         linked_shader = shader_output.inputs["Surface"].links[0].from_node
+        alpha_blend_enabled = True if blender_material.blend_method != BLENDER_MATERIAL_BLEND_OPAQUE else False
 
         if cls.NODE_BSDF == linked_shader.bl_idname:
-            pass
+            return cls.__parse_principled_bsdf(linked_shader, alpha_blend_enabled)
         elif cls.NODE_HOLDOUT == linked_shader.bl_idname:
             return None
+        elif cls.NODE_GROUP == linked_shader.bl_idname:
+            if "XPS Shader" == linked_shader.node_tree.name_full:
+                return cls.__parse_xps_shader(linked_shader)
+            else:
+                raise RuntimeError("[DAL] Not supported shader type: {}".format(linked_shader.node_tree.name_full))
         else:
-            raise RuntimeError("[DAL] Only Principled BSDF, Holdout are supported: {}".format(linked_shader.bl_idname))
-
-        bsdf = linked_shader
-        material = rwd.Scene.Material()
-
-        node_base_color = bsdf.inputs["Base Color"]
-        node_metallic   = bsdf.inputs["Metallic"]
-        node_roughness  = bsdf.inputs["Roughness"]
-        node_normal     = bsdf.inputs["Normal"]
-
-        material.m_alphaBlend = True if blender_material.blend_method != BLENDER_MATERIAL_BLEND_OPAQUE else False
-        material.m_roughness = node_roughness.default_value
-        material.m_metallic = node_metallic.default_value
-
-        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, node_base_color)
-        if image_node is not None:
-            material.m_albedoMap = image_node.image.name
-
-        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, node_metallic)
-        if image_node is not None:
-            material.m_metallicMap = image_node.image.name
-
-        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, node_roughness)
-        if image_node is not None:
-            material.m_roughnessMap = image_node.image.name
-
-        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, node_normal)
-        if image_node is not None:
-            material.m_normalMap = image_node.image.name
-
-        return material
+            raise RuntimeError("[DAL] Not supported shader type: {}".format(linked_shader.bl_idname))
 
     @staticmethod
     def __findNodeNamed(name: str, nodes):
@@ -122,8 +99,58 @@ class _MaterialParser:
                 res = cls.__findNodeRecurNamed(name, nodeinput)
                 if res is not None:
                     return res
-            
+
         return None
+
+    @classmethod
+    def __parse_principled_bsdf(cls, bsdf, alpha_blend: bool) -> rwd.Scene.Material:
+        material = rwd.Scene.Material()
+
+        node_roughness = bsdf.inputs["Roughness"]
+        node_metallic  = bsdf.inputs["Metallic"]
+
+        material.m_alphaBlend = alpha_blend
+        material.m_roughness = node_roughness.default_value
+        material.m_metallic = node_metallic.default_value
+
+        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, bsdf.inputs["Base Color"])
+        if image_node is not None:
+            material.m_albedoMap = image_node.image.name
+
+        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, node_roughness)
+        if image_node is not None:
+            material.m_metallicMap = image_node.image.name
+
+        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, node_roughness)
+        if image_node is not None:
+            material.m_roughnessMap = image_node.image.name
+
+        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, bsdf.inputs["Normal"])
+        if image_node is not None:
+            material.m_normalMap = image_node.image.name
+
+        return material
+
+    @classmethod
+    def __parse_xps_shader(cls, linked_shader):
+        material = rwd.Scene.Material()
+
+        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, linked_shader.inputs["Diffuse"])
+        if image_node is not None:
+            material.m_albedoMap = image_node.image.name
+
+        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, linked_shader.inputs["Bump Map"])
+        if image_node is not None:
+            material.m_normalMap = image_node.image.name
+
+        return material
+
+    @staticmethod
+    def __print_props(obj):
+        print(type(obj))
+        for x in dir(obj):
+            print("\t", x, "->", getattr(obj, x))
+
 
 class _AnimationParser:
     class _ActionAssembler:
@@ -519,9 +546,10 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
         type_str = str(obj.type)
         obj_name = str(obj.name)
 
-        if (not obj.visible_get()) and ignore_hidden:
-            scene.m_skipped_objs.append((obj.name, "Hiddel object"))
-            continue
+#       if (not obj.visible_get()) and ignore_hidden:
+#           print("[DAL] Ignoring hidden object: {}, {}".format(obj_name, type_str))
+#           scene.m_skipped_objs.append((obj.name, "Hidden object"))
+#           continue
 
         if BLENDER_OBJ_TYPE_MESH == type_str:
             if "%" == obj_name[0]:
@@ -600,8 +628,8 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
             else:
                 raise RuntimeError("Unkown type of light: {}".format(type(obj.data)))
         else:
+            print("[DAL] Ignoring not supported object type: {}, {}".format(obj_name, type_str))
             scene.m_skipped_objs.append((obj.name, "Not supported object type: {}".format(type_str)))
-
 
 
 def parse_raw_data() -> rwd.Scene:

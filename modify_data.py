@@ -30,8 +30,8 @@ class JointRemover:
 
     @classmethod
     def process(cls, skel: rwd.Scene.Skeleton, anims: List[rwd.Scene.Animation], models: Iterable[rwd.Scene.Model]):
-        # There is a better idea. Remove all useless joints in animations, and use that info to determine if remove
-        # the joint from skeleton or not.
+        # There is a better idea. Remove all useless joints in animations, and use that info to determine whether remove
+        # a joint from the skeleton or not.
 
         uselesses = cls.__getSetOfNamesOfUselesses(anims[0])
         for anim in anims[1:]:
