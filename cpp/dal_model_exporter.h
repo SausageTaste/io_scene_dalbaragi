@@ -20,4 +20,6 @@ namespace dal::parser {
 
     std::optional<binary_buffer_t> build_binary_model(const Model& input);
 
+    std::optional<binary_buffer_t> zip_binary_model(const uint8_t* const data, const size_t data_size);
+
 }

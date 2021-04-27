@@ -3,6 +3,7 @@
 #include <zlib.h>
 
 #include "dal_byte_tool.h"
+#include "konst.h"
 
 
 namespace dalp = dal::parser;
@@ -110,6 +111,38 @@ namespace {
 
 
 namespace {
+
+    size_t compress_zip(uint8_t* const dst, const size_t dst_size, const uint8_t* const src, const size_t src_size) {
+        uLongf dst_len = dst_size;
+
+        if (Z_OK == compress(dst, &dst_len, src, src_size)) {
+            return dst_len;
+        }
+        else {
+            return 0;
+        }
+    }
+
+    std::optional<dalp::binary_buffer_t> compress_dal_model(const uint8_t* const src, const size_t src_size) {
+        dalp::binary_buffer_t output(src_size + 64);
+
+        const auto src_size_int32 = static_cast<int32_t>(src_size);
+        const auto data_offset = dalp::MAGIC_NUMBER_SIZE + sizeof(int32_t);
+
+        static_assert(4 == sizeof(int32_t));
+
+        memcpy(output.data(), dalp::MAGIC_NUMBERS_DAL_MODEL, dalp::MAGIC_NUMBER_SIZE);
+        memcpy(output.data() + dalp::MAGIC_NUMBER_SIZE, &src_size_int32, sizeof(int32_t));
+
+        const auto result_size = ::compress_zip(output.data() + data_offset, output.size() - data_offset, src, src_size);
+        if (0 == result_size) {
+            return std::nullopt;
+        }
+        else {
+            output.resize(result_size + data_offset);
+            return output;
+        }
+    }
 
     void append_bin_aabb(::BinaryBuildBuffer& output, const dalp::AABB3& aabb) {
         output.append_float32(aabb.m_min.x);
@@ -352,6 +385,10 @@ namespace dal::parser {
         else {
             return result;
         }
+    }
+
+    std::optional<binary_buffer_t> zip_binary_model(const uint8_t* const data, const size_t data_size) {
+        return ::compress_dal_model(data, data_size);
     }
 
 }

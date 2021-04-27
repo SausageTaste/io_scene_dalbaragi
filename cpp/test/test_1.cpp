@@ -202,31 +202,24 @@ namespace {
 
         {
             const auto binary = dal::parser::build_binary_model(*model);
-            if (binary.has_value()) {
-                std::cout << "    * Built binary" << std::endl;
-                std::cout << "        built binary size:  " << binary->size() << std::endl;
-                std::cout << "        unzipped file size: " << unzipped->size() << std::endl;
-                std::cout << "        compare: " << ::compare_binary_buffers(*binary, *unzipped) << std::endl;
+            const auto zipped_second = dalp::zip_binary_model(binary->data(), binary->size());
+            const auto unzipped_second = dalp::unzip_dmd(zipped_second->data(), zipped_second->size());
 
-                const auto model_second = dal::parser::parse_dmd(binary->data(), binary->size());
-                if (model.has_value()) {
-                    std::cout << "    * Second order model parsed" << std::endl;
-                    std::cout << "        render units straight:       " << model_second->m_units_straight.size() << std::endl;
-                    std::cout << "        render units straight joint: " << model_second->m_units_straight_joint.size() << std::endl;
-                    std::cout << "        render units indexed:        " << model_second->m_units_indexed.size() << std::endl;
-                    std::cout << "        render units indexed joint:  " << model_second->m_units_indexed_joint.size() << std::endl;
-                    std::cout << "        joints: " << model_second->m_skeleton.m_joints.size() << std::endl;
-                    std::cout << "        animations: " << model_second->m_animations.size() << std::endl;
+            std::cout << "    * Built binary" << std::endl;
+            std::cout << "        built binary size:  " << unzipped_second->size() << std::endl;
+            std::cout << "        unzipped file size: " << unzipped->size() << std::endl;
+            std::cout << "        compare: " << ::compare_binary_buffers(*unzipped_second, *unzipped) << std::endl;
 
-                    ::compare_models(*model, *model_second);
-                }
-                else {
-                    std::cout << "    * Second order model parsing failed" << std::endl;
-                }
-            }
-            else {
-                std::cout << "    * Building binary failed" << std::endl;
-            }
+            const auto model_second = dal::parser::parse_dmd(unzipped_second->data(), unzipped_second->size());
+            std::cout << "    * Second order model parsed" << std::endl;
+            std::cout << "        render units straight:       " << model_second->m_units_straight.size() << std::endl;
+            std::cout << "        render units straight joint: " << model_second->m_units_straight_joint.size() << std::endl;
+            std::cout << "        render units indexed:        " << model_second->m_units_indexed.size() << std::endl;
+            std::cout << "        render units indexed joint:  " << model_second->m_units_indexed_joint.size() << std::endl;
+            std::cout << "        joints: " << model_second->m_skeleton.m_joints.size() << std::endl;
+            std::cout << "        animations: " << model_second->m_animations.size() << std::endl;
+
+            ::compare_models(*model, *model_second);
         }
     }
 
