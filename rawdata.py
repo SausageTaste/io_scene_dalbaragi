@@ -4,7 +4,7 @@ import enum
 from . import smalltype as smt
 
 
-MAX_JOINT_COUNT = 512
+MAX_JOINT_COUNT = 1024
 
 
 class Scene:
