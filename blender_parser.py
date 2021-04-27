@@ -547,9 +547,10 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
         type_str = str(obj.type)
         obj_name = str(obj.name)
 
-        if (not obj.visible_get()) and ignore_hidden:
-            scene.m_skipped_objs.append((obj.name, "Hiddel object"))
-            continue
+#       if (not obj.visible_get()) and ignore_hidden:
+#           print("[DAL] Ignoring hidden object: {}, {}".format(obj_name, type_str))
+#           scene.m_skipped_objs.append((obj.name, "Hidden object"))
+#           continue
 
         if BLENDER_OBJ_TYPE_MESH == type_str:
             if "%" == obj_name[0]:
@@ -628,8 +629,8 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
             else:
                 raise RuntimeError("Unkown type of light: {}".format(type(obj.data)))
         else:
+            print("[DAL] Ignoring not supported object type: {}, {}".format(obj_name, type_str))
             scene.m_skipped_objs.append((obj.name, "Not supported object type: {}".format(type_str)))
-
 
 
 def parse_raw_data() -> rwd.Scene:
