@@ -298,9 +298,16 @@ namespace {
 
         output.append_int32(mesh.m_vertices.size());
         for (auto& vert : mesh.m_vertices) {
-            output.append_float32_array(&vert.m_position[0],   sizeof(vert.m_position) / sizeof(float));
-            output.append_float32_array(&vert.m_normal[0],       sizeof(vert.m_normal) / sizeof(float));
-            output.append_float32_array(&vert.m_uv_coords[0], sizeof(vert.m_uv_coords) / sizeof(float));
+            output.append_float32(vert.m_position.x);
+            output.append_float32(vert.m_position.y);
+            output.append_float32(vert.m_position.z);
+
+            output.append_float32(vert.m_normal.x);
+            output.append_float32(vert.m_normal.y);
+            output.append_float32(vert.m_normal.z);
+
+            output.append_float32(vert.m_uv_coords.x);
+            output.append_float32(vert.m_uv_coords.y);
         }
 
         output.append_int32(mesh.m_indices.size());
@@ -317,11 +324,24 @@ namespace {
 
         output.append_int32(mesh.m_vertices.size());
         for (auto& vert : mesh.m_vertices) {
-            output.append_float32_array(&vert.m_position[0],       sizeof(vert.m_position) / sizeof(float));
-            output.append_float32_array(&vert.m_normal[0],           sizeof(vert.m_normal) / sizeof(float));
-            output.append_float32_array(&vert.m_uv_coords[0],     sizeof(vert.m_uv_coords) / sizeof(float));
-            output.append_float32_array(&vert.m_joint_weights[0], sizeof(vert.m_uv_coords) / sizeof(float));
-            output.append_int32_array(&vert.m_joint_indices[0],   sizeof(vert.m_uv_coords) / sizeof(int32_t));
+            output.append_float32(vert.m_position.x);
+            output.append_float32(vert.m_position.y);
+            output.append_float32(vert.m_position.z);
+
+            output.append_float32(vert.m_normal.x);
+            output.append_float32(vert.m_normal.y);
+            output.append_float32(vert.m_normal.z);
+
+            output.append_float32(vert.m_uv_coords.x);
+            output.append_float32(vert.m_uv_coords.y);
+
+            output.append_float32(vert.m_joint_weights.x);
+            output.append_float32(vert.m_joint_weights.y);
+            output.append_float32(vert.m_joint_weights.z);
+
+            output.append_int32(vert.m_joint_indices.x);
+            output.append_int32(vert.m_joint_indices.y);
+            output.append_int32(vert.m_joint_indices.z);
         }
 
         output.append_int32(mesh.m_indices.size());

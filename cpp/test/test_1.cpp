@@ -162,8 +162,8 @@ namespace {
     void test_a_model(const char* const model_path) {
         std::cout << "< " << model_path << " >" << std::endl;
 
-        const auto model_data = ::read_file(model_path);
-        const auto unzipped = dal::parser::unzip_dmd(model_data.data(), model_data.size());
+        const auto zipped = ::read_file(model_path);
+        const auto unzipped = dal::parser::unzip_dmd(zipped.data(), zipped.size());
         const auto model = dal::parser::parse_dmd(unzipped->data(), unzipped->size());
 
         std::cout << "    * Loaded and parsed" << std::endl;
@@ -174,63 +174,75 @@ namespace {
         std::cout << "        joints: " << model->m_skeleton.m_joints.size() << std::endl;
         std::cout << "        animations: " << model->m_animations.size() << std::endl;
 
-        {
-            size_t vertices_before = 0;
-            size_t vertices_after = 0;
+        const auto binary = dal::parser::build_binary_model(*model);
+        const auto zipped_second = dalp::zip_binary_model(binary->data(), binary->size());
+        const auto unzipped_second = dalp::unzip_dmd(zipped_second->data(), zipped_second->size());
+        const auto model_second = dal::parser::parse_dmd(unzipped_second->data(), unzipped_second->size());
 
-            for (const auto& unit : model->m_units_straight) {
-                assert(0 == unit.m_mesh.m_vertices.size() % 3);
-                const auto indexed_mesh = dal::parser::convert_to_indexed(unit.m_mesh);
-                vertices_before += unit.m_mesh.m_vertices.size() / 3;
-                vertices_after += indexed_mesh.m_vertices.size();
-            }
+        std::cout << "    * Second model parsed" << std::endl;
+        std::cout << "        render units straight:       " << model_second->m_units_straight.size() << std::endl;
+        std::cout << "        render units straight joint: " << model_second->m_units_straight_joint.size() << std::endl;
+        std::cout << "        render units indexed:        " << model_second->m_units_indexed.size() << std::endl;
+        std::cout << "        render units indexed joint:  " << model_second->m_units_indexed_joint.size() << std::endl;
+        std::cout << "        joints: " << model_second->m_skeleton.m_joints.size() << std::endl;
+        std::cout << "        animations: " << model_second->m_animations.size() << std::endl;
 
-            for (const auto& unit : model->m_units_straight_joint) {
-                assert(0 == unit.m_mesh.m_vertices.size() % 3);
-                const auto indexed_mesh = dal::parser::convert_to_indexed(unit.m_mesh);
-                vertices_before += unit.m_mesh.m_vertices.size() / 3;
-                vertices_after += indexed_mesh.m_vertices.size();
-            }
+        std::cout << "    * Built binary" << std::endl;
+        std::cout << "        original zipped   binary size: " << zipped.size() << std::endl;
+        std::cout << "        original unzipped binary size: " << unzipped->size() << std::endl;
+        std::cout << "        built    zipped   binary size: " << zipped_second->size() << std::endl;
+        std::cout << "        built    unzipped binary size: " << unzipped_second->size() << std::endl;
+        std::cout << "        compare: " << ::compare_binary_buffers(*unzipped_second, *unzipped) << std::endl;
 
-            std::cout << "    * Converted to indexed (polygons): " << vertices_before << " -> " << vertices_after << std::endl;
-        }
-
-        /*{
-            const auto merged_by_mat = dal::parser::merge_by_material(model);
-            std::cout << "    * Merged by materials (render units): " << model.m_render_units.size() << " -> " << merged_by_mat.m_render_units.size() << std::endl;
-        }*/
-
-        {
-            const auto binary = dal::parser::build_binary_model(*model);
-            const auto zipped_second = dalp::zip_binary_model(binary->data(), binary->size());
-            const auto unzipped_second = dalp::unzip_dmd(zipped_second->data(), zipped_second->size());
-
-            std::cout << "    * Built binary" << std::endl;
-            std::cout << "        built binary size:  " << unzipped_second->size() << std::endl;
-            std::cout << "        unzipped file size: " << unzipped->size() << std::endl;
-            std::cout << "        compare: " << ::compare_binary_buffers(*unzipped_second, *unzipped) << std::endl;
-
-            const auto model_second = dal::parser::parse_dmd(unzipped_second->data(), unzipped_second->size());
-            std::cout << "    * Second order model parsed" << std::endl;
-            std::cout << "        render units straight:       " << model_second->m_units_straight.size() << std::endl;
-            std::cout << "        render units straight joint: " << model_second->m_units_straight_joint.size() << std::endl;
-            std::cout << "        render units indexed:        " << model_second->m_units_indexed.size() << std::endl;
-            std::cout << "        render units indexed joint:  " << model_second->m_units_indexed_joint.size() << std::endl;
-            std::cout << "        joints: " << model_second->m_skeleton.m_joints.size() << std::endl;
-            std::cout << "        animations: " << model_second->m_animations.size() << std::endl;
-
-            ::compare_models(*model, *model_second);
-        }
+        ::compare_models(*model, *model_second);
     }
 
     void test_a_model(const std::string& model_path) {
         ::test_a_model(model_path.c_str());
     }
 
+    void create_indexed_model(const char* const dst_path, const char* const src_path) {
+        const auto model_data = ::read_file(dst_path);
+        const auto unzipped = dal::parser::unzip_dmd(model_data.data(), model_data.size());
+        auto model = dal::parser::parse_dmd(unzipped->data(), unzipped->size());
+
+        for (const auto& unit : model->m_units_straight) {
+            dalp::RenderUnit<dalp::Mesh_Indexed> new_unit;
+            new_unit.m_name = unit.m_name;
+            new_unit.m_material = unit.m_material;
+            new_unit.m_mesh = dal::parser::convert_to_indexed(unit.m_mesh);
+            model->m_units_indexed.push_back(new_unit);
+        }
+        model->m_units_straight.clear();
+
+        for (const auto& unit : model->m_units_straight_joint) {
+            dalp::RenderUnit<dalp::Mesh_IndexedJoint> new_unit;
+            new_unit.m_name = unit.m_name;
+            new_unit.m_material = unit.m_material;
+            new_unit.m_mesh = dal::parser::convert_to_indexed(unit.m_mesh);
+            model->m_units_indexed_joint.push_back(new_unit);
+        }
+        model->m_units_straight_joint.clear();
+
+        const auto binary_built = dalp::build_binary_model(*model);
+        const auto zipped = dalp::zip_binary_model(binary_built->data(), binary_built->size());
+
+        std::ofstream file(src_path, std::ios::binary);
+        file.write(reinterpret_cast<const char*>(zipped->data()), zipped->size());
+        file.close();
+    }
+
+    void create_indexed_model(const std::string& dst_path, const std::string& src_path) {
+        ::create_indexed_model(dst_path.c_str(), src_path.c_str());
+    }
+
 }
 
 
 int main() {
+    create_indexed_model(::find_cpp_path() + "/test/irin.dmd", ::find_cpp_path() + "/test/irin_indexed.dmd");
+
     std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/irin.dmd");
+    std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/irin_indexed.dmd");
     std::cout << std::endl; ::test_byte_tools();
 }
