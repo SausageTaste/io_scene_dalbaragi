@@ -7,8 +7,6 @@ from . import smalltype as smt
 from . import byteutils as byt
 
 
-MAX_JOINT_NUM = 130
-
 def _make_joints_id_map(skeleton: rwd.Scene.Skeleton) -> Dict[str, int]:
     result = dict()
 
@@ -54,8 +52,8 @@ def _build_bin_aabb(aabb: smt.AABB3) -> bytearray:
 def _build_bin_skeleton(skeleton: rwd.Scene.Skeleton, id_map: Dict[str, int]) -> bytearray:
     assert isinstance(skeleton, rwd.Scene.Skeleton)
 
-    if len(skeleton) > MAX_JOINT_NUM:
-        raise RuntimeError("the number of joints in \"{}\" exceeds capacity {}".format(len(skeleton), MAX_JOINT_NUM))
+    if len(skeleton) > rwd.MAX_JOINT_COUNT:
+        raise RuntimeError("the number of joints in \"{}\" exceeds capacity {}".format(len(skeleton), rwd.MAX_JOINT_COUNT))
 
     data = bytearray()
 
