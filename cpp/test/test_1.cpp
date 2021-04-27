@@ -202,6 +202,8 @@ namespace {
     }
 
     void create_indexed_model(const char* const dst_path, const char* const src_path) {
+        std::cout << "Convert " << src_path << " to indexed model to " << dst_path;
+
         const auto model_data = ::read_file(dst_path);
         const auto unzipped = dal::parser::unzip_dmd(model_data.data(), model_data.size());
         auto model = dal::parser::parse_dmd(unzipped->data(), unzipped->size());
@@ -230,6 +232,8 @@ namespace {
         std::ofstream file(src_path, std::ios::binary);
         file.write(reinterpret_cast<const char*>(zipped->data()), zipped->size());
         file.close();
+
+        std::cout << " -> Done" << std::endl;
     }
 
     void create_indexed_model(const std::string& dst_path, const std::string& src_path) {
@@ -240,9 +244,12 @@ namespace {
 
 
 int main() {
-    create_indexed_model(::find_cpp_path() + "/test/irin.dmd", ::find_cpp_path() + "/test/irin_indexed.dmd");
+    //::create_indexed_model(::find_cpp_path() + "/test/irin.dmd", ::find_cpp_path() + "/test/irin_indexed.dmd");
+    //::create_indexed_model(::find_cpp_path() + "/test/sponza.dmd", ::find_cpp_path() + "/test/sponza_indexed.dmd");
 
     std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/irin.dmd");
     std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/irin_indexed.dmd");
+    std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/sponza.dmd");
+    std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/sponza_indexed.dmd");
     std::cout << std::endl; ::test_byte_tools();
 }
