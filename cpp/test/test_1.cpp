@@ -92,12 +92,15 @@ namespace {
         std::cout << "< " << model_path << " >" << std::endl;
 
         const auto model_data = ::read_file(model_path);
-        dal::parser::Model_Straight model;
+        dal::parser::Model model;
         const auto result = dal::parser::parse_model_straight(model_data.data(), model_data.size(), model);
 
         std::cout << "    * Loaded and parsed" << std::endl;
         std::cout << "        result code: " << static_cast<int>(result) << std::endl;
-        std::cout << "        render units: " << model.m_render_units.size() << std::endl;
+        std::cout << "        render units straight      : " << model.m_units_straight.size() << std::endl;
+        std::cout << "        render units straight joint: " << model.m_units_straight_joint.size() << std::endl;
+        std::cout << "        render units indexed       : " << model.m_units_indexed.size() << std::endl;
+        std::cout << "        render units indexed joint : " << model.m_units_indexed_joint.size() << std::endl;
         std::cout << "        joints: " << model.m_skeleton.m_joints.size() << std::endl;
         std::cout << "        animations: " << model.m_animations.size() << std::endl;
 
@@ -105,7 +108,14 @@ namespace {
             size_t vertices_before = 0;
             size_t vertices_after = 0;
 
-            for (const auto& unit : model.m_render_units) {
+            for (const auto& unit : model.m_units_straight) {
+                assert(0 == unit.m_mesh.m_vertices.size() % 3);
+                const auto indexed_mesh = dal::parser::convert_to_indexed(unit.m_mesh);
+                vertices_before += unit.m_mesh.m_vertices.size() / 3;
+                vertices_after += indexed_mesh.m_vertices.size();
+            }
+
+            for (const auto& unit : model.m_units_straight_joint) {
                 assert(0 == unit.m_mesh.m_vertices.size() % 3);
                 const auto indexed_mesh = dal::parser::convert_to_indexed(unit.m_mesh);
                 vertices_before += unit.m_mesh.m_vertices.size() / 3;
@@ -115,10 +125,10 @@ namespace {
             std::cout << "    * Converted to indexed (polygons): " << vertices_before << " -> " << vertices_after << std::endl;
         }
 
-        {
+        /*{
             const auto merged_by_mat = dal::parser::merge_by_material(model);
             std::cout << "    * Merged by materials (render units): " << model.m_render_units.size() << " -> " << merged_by_mat.m_render_units.size() << std::endl;
-        }
+        }*/
     }
 
     void test_a_model(const std::string& model_path) {
@@ -128,7 +138,7 @@ namespace {
 }
 
 
-int main() {
+int main() try {
     std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/irin.dmd");
     std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/sphere.dmd");
     std::cout << std::endl; ::test_byte_tools();

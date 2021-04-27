@@ -14,8 +14,8 @@ namespace dal::parser {
         corrupted_content,
     };
 
-    ModelParseResult parse_model_straight(const uint8_t* const buf, const size_t buf_size, Model_Straight& output);
+    ModelParseResult parse_model_straight(const uint8_t* const buf, const size_t buf_size, Model& output);
 
-    std::optional<Model_Straight> parse_model_straight(const uint8_t* const buf, const size_t buf_size);
+    std::optional<Model> parse_model_straight(const uint8_t* const buf, const size_t buf_size);
 
 }

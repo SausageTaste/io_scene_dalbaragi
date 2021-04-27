@@ -222,7 +222,33 @@ namespace {
         // Vertices
         {
             const auto vert_count = dalp::make_int32(header); header += 4;
-            const auto bas_joints = dalp::make_bool8(header); header += 1;
+            const auto vert_count_times_3 = vert_count * 3;
+            const auto vert_count_times_2 = vert_count * 2;
+
+            unit.m_mesh.m_vertices.resize(vert_count_times_3);
+            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_vertices.data(), vert_count_times_3);
+
+            unit.m_mesh.m_texcoords.resize(vert_count_times_2);
+            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_texcoords.data(), vert_count_times_2);
+
+            unit.m_mesh.m_normals.resize(vert_count_times_3);
+            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_normals.data(), vert_count_times_3);
+        }
+
+        return header;
+    }
+
+    const uint8_t* parse_render_unit_straight_joint(const uint8_t* header, const uint8_t* const end, dalp::RenderUnit<dalp::Mesh_StraightJoint>& unit) {
+        // Name
+        unit.m_name = reinterpret_cast<const char*>(header);
+        header += unit.m_name.size() + 1;
+
+        // Material
+        header = ::parse_material(header, end, unit.m_material);
+
+        // Vertices
+        {
+            const auto vert_count = dalp::make_int32(header); header += 4;
             const auto vert_count_times_3 = vert_count * 3;
             const auto vert_count_times_2 = vert_count * 2;
 
@@ -235,13 +261,11 @@ namespace {
             unit.m_mesh.m_normals.resize(vert_count_times_3);
             header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_normals.data(), vert_count_times_3);
 
-            if ( bas_joints ) {
-                unit.m_mesh.m_boneWeights.resize(vert_count_times_3);
-                header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_boneWeights.data(), vert_count_times_3);
+            unit.m_mesh.m_boneWeights.resize(vert_count_times_3);
+            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_boneWeights.data(), vert_count_times_3);
 
-                unit.m_mesh.m_boneIndex.resize(vert_count_times_3);
-                header = dalp::assemble_4_bytes_array<int32_t>(header, unit.m_mesh.m_boneIndex.data(), vert_count_times_3);
-            }
+            unit.m_mesh.m_boneIndex.resize(vert_count_times_3);
+            header = dalp::assemble_4_bytes_array<int32_t>(header, unit.m_mesh.m_boneIndex.data(), vert_count_times_3);
         }
 
         return header;
@@ -252,7 +276,7 @@ namespace {
 
 namespace dal::parser {
 
-    dal::parser::ModelParseResult parse_model_straight(const uint8_t* const buf, const size_t buf_size, Model_Straight& output) {
+    dal::parser::ModelParseResult parse_model_straight(const uint8_t* const buf, const size_t buf_size, Model& output) {
         // Check magic numbers
         if (!::is_magic_numbers_correct(buf)) {
             return ModelParseResult::magic_numbers_dont_match;
@@ -273,11 +297,18 @@ namespace dal::parser {
             header = ::parse_skeleton(header, end, output.m_skeleton);
             header = ::parse_animations(header, end, output.m_animations);
 
-            const auto render_unit_count = dalp::make_int32(header); header += 4;
-            output.m_render_units.resize(render_unit_count);
+            {
+                const auto render_unit_without_joint_count = dalp::make_int32(header); header += 4;
+                output.m_units_straight.resize(render_unit_without_joint_count);
+                for (uint32_t i = 0; i < render_unit_without_joint_count; ++i)
+                    header = ::parse_render_unit_straight(header, end, output.m_units_straight[i]);
+            }
 
-            for ( int i = 0; i < render_unit_count; ++i ) {
-                header = ::parse_render_unit_straight(header, end, output.m_render_units.at(i));
+            {
+                const auto render_unit_with_joint_count = dalp::make_int32(header); header += 4;
+                output.m_units_straight_joint.resize(render_unit_with_joint_count);
+                for (uint32_t i = 0; i < render_unit_with_joint_count; ++i)
+                    header = ::parse_render_unit_straight_joint(header, end, output.m_units_straight_joint[i]);
             }
 
             if (header != end) {
@@ -288,8 +319,8 @@ namespace dal::parser {
         return ModelParseResult::success;
     }
 
-    std::optional<Model_Straight> parse_model_straight(const uint8_t* const buf, const size_t buf_size) {
-        Model_Straight result;
+    std::optional<Model> parse_model_straight(const uint8_t* const buf, const size_t buf_size) {
+        Model result;
 
         if (ModelParseResult::success != parse_model_straight(buf, buf_size, result)) {
             return std::nullopt;

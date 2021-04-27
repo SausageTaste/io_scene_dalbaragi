@@ -16,8 +16,8 @@ namespace dal::parser {
         unknown_error,
     };
 
-    ModelExportResult build_binary_model_indexed(const Model_Indexed& input, binary_buffer_t& output);
+    ModelExportResult build_binary_model_indexed(const Model& input, binary_buffer_t& output);
 
-    std::optional<binary_buffer_t> build_binary_model_indexed(const Model_Indexed& input);
+    std::optional<binary_buffer_t> build_binary_model_indexed(const Model& input);
 
 }
