@@ -109,7 +109,11 @@ class EmportDalModel(Operator, ExportHelper):
         scene = bpa.parse_raw_data()
         # mfd.MaterialDuplacateRemover.process(scene.m_render_units, scene.m_static_actors)
         if self.optionBool_removeUselessJoints:
-            mfd.JointRemover.process(scene.m_skeletons[0], scene.m_animations, scene.m_models.values())
+            if len(scene.m_animations):
+                assert len(scene.m_skeletons)
+                mfd.JointRemover.process(scene.m_skeletons[0], scene.m_animations, scene.m_models.values())
+            else:
+                print("[DAL] WARN::There is no animation so removing joints is not possible.")
         print("[DAL] Building done")
 
         if self.optionBool_createReadable:
