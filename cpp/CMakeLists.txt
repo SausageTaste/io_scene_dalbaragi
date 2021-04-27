@@ -22,11 +22,17 @@ set(extern_dir ${CMAKE_CURRENT_SOURCE_DIR}/extern)
 
 
 # zlib
-if (NOT TARGET lua_static)
-    add_subdirectory(${extern_dir}/zlib ${CMAKE_CURRENT_BINARY_DIR}/zlib)
+if (ANDROID)
+    target_link_libraries(dalbaragi_model_parser PRIVATE z)
+
+else()
+    if (NOT TARGET zlibstatic)
+        add_subdirectory(${extern_dir}/zlib ${CMAKE_CURRENT_BINARY_DIR}/zlib)
+    endif()
+    target_link_libraries(dalbaragi_model_parser PRIVATE zlibstatic)
+    target_include_directories(dalbaragi_model_parser PRIVATE ${extern_dir}/zlib ${CMAKE_CURRENT_BINARY_DIR}/zlib)
+
 endif()
-target_link_libraries(dalbaragi_model_parser PRIVATE zlibstatic)
-target_include_directories(dalbaragi_model_parser PRIVATE ${extern_dir}/zlib ${CMAKE_CURRENT_BINARY_DIR}/zlib)
 
 # GLM
 target_include_directories(dalbaragi_model_parser PUBLIC ${extern_dir}/glm)

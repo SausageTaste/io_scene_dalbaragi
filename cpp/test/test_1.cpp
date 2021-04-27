@@ -61,40 +61,63 @@ namespace {
 }
 
 
+namespace {
+
+    void test_byte_tools() {
+        std::cout << "Test byte tools" << std::endl;
+
+        {
+            const float TEST = 45.5;
+            uint8_t buffer[4];
+            dalp::to_float32(TEST, buffer);
+            std::cout << "\tAfter casting: " << dalp::make_float32(buffer) << std::endl;
+        }
+
+        {
+            const int32_t TEST = 76;
+            uint8_t buffer[4];
+            dalp::to_int32(TEST, buffer);
+            std::cout << "\tAfter casting: " << dalp::make_int32(buffer) << std::endl;
+        }
+
+        {
+            const int32_t TEST = 72;
+            uint8_t buffer[2];
+            dalp::to_int16(TEST, buffer);
+            std::cout << "\tAfter casting: " << dalp::make_int16(buffer) << std::endl;
+        }
+    }
+
+    void test_a_model(const char* const model_path) {
+        std::cout << model_path << std::endl;
+
+        const auto model_data = ::read_file(model_path);
+        dal::parser::Model_Straight model;
+        const auto result = dal::parser::parse_model_straight(model_data.data(), model_data.size(), model);
+
+        std::cout << "\tResult code: " << static_cast<int>(result) << std::endl;
+        std::cout << "\tRender unit count: " << model.m_render_units.size() << std::endl;
+        std::cout << "\tJoint count: " << model.m_skeleton.m_joints.size() << std::endl;
+        std::cout << "\tAnimation count: " << model.m_animations.size() << std::endl;
+
+        const auto indexed_mesh = dal::parser::convert_to_indexed(model.m_render_units[0].m_mesh);
+        std::cout << "\tBefore indexing: " << model.m_render_units[0].m_mesh.m_vertices.size() / 3 << std::endl;
+        std::cout << "\tAfter indexing: " << indexed_mesh.m_vertices.size() << std::endl;
+
+        const auto merged_by_mat = dal::parser::merge_by_material(model);
+        std::cout << "\tBefore merging: " << model.m_render_units.size() << std::endl;
+        std::cout << "\tAfter merging: " << merged_by_mat.m_render_units.size() << std::endl;
+    }
+
+    void test_a_model(const std::string& model_path) {
+        ::test_a_model(model_path.c_str());
+    }
+
+}
+
+
 int main() {
-    const auto model_path = ::find_cpp_path() + "/test/irin.dmd";
-    const auto model_data = ::read_file(model_path.c_str());
-
-    dal::parser::Model_Straight model;
-    const auto result = dal::parser::parse_model_straight(model_data.data(), model_data.size(), model);
-
-    std::cout << "Result code: " << static_cast<int>(result) << std::endl;
-    std::cout << "Render unit count: " << model.m_render_units.size() << std::endl;
-    std::cout << "Joint count: " << model.m_skeleton.m_joints.size() << std::endl;
-    std::cout << "Animation count: " << model.m_animations.size() << std::endl;
-
-    const auto indexed_mesh = dal::parser::convert_to_indexed(model.m_render_units[0].m_mesh);
-    std::cout << "Before indexing: " << model.m_render_units[0].m_mesh.m_vertices.size() / 3 << std::endl;
-    std::cout << "After indexing: " << indexed_mesh.m_vertices.size() << std::endl;
-
-    {
-        const float TEST = 45.5;
-        uint8_t buffer[4];
-        dalp::to_float32(TEST, buffer);
-        std::cout << "After casting: " << dalp::make_float32(buffer) << std::endl;
-    }
-
-    {
-        const int32_t TEST = 76;
-        uint8_t buffer[4];
-        dalp::to_int32(TEST, buffer);
-        std::cout << "After casting: " << dalp::make_int32(buffer) << std::endl;
-    }
-
-    {
-        const int32_t TEST = 72;
-        uint8_t buffer[2];
-        dalp::to_int16(TEST, buffer);
-        std::cout << "After casting: " << dalp::make_int16(buffer) << std::endl;
-    }
+    ::test_a_model(::find_cpp_path() + "/test/irin.dmd");
+    ::test_a_model(::find_cpp_path() + "/test/sphere.dmd");
+    ::test_byte_tools();
 }

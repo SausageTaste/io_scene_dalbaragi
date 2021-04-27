@@ -33,14 +33,19 @@ namespace dal::parser {
         std::string m_emision_map;
         float m_roughness = 0.5;
         float m_metallic = 1;
+
+        bool operator==(const Material& other) const;
     };
 
     struct Mesh_Straight {
         std::vector<float> m_vertices, m_texcoords, m_normals, m_boneWeights;
         std::vector<int32_t> m_boneIndex;
+
+        void concat(const Mesh_Straight& other);
     };
 
     struct Mesh_Indexed {
+        bool m_has_joints = false;
         std::vector<Vertex> m_vertices;
         std::vector<uint32_t> m_indices;
 
