@@ -179,7 +179,7 @@ namespace {
             anim.m_joints.resize(joint_count);
 
             for ( int j = 0; j < joint_count; ++j ) {
-                header = ::parse_animJoint(header, end, anim.m_joints.at(i));
+                header = ::parse_animJoint(header, end, anim.m_joints.at(j));
             }
         }
 

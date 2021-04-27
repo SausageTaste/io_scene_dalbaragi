@@ -129,13 +129,13 @@ namespace {
 
             switch (joint.m_joint_type) {
                 case dalp::JointType::basic:
-                    output.append_float32(0);
+                    output.append_int32(0);
                     break;
                 case dalp::JointType::hair_root:
-                    output.append_float32(1);
+                    output.append_int32(1);
                     break;
                 case dalp::JointType::skirt_root:
-                    output.append_float32(2);
+                    output.append_int32(2);
                     break;
                 default:
                     assert(false);
