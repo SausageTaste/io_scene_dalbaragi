@@ -14,8 +14,12 @@ namespace dal::parser {
         corrupted_content,
     };
 
-    ModelParseResult parse_model_straight(const uint8_t* const buf, const size_t buf_size, Model_Straight& output);
+    ModelParseResult unzip_dmd(std::vector<uint8_t>& output, const uint8_t* const file_content, const size_t content_size);
 
-    std::optional<Model_Straight> parse_model_straight(const uint8_t* const buf, const size_t buf_size);
+    std::optional<std::vector<uint8_t>> unzip_dmd(const uint8_t* const file_content, const size_t content_size);
+
+    ModelParseResult parse_dmd(Model& output, const uint8_t* const unzipped_content, const size_t content_size);
+
+    std::optional<Model> parse_dmd(const uint8_t* const unzipped_content, const size_t content_size);
 
 }

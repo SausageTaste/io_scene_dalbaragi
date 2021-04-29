@@ -179,7 +179,7 @@ namespace {
             anim.m_joints.resize(joint_count);
 
             for ( int j = 0; j < joint_count; ++j ) {
-                header = ::parse_animJoint(header, end, anim.m_joints.at(i));
+                header = ::parse_animJoint(header, end, anim.m_joints.at(j));
             }
         }
 
@@ -211,38 +211,106 @@ namespace {
         return header;
     }
 
-    const uint8_t* parse_render_unit_straight(const uint8_t* header, const uint8_t* const end, dalp::RenderUnit<dalp::Mesh_Straight>& unit) {
-        // Name
-        unit.m_name = reinterpret_cast<const char*>(header);
-        header += unit.m_name.size() + 1;
+    const uint8_t* parse_mesh(const uint8_t* header, const uint8_t* const end, dalp::Mesh_Straight& mesh) {
+        const auto vert_count = dalp::make_int32(header); header += 4;
+        const auto vert_count_times_3 = vert_count * 3;
+        const auto vert_count_times_2 = vert_count * 2;
 
-        // Material
-        header = ::parse_material(header, end, unit.m_material);
+        mesh.m_vertices.resize(vert_count_times_3);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_vertices.data(), vert_count_times_3);
 
-        // Vertices
-        {
-            const auto vert_count = dalp::make_int32(header); header += 4;
-            const auto bas_joints = dalp::make_bool8(header); header += 1;
-            const auto vert_count_times_3 = vert_count * 3;
-            const auto vert_count_times_2 = vert_count * 2;
+        mesh.m_texcoords.resize(vert_count_times_2);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_texcoords.data(), vert_count_times_2);
 
-            unit.m_mesh.m_vertices.resize(vert_count_times_3);
-            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_vertices.data(), vert_count_times_3);
+        mesh.m_normals.resize(vert_count_times_3);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_normals.data(), vert_count_times_3);
 
-            unit.m_mesh.m_texcoords.resize(vert_count_times_2);
-            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_texcoords.data(), vert_count_times_2);
+        return header;
+    }
 
-            unit.m_mesh.m_normals.resize(vert_count_times_3);
-            header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_normals.data(), vert_count_times_3);
+    const uint8_t* parse_mesh(const uint8_t* header, const uint8_t* const end, dalp::Mesh_StraightJoint& mesh) {
+        const auto vert_count = dalp::make_int32(header); header += 4;
+        const auto vert_count_times_3 = vert_count * 3;
+        const auto vert_count_times_2 = vert_count * 2;
+        const auto vert_count_times_joint_count = vert_count * dal::parser::NUM_JOINTS_PER_VERTEX;
 
-            if ( bas_joints ) {
-                unit.m_mesh.m_boneWeights.resize(vert_count_times_3);
-                header = dalp::assemble_4_bytes_array<float>(header, unit.m_mesh.m_boneWeights.data(), vert_count_times_3);
+        mesh.m_vertices.resize(vert_count_times_3);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_vertices.data(), vert_count_times_3);
 
-                unit.m_mesh.m_boneIndex.resize(vert_count_times_3);
-                header = dalp::assemble_4_bytes_array<int32_t>(header, unit.m_mesh.m_boneIndex.data(), vert_count_times_3);
-            }
+        mesh.m_texcoords.resize(vert_count_times_2);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_texcoords.data(), vert_count_times_2);
+
+        mesh.m_normals.resize(vert_count_times_3);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_normals.data(), vert_count_times_3);
+
+        mesh.m_boneWeights.resize(vert_count_times_joint_count);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_boneWeights.data(), vert_count_times_joint_count);
+
+        mesh.m_boneIndex.resize(vert_count_times_joint_count);
+        header = dalp::assemble_4_bytes_array<int32_t>(header, mesh.m_boneIndex.data(), vert_count_times_joint_count);
+
+        return header;
+    }
+
+    const uint8_t* parse_mesh(const uint8_t* header, const uint8_t* const end, dalp::Mesh_Indexed& mesh) {
+        const auto vertex_count = dalp::make_int32(header); header += 4;
+        for (int32_t i = 0; i < vertex_count; ++i) {
+            auto& vert = mesh.m_vertices.emplace_back();
+
+            float fbuf[8];
+            header = dalp::assemble_4_bytes_array<float>(header, fbuf, 8);
+
+            vert.m_position = glm::vec3{ fbuf[0], fbuf[1], fbuf[2] };
+            vert.m_normal = glm::vec3{ fbuf[3], fbuf[4], fbuf[5] };
+            vert.m_uv_coords = glm::vec2{ fbuf[6], fbuf[7] };
         }
+
+        const auto index_count = dalp::make_int32(header); header += 4;
+        for (int32_t i = 0; i < index_count; ++i) {
+            mesh.m_indices.push_back(dalp::make_int32(header)); header += 4;
+        }
+
+        return header;
+    }
+
+    const uint8_t* parse_mesh(const uint8_t* header, const uint8_t* const end, dalp::Mesh_IndexedJoint& mesh) {
+        const auto vertex_count = dalp::make_int32(header); header += 4;
+        for (int32_t i = 0; i < vertex_count; ++i) {
+            auto& vert = mesh.m_vertices.emplace_back();
+
+            float fbuf[8];
+            header = dalp::assemble_4_bytes_array<float>(header, fbuf, 8);
+            float fbuf_joint[dal::parser::NUM_JOINTS_PER_VERTEX];
+            header = dalp::assemble_4_bytes_array<float>(header, fbuf_joint, dal::parser::NUM_JOINTS_PER_VERTEX);
+            int32_t ibuf_joint[dal::parser::NUM_JOINTS_PER_VERTEX];
+            header = dalp::assemble_4_bytes_array<int32_t>(header, ibuf_joint, dal::parser::NUM_JOINTS_PER_VERTEX);
+
+            vert.m_position = glm::vec3{ fbuf[0], fbuf[1], fbuf[2] };
+            vert.m_normal = glm::vec3{ fbuf[3], fbuf[4], fbuf[5] };
+            vert.m_uv_coords = glm::vec2{ fbuf[6], fbuf[7] };
+
+            static_assert(sizeof(vert.m_joint_weights.x) == sizeof(float));
+            static_assert(sizeof(vert.m_joint_indices.x) == sizeof(int32_t));
+            static_assert(sizeof(vert.m_joint_weights) == sizeof(float) * dal::parser::NUM_JOINTS_PER_VERTEX);
+            static_assert(sizeof(vert.m_joint_indices) == sizeof(int32_t) * dal::parser::NUM_JOINTS_PER_VERTEX);
+
+            memcpy(&vert.m_joint_weights, fbuf_joint, sizeof(vert.m_joint_weights));
+            memcpy(&vert.m_joint_indices, ibuf_joint, sizeof(vert.m_joint_indices));
+        }
+
+        const auto index_count = dalp::make_int32(header); header += 4;
+        for (int32_t i = 0; i < index_count; ++i) {
+            mesh.m_indices.push_back(dalp::make_int32(header)); header += 4;
+        }
+
+        return header;
+    }
+
+    template <typename _Mesh>
+    const uint8_t* parse_render_unit(const uint8_t* header, const uint8_t* const end, dalp::RenderUnit<_Mesh>& unit) {
+        unit.m_name = reinterpret_cast<const char*>(header); header += unit.m_name.size() + 1;
+        header = ::parse_material(header, end, unit.m_material);
+        header = ::parse_mesh(header, end, unit.m_mesh);
 
         return header;
     }
@@ -252,51 +320,70 @@ namespace {
 
 namespace dal::parser {
 
-    dal::parser::ModelParseResult parse_model_straight(const uint8_t* const buf, const size_t buf_size, Model_Straight& output) {
+    ModelParseResult unzip_dmd(std::vector<uint8_t>& output, const uint8_t* const file_content, const size_t content_size) {
         // Check magic numbers
-        if (!::is_magic_numbers_correct(buf)) {
+        if (!::is_magic_numbers_correct(file_content))
             return ModelParseResult::magic_numbers_dont_match;
-        }
 
         // Decompress
-        const auto unzipped = ::unzip_dal_model(buf, buf_size);
-        if (!unzipped) {
+        auto unzipped = ::unzip_dal_model(file_content, content_size);
+        if (!unzipped)
             return ModelParseResult::decompression_failed;
-        }
 
-        // Parsing
-        {
-            const uint8_t* const end = unzipped->data() + unzipped->size();
-            const uint8_t* header = unzipped->data();
-
-            header = ::parse_aabb(header, end, output.m_aabb);
-            header = ::parse_skeleton(header, end, output.m_skeleton);
-            header = ::parse_animations(header, end, output.m_animations);
-
-            const auto render_unit_count = dalp::make_int32(header); header += 4;
-            output.m_render_units.resize(render_unit_count);
-
-            for ( int i = 0; i < render_unit_count; ++i ) {
-                header = ::parse_render_unit_straight(header, end, output.m_render_units.at(i));
-            }
-
-            if (header != end) {
-                return ModelParseResult::corrupted_content;
-            }
-        }
-
+        output = std::move(*unzipped);
         return ModelParseResult::success;
     }
 
-    std::optional<Model_Straight> parse_model_straight(const uint8_t* const buf, const size_t buf_size) {
-        Model_Straight result;
+    std::optional<std::vector<uint8_t>> unzip_dmd(const uint8_t* const file_content, const size_t content_size) {
+        std::vector<uint8_t> output;
 
-        if (ModelParseResult::success != parse_model_straight(buf, buf_size, result)) {
+        if (ModelParseResult::success != dalp::unzip_dmd(output, file_content, content_size))
             return std::nullopt;
+        else
+            return output;
+    }
+
+    ModelParseResult parse_dmd(Model& output, const uint8_t* const unzipped_content, const size_t content_size) {
+        const uint8_t* const end = unzipped_content + content_size;
+        const uint8_t* header = unzipped_content;
+
+        header = ::parse_aabb(header, end, output.m_aabb);
+        header = ::parse_skeleton(header, end, output.m_skeleton);
+        header = ::parse_animations(header, end, output.m_animations);
+
+        output.m_units_straight.resize(dalp::make_int32(header)); header += 4;
+        for (auto& unit : output.m_units_straight) {
+            header = ::parse_render_unit(header, end, unit);
         }
-        else {
-            return result;
+
+        output.m_units_straight_joint.resize(dalp::make_int32(header)); header += 4;
+        for (auto& unit : output.m_units_straight_joint) {
+            header = ::parse_render_unit(header, end, unit);
         }
+
+        output.m_units_indexed.resize(dalp::make_int32(header)); header += 4;
+        for (auto& unit : output.m_units_indexed) {
+            header = ::parse_render_unit(header, end, unit);
+        }
+
+        output.m_units_indexed_joint.resize(dalp::make_int32(header)); header += 4;
+        for (auto& unit : output.m_units_indexed_joint) {
+            header = ::parse_render_unit(header, end, unit);
+        }
+
+        if (header != end)
+            return ModelParseResult::corrupted_content;
+        else
+            return ModelParseResult::success;
+    }
+
+    std::optional<Model> parse_dmd(const uint8_t* const unzipped_content, const size_t content_size) {
+        Model output;
+
+        if (ModelParseResult::success != dalp::parse_dmd(output, unzipped_content, content_size))
+            return std::nullopt;
+        else
+            return output;
     }
 
 }

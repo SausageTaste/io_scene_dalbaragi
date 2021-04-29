@@ -14,15 +14,35 @@ namespace dal::parser {
         glm::vec3 m_min, m_max;
     };
 
+
     struct Vertex {
-        glm::ivec3 m_joint_indices;
-        glm::vec3 m_joint_weights;
         glm::vec3 m_position;
         glm::vec3 m_normal;
         glm::vec2 m_uv_coords;
 
-        bool operator==(const Vertex& other) const;
+        bool operator==(const Vertex& other) const {
+            return this->is_equal(other);
+        }
+
+        bool is_equal(const Vertex& other) const;
     };
+
+    struct VertexJoint {
+        glm::ivec4 m_joint_indices;
+        glm::vec4 m_joint_weights;
+        glm::vec3 m_position;
+        glm::vec3 m_normal;
+        glm::vec2 m_uv_coords;
+
+        bool operator==(const VertexJoint& other) const {
+            return this->is_equal(other);
+        }
+
+        bool is_equal(const VertexJoint& other) const;
+    };
+
+    static_assert(sizeof(VertexJoint::m_joint_indices) == sizeof(VertexJoint::m_joint_weights));
+    constexpr int NUM_JOINTS_PER_VERTEX = sizeof(VertexJoint::m_joint_indices) / sizeof(float);
 
 
     struct Material {
@@ -37,20 +57,50 @@ namespace dal::parser {
         bool operator==(const Material& other) const;
     };
 
+
     struct Mesh_Straight {
-        std::vector<float> m_vertices, m_texcoords, m_normals, m_boneWeights;
-        std::vector<int32_t> m_boneIndex;
+        std::vector<float> m_vertices, m_texcoords, m_normals;
 
         void concat(const Mesh_Straight& other);
     };
 
-    struct Mesh_Indexed {
-        bool m_has_joints = false;
-        std::vector<Vertex> m_vertices;
+    struct Mesh_StraightJoint : public Mesh_Straight {
+        std::vector<float> m_boneWeights;
+        std::vector<int32_t> m_boneIndex;
+
+        void concat(const Mesh_StraightJoint& other);
+    };
+
+    template <typename _Vertex>
+    struct TMesh_Indexed {
+        std::vector<_Vertex> m_vertices;
         std::vector<uint32_t> m_indices;
 
-        void add_vertex(const Vertex& vert);
+        using VERT_TYPE = _Vertex;
+
+        void add_vertex(const _Vertex& vert) {
+            for (size_t i = 0; i < this->m_vertices.size(); ++i) {
+                if (vert == this->m_vertices[i]) {
+                    this->m_indices.push_back(i);
+                    return;
+                }
+            }
+
+            this->m_indices.push_back(this->m_vertices.size());
+            this->m_vertices.push_back(vert);
+        }
+
+        void concat(const TMesh_Indexed<_Vertex>& other) {
+            for (const auto index : other.m_indices) {
+                this->add_vertex(other.m_vertices[index]);
+            }
+        }
     };
+
+    using Mesh_Indexed = TMesh_Indexed<Vertex>;
+
+    using Mesh_IndexedJoint = TMesh_Indexed<VertexJoint>;
+
 
     template <typename _Mesh>
     struct RenderUnit {
@@ -58,7 +108,6 @@ namespace dal::parser {
         _Mesh m_mesh;
         Material m_material;
     };
-
 
     enum class JointType {
         basic        = 0,
@@ -97,15 +146,15 @@ namespace dal::parser {
     };
 
 
-    template <typename _Mesh>
-    struct IModel {
-        std::vector<RenderUnit<_Mesh>> m_render_units;
+    struct Model {
+        std::vector<RenderUnit<      Mesh_Straight >> m_units_straight;
+        std::vector<RenderUnit< Mesh_StraightJoint >> m_units_straight_joint;
+        std::vector<RenderUnit<       Mesh_Indexed >> m_units_indexed;
+        std::vector<RenderUnit<  Mesh_IndexedJoint >> m_units_indexed_joint;
+
         std::vector<Animation> m_animations;
         Skeleton m_skeleton;
         AABB3 m_aabb;
     };
-
-    using Model_Straight = IModel<Mesh_Straight>;
-    using Model_Indexed = IModel<Mesh_Indexed>;
 
 }

@@ -3,7 +3,15 @@
 
 namespace dal::parser {
 
-    bool Vertex::operator==(const Vertex& other) const {
+    bool Vertex::is_equal(const Vertex& other) const {
+        return (
+            this->m_position == other.m_position &&
+            this->m_uv_coords == other.m_uv_coords &&
+            this->m_normal == other.m_normal
+        );
+    }
+
+    bool VertexJoint::is_equal(const VertexJoint& other) const {
         return (
             this->m_position == other.m_position &&
             this->m_uv_coords == other.m_uv_coords &&
@@ -30,21 +38,13 @@ namespace dal::parser {
         this->m_vertices.insert(m_vertices.end(), other.m_vertices.begin(), other.m_vertices.end());
         this->m_texcoords.insert(m_texcoords.end(), other.m_texcoords.begin(), other.m_texcoords.end());
         this->m_normals.insert(m_normals.end(), other.m_normals.begin(), other.m_normals.end());
-        this->m_boneWeights.insert(m_boneWeights.end(), other.m_boneWeights.begin(), other.m_boneWeights.end());
-        this->m_boneIndex.insert(m_boneIndex.end(), other.m_boneIndex.begin(), other.m_boneIndex.end());
     }
 
+    void Mesh_StraightJoint::concat(const Mesh_StraightJoint& other) {
+        this->Mesh_Straight::concat(other);
 
-    void Mesh_Indexed::add_vertex(const Vertex& vert) {
-        for (size_t i = 0; i < this->m_vertices.size(); ++i) {
-            if (vert == this->m_vertices[i]) {
-                this->m_indices.push_back(i);
-                return;
-            }
-        }
-
-        this->m_indices.push_back(this->m_vertices.size());
-        this->m_vertices.push_back(vert);
+        this->m_boneWeights.insert(m_boneWeights.end(), other.m_boneWeights.begin(), other.m_boneWeights.end());
+        this->m_boneIndex.insert(m_boneIndex.end(), other.m_boneIndex.begin(), other.m_boneIndex.end());
     }
 
 

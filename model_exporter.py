@@ -1,10 +1,13 @@
-from typing import Iterable, Dict, Optional, List
+from typing import Iterable, Dict, Optional, List, Tuple
 
 import numpy as np
 
 from . import rawdata as rwd
 from . import smalltype as smt
 from . import byteutils as byt
+
+
+NUM_JOINTS_PER_VERTEX = 4
 
 
 def _make_joints_id_map(skeleton: rwd.Scene.Skeleton) -> Dict[str, int]:
@@ -23,6 +26,18 @@ def _make_aabb_of_models(models: Iterable[rwd.Scene.Model]) -> rwd.smt.AABB3:
         aabb = aabb + model.m_aabb
 
     return aabb
+
+def _divide_meshes_with_joints(scene: rwd.Scene, joint_id_map: Dict[str, int]):
+    units_with_joints: List[Tuple[str, rwd.Scene.RenderUnit]] = []
+    units_without_joints: List[Tuple[str, rwd.Scene.RenderUnit]] = []
+    for actor in scene.m_static_actors:
+        for unit in scene.m_models[actor.m_renderUnitID].m_renderUnits:
+            if unit.m_mesh.hasJoint() and (joint_id_map is not None):
+                units_with_joints.append((actor.m_name, unit))
+            else:
+                units_without_joints.append((actor.m_name, unit))
+
+    return units_with_joints, units_without_joints
 
 
 def _build_bin_mat4(mat: smt.Mat4) -> bytearray:
@@ -127,7 +142,7 @@ def _build_bin_animation(anim: rwd.Scene.Animation, id_map: Dict[str, int]) -> b
     return data
 
 # id_map is None if skeleton doesn't exist.
-def _build_bin_mesh(mesh: rwd.Scene.Mesh, id_map: Optional[Dict[str, int]]) -> bytearray:
+def _build_bin_mesh_without_joint(mesh: rwd.Scene.Mesh) -> Tuple[int, bytearray]:
     assert isinstance(mesh, rwd.Scene.Mesh)
 
     data = bytearray()
@@ -141,25 +156,30 @@ def _build_bin_mesh(mesh: rwd.Scene.Mesh, id_map: Optional[Dict[str, int]]) -> b
         raw_uv_coords.extend(v.m_uvCoord.xy)
         raw_normals.extend(v.m_normal.xyz)
 
-    has_skeleton = mesh.hasJoint() and (id_map is not None)
     num_vertices = mesh.size()
     v = np.array(raw_vertices, dtype=np.float32)
     t = np.array(raw_uv_coords, dtype=np.float32)
     n = np.array(raw_normals, dtype=np.float32)
 
     data += byt.to_int32(num_vertices)
-    data += byt.to_bool1(has_skeleton)
-
     data += v.tobytes()
     data += t.tobytes()
     data += n.tobytes()
 
-    if has_skeleton:
+    return num_vertices, data
+
+def _build_bin_mesh_with_joint(mesh: rwd.Scene.Mesh, id_map: Optional[Dict[str, int]]) -> bytearray:
+    assert isinstance(mesh, rwd.Scene.Mesh)
+    assert mesh.hasJoint() and (id_map is not None)
+
+    num_vertices, data = _build_bin_mesh_without_joint(mesh)
+
+    if True:
         raw_weights: List[float] = []
         raw_jids: List[int] = []
 
         for v in mesh.vertices():
-            weights_n_ids = [(0, -1), (0, -1), (0, -1)]
+            weights_n_ids: List[Tuple[float, int]] = [(0.0, -1) for _ in range(NUM_JOINTS_PER_VERTEX)]
             for j_weight, j_name in v.m_joints:
                 try:
                     joint_id = id_map[j_name]
@@ -168,51 +188,36 @@ def _build_bin_mesh(mesh: rwd.Scene.Mesh, id_map: Optional[Dict[str, int]]) -> b
                 else:
                     weights_n_ids.append((j_weight, joint_id))
             weights_n_ids.sort(reverse=True)
+            weight_sum = float(sum(xx[0] for xx in weights_n_ids[0:NUM_JOINTS_PER_VERTEX]))
 
-            w0 = weights_n_ids[0][0]
-            w1 = weights_n_ids[1][0]
-            w2 = weights_n_ids[2][0]
-            weight_sum = w0 + w1 + w2
-            weight_normalizer = (1.0 / weight_sum) if (0.0 != weight_sum) else 1.0
-
-            raw_weights.append(w0 * weight_normalizer)
-            raw_weights.append(w1 * weight_normalizer)
-            raw_weights.append(w2 * weight_normalizer)
-
-            raw_jids.append(weights_n_ids[0][1])
-            raw_jids.append(weights_n_ids[1][1])
-            raw_jids.append(weights_n_ids[2][1])
-
-            # print(smt.Vec3(w0, w1, w2), weights_n_ids[0][1], weights_n_ids[1][1], weights_n_ids[2][1])
+            if 0.0 == weight_sum:
+                for weight, jid in range(NUM_JOINTS_PER_VERTEX):
+                    raw_weights.append(weight)
+                    raw_jids.append(jid)
+            else:
+                weight_normalizer = 1.0 / weight_sum
+                for weight, jid in weights_n_ids[:NUM_JOINTS_PER_VERTEX]:
+                    raw_weights.append(weight * weight_normalizer)
+                    raw_jids.append(jid)
 
         bw = np.array(raw_weights, dtype=np.float32)
         bi = np.array(raw_jids, dtype=np.int32)
-        assert len(bw) == len(bi) == 3 * num_vertices
+        assert len(bw) == len(bi) == NUM_JOINTS_PER_VERTEX * num_vertices
 
         data += bw.tobytes()
         data += bi.tobytes()
 
     return data
 
-def _build_bin_render_unit(actor: rwd.Scene.StaticActor, unit: rwd.Scene.RenderUnit, id_map: Optional[Dict[str, int]]):
-    assert isinstance(actor, rwd.Scene.StaticActor)
-    assert isinstance(unit, rwd.Scene.RenderUnit)
-
+def _build_bin_material(material: rwd.Scene.Material) -> bytearray:
     data = bytearray()
 
-    data += byt.to_nullTerminated(actor.m_name)
-
-    # Material
-    material: rwd.Scene.Material = unit.m_material
     data += byt.to_float32(material.m_roughness)
     data += byt.to_float32(material.m_metallic)
     data += byt.to_nullTerminated(material.m_albedoMap)
     data += byt.to_nullTerminated(material.m_roughnessMap)
     data += byt.to_nullTerminated(material.m_metallicMap)
     data += byt.to_nullTerminated(material.m_normalMap)
-
-    # Mesh
-    data += _build_bin_mesh(unit.m_mesh, id_map)
 
     return data
 
@@ -226,7 +231,7 @@ def make_binary_dmd(scene: rwd.Scene):
     aabb = _make_aabb_of_models(xx for xx in scene.m_models.values())
     data += _build_bin_aabb(aabb)
 
-    joint_id_map = None
+    joint_id_map: Optional[Dict[str, int]] = None
     if 0 == len(scene.m_skeletons):
         data += byt.to_int32(0)  # 0 joints
         data += byt.to_int32(0)  # 0 animations
@@ -243,15 +248,22 @@ def make_binary_dmd(scene: rwd.Scene):
         raise RuntimeError("multiple armatures are not supported!")
 
     # Models
-    units_count = 0
-    for actor in scene.m_static_actors:
-        model = scene.m_models[actor.m_renderUnitID]
-        units_count += len(model.m_renderUnits)
+    units_with_joints, units_without_joints = _divide_meshes_with_joints(scene, joint_id_map)
 
-    data += byt.to_int32(units_count)
-    for actor in scene.m_static_actors:
-        model = scene.m_models[actor.m_renderUnitID]
-        for unit in model.m_renderUnits:
-            data += _build_bin_render_unit(actor, unit, joint_id_map)
+    data += byt.to_int32(len(units_without_joints))
+    for name, unit in units_without_joints:
+        data += byt.to_nullTerminated(name)
+        data += _build_bin_material(unit.m_material)
+        data += _build_bin_mesh_without_joint(unit.m_mesh)[1]
+
+    data += byt.to_int32(len(units_with_joints))
+    for name, unit in units_with_joints:
+        data += byt.to_nullTerminated(name)
+        data += _build_bin_material(unit.m_material)
+        data += _build_bin_mesh_with_joint(unit.m_mesh, joint_id_map)
+
+    # Placeholders for indexed mesh list
+    data += byt.to_int32(0)
+    data += byt.to_int32(0)
 
     return data
