@@ -7,6 +7,9 @@ from . import smalltype as smt
 from . import byteutils as byt
 
 
+NUM_JOINTS_PER_VERTEX = 4
+
+
 def _make_joints_id_map(skeleton: rwd.Scene.Skeleton) -> Dict[str, int]:
     result = dict()
 
@@ -176,7 +179,7 @@ def _build_bin_mesh_with_joint(mesh: rwd.Scene.Mesh, id_map: Optional[Dict[str, 
         raw_jids: List[int] = []
 
         for v in mesh.vertices():
-            weights_n_ids = [(0, -1), (0, -1), (0, -1)]
+            weights_n_ids: List[Tuple[float, int]] = [(0.0, -1) for _ in range(NUM_JOINTS_PER_VERTEX)]
             for j_weight, j_name in v.m_joints:
                 try:
                     joint_id = id_map[j_name]
@@ -185,26 +188,21 @@ def _build_bin_mesh_with_joint(mesh: rwd.Scene.Mesh, id_map: Optional[Dict[str, 
                 else:
                     weights_n_ids.append((j_weight, joint_id))
             weights_n_ids.sort(reverse=True)
+            weight_sum = float(sum(xx[0] for xx in weights_n_ids[0:NUM_JOINTS_PER_VERTEX]))
 
-            w0 = weights_n_ids[0][0]
-            w1 = weights_n_ids[1][0]
-            w2 = weights_n_ids[2][0]
-            weight_sum = w0 + w1 + w2
-            weight_normalizer = (1.0 / weight_sum) if (0.0 != weight_sum) else 1.0
-
-            raw_weights.append(w0 * weight_normalizer)
-            raw_weights.append(w1 * weight_normalizer)
-            raw_weights.append(w2 * weight_normalizer)
-
-            raw_jids.append(weights_n_ids[0][1])
-            raw_jids.append(weights_n_ids[1][1])
-            raw_jids.append(weights_n_ids[2][1])
-
-            # print(smt.Vec3(w0, w1, w2), weights_n_ids[0][1], weights_n_ids[1][1], weights_n_ids[2][1])
+            if 0.0 == weight_sum:
+                for weight, jid in range(NUM_JOINTS_PER_VERTEX):
+                    raw_weights.append(weight)
+                    raw_jids.append(jid)
+            else:
+                weight_normalizer = 1.0 / weight_sum
+                for weight, jid in weights_n_ids[:NUM_JOINTS_PER_VERTEX]:
+                    raw_weights.append(weight * weight_normalizer)
+                    raw_jids.append(jid)
 
         bw = np.array(raw_weights, dtype=np.float32)
         bi = np.array(raw_jids, dtype=np.int32)
-        assert len(bw) == len(bi) == 3 * num_vertices
+        assert len(bw) == len(bi) == NUM_JOINTS_PER_VERTEX * num_vertices
 
         data += bw.tobytes()
         data += bi.tobytes()
