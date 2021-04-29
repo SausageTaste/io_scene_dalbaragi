@@ -51,3 +51,8 @@ add_test(test_1 dal_parser_test_1)
 
 target_link_libraries(dal_parser_test_1 PRIVATE dalbaragi_model_parser)
 target_include_directories(dal_parser_test_1 PRIVATE .)
+
+
+######## App ########
+
+add_subdirectory(./app)
