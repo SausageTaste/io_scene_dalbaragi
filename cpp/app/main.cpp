@@ -95,6 +95,7 @@ namespace {
 
         bool m_work_indexing = false;
         bool m_work_merge_by_material = false;
+        bool m_work_flip_uv_coord_v = false;
 
     public:
         ArgParser(int argc, char** argv) {
@@ -132,6 +133,10 @@ namespace {
             return this->m_work_merge_by_material;
         }
 
+        bool work_flip_uv_coord_v() const {
+            return this->m_work_flip_uv_coord_v;
+        }
+
     private:
         void parse(const int argc, const char *const *const argv) {
             using namespace std::string_literals;
@@ -155,6 +160,9 @@ namespace {
                         case 'm':
                             this->m_work_merge_by_material = true;
                             break;
+                        case 'v':
+                            this->m_work_flip_uv_coord_v = true;
+                            break;
                         default:
                             throw std::runtime_error{ "unkown argument: "s + one };
                     }
@@ -172,6 +180,39 @@ namespace {
 }
 
 
+namespace {
+
+    void flip_uv_vertically(dal::parser::Mesh_Straight& mesh) {
+        const auto vert_size = mesh.m_vertices.size() / 3;
+
+        for (size_t i = 0; i < vert_size; ++i) {
+            mesh.m_texcoords[2 * i + 1] = 1.f - mesh.m_texcoords[2 * i + 1];
+        }
+    }
+
+    void flip_uv_vertically(dal::parser::Mesh_StraightJoint& mesh) {
+        const auto vert_size = mesh.m_vertices.size() / 3;
+
+        for (size_t i = 0; i < vert_size; ++i) {
+            mesh.m_texcoords[2 * i + 1] = 1.f - mesh.m_texcoords[2 * i + 1];
+        }
+    }
+
+    void flip_uv_vertically(dal::parser::Mesh_Indexed& mesh) {
+        for (auto& vert : mesh.m_vertices) {
+            vert.m_uv_coords.y = 1.f - vert.m_uv_coords.y;
+        }
+    }
+
+    void flip_uv_vertically(dal::parser::Mesh_IndexedJoint& mesh) {
+        for (auto& vert : mesh.m_vertices) {
+            vert.m_uv_coords.y = 1.f - vert.m_uv_coords.y;
+        }
+    }
+
+}
+
+
 int main(int argc, char* argv[]) try {
     namespace dalp = dal::parser;
 
@@ -184,6 +225,26 @@ int main(int argc, char* argv[]) try {
     timer.check();
     auto model = ::load_model(parser.source_path().c_str());
     std::cout << " done (" << timer.get_elapsed() << ")\n";
+
+    if (parser.work_flip_uv_coord_v()) {
+        std::cout << "    Flipping uv coords vertically";
+        timer.check();
+
+        for (auto& unit : model.m_units_straight) {
+            ::flip_uv_vertically(unit.m_mesh);
+        }
+        for (auto& unit : model.m_units_straight_joint) {
+            ::flip_uv_vertically(unit.m_mesh);
+        }
+        for (auto& unit : model.m_units_indexed) {
+            ::flip_uv_vertically(unit.m_mesh);
+        }
+        for (auto& unit : model.m_units_indexed_joint) {
+            ::flip_uv_vertically(unit.m_mesh);
+        }
+
+        std::cout << " done (" << timer.get_elapsed() << ")\n";
+    }
 
     if (parser.work_merge_by_material()) {
         std::cout << "    Merging by material";
