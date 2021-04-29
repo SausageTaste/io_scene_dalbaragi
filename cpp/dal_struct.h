@@ -14,6 +14,7 @@ namespace dal::parser {
         glm::vec3 m_min, m_max;
     };
 
+
     struct Vertex {
         glm::vec3 m_position;
         glm::vec3 m_normal;
@@ -27,8 +28,8 @@ namespace dal::parser {
     };
 
     struct VertexJoint {
-        glm::ivec3 m_joint_indices;
-        glm::vec3 m_joint_weights;
+        glm::ivec4 m_joint_indices;
+        glm::vec4 m_joint_weights;
         glm::vec3 m_position;
         glm::vec3 m_normal;
         glm::vec2 m_uv_coords;
@@ -39,6 +40,9 @@ namespace dal::parser {
 
         bool is_equal(const VertexJoint& other) const;
     };
+
+    static_assert(sizeof(VertexJoint::m_joint_indices) == sizeof(VertexJoint::m_joint_weights));
+    constexpr int NUM_JOINTS_PER_VERTEX = sizeof(VertexJoint::m_joint_indices) / sizeof(float);
 
 
     struct Material {

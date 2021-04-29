@@ -281,8 +281,8 @@ namespace {
     ::BinaryBuildBuffer build_bin_mesh_straight_joint(const dalp::Mesh_StraightJoint& mesh) {
         ::BinaryBuildBuffer output;
 
-        assert(mesh.m_vertices.size() == mesh.m_boneIndex.size());
-        assert(mesh.m_vertices.size() == mesh.m_boneWeights.size());
+        assert(mesh.m_vertices.size() * dal::parser::NUM_JOINTS_PER_VERTEX == mesh.m_boneIndex.size() * 3);
+        assert(mesh.m_vertices.size() * dal::parser::NUM_JOINTS_PER_VERTEX == mesh.m_boneWeights.size() * 3);
 
         output += ::build_bin_mesh_straight(mesh);
 
@@ -320,7 +320,7 @@ namespace {
 
     ::BinaryBuildBuffer build_bin_mesh_indexed_joint(const dalp::Mesh_IndexedJoint& mesh) {
         ::BinaryBuildBuffer output;
-        static_assert(56 == sizeof(dalp::Mesh_IndexedJoint::VERT_TYPE));
+        static_assert(64 == sizeof(dalp::Mesh_IndexedJoint::VERT_TYPE));
 
         output.append_int32(mesh.m_vertices.size());
         for (auto& vert : mesh.m_vertices) {
@@ -338,10 +338,12 @@ namespace {
             output.append_float32(vert.m_joint_weights.x);
             output.append_float32(vert.m_joint_weights.y);
             output.append_float32(vert.m_joint_weights.z);
+            output.append_float32(vert.m_joint_weights.w);
 
             output.append_int32(vert.m_joint_indices.x);
             output.append_int32(vert.m_joint_indices.y);
             output.append_int32(vert.m_joint_indices.z);
+            output.append_int32(vert.m_joint_indices.w);
         }
 
         output.append_int32(mesh.m_indices.size());

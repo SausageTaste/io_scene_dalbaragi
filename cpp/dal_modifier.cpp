@@ -6,7 +6,7 @@ namespace {
     void fill_mesh_skinned(dal::parser::Mesh_IndexedJoint& output, const dal::parser::Mesh_StraightJoint& input) {
         const auto vertex_count = input.m_vertices.size() / 3;
 
-        for (int i = 0; i < vertex_count; ++i) {
+        for (size_t i = 0; i < vertex_count; ++i) {
             dal::parser::VertexJoint vert;
 
             vert.m_position = glm::vec3{
@@ -26,16 +26,20 @@ namespace {
                 input.m_normals[3 * i + 2]
             };
 
-            vert.m_joint_weights = glm::vec3{
-                input.m_boneWeights[3 * i + 0],
-                input.m_boneWeights[3 * i + 1],
-                input.m_boneWeights[3 * i + 2]
+            static_assert(4 == dal::parser::NUM_JOINTS_PER_VERTEX);
+
+            vert.m_joint_weights = glm::vec4{
+                input.m_boneWeights[dal::parser::NUM_JOINTS_PER_VERTEX * i + 0],
+                input.m_boneWeights[dal::parser::NUM_JOINTS_PER_VERTEX * i + 1],
+                input.m_boneWeights[dal::parser::NUM_JOINTS_PER_VERTEX * i + 2],
+                input.m_boneWeights[dal::parser::NUM_JOINTS_PER_VERTEX * i + 3]
             };
 
-            vert.m_joint_indices = glm::ivec3{
-                input.m_boneIndex[3 * i + 0],
-                input.m_boneIndex[3 * i + 1],
-                input.m_boneIndex[3 * i + 2]
+            vert.m_joint_indices = glm::ivec4{
+                input.m_boneIndex[dal::parser::NUM_JOINTS_PER_VERTEX * i + 0],
+                input.m_boneIndex[dal::parser::NUM_JOINTS_PER_VERTEX * i + 1],
+                input.m_boneIndex[dal::parser::NUM_JOINTS_PER_VERTEX * i + 2],
+                input.m_boneIndex[dal::parser::NUM_JOINTS_PER_VERTEX * i + 3]
             };
 
             output.add_vertex(vert);
@@ -107,8 +111,8 @@ namespace dal::parser {
         const auto vertex_count = input.m_vertices.size() / 3;
         assert(2 * vertex_count == input.m_texcoords.size());
         assert(3 * vertex_count == input.m_normals.size());
-        assert(3 * vertex_count == input.m_boneIndex.size());
-        assert(3 * vertex_count == input.m_boneWeights.size());
+        assert(dal::parser::NUM_JOINTS_PER_VERTEX * vertex_count == input.m_boneIndex.size());
+        assert(dal::parser::NUM_JOINTS_PER_VERTEX * vertex_count == input.m_boneWeights.size());
 
         ::fill_mesh_skinned(output, input);
 

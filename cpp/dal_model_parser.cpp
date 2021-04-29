@@ -232,6 +232,7 @@ namespace {
         const auto vert_count = dalp::make_int32(header); header += 4;
         const auto vert_count_times_3 = vert_count * 3;
         const auto vert_count_times_2 = vert_count * 2;
+        const auto vert_count_times_joint_count = vert_count * dal::parser::NUM_JOINTS_PER_VERTEX;
 
         mesh.m_vertices.resize(vert_count_times_3);
         header = dalp::assemble_4_bytes_array<float>(header, mesh.m_vertices.data(), vert_count_times_3);
@@ -242,11 +243,11 @@ namespace {
         mesh.m_normals.resize(vert_count_times_3);
         header = dalp::assemble_4_bytes_array<float>(header, mesh.m_normals.data(), vert_count_times_3);
 
-        mesh.m_boneWeights.resize(vert_count_times_3);
-        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_boneWeights.data(), vert_count_times_3);
+        mesh.m_boneWeights.resize(vert_count_times_joint_count);
+        header = dalp::assemble_4_bytes_array<float>(header, mesh.m_boneWeights.data(), vert_count_times_joint_count);
 
-        mesh.m_boneIndex.resize(vert_count_times_3);
-        header = dalp::assemble_4_bytes_array<int32_t>(header, mesh.m_boneIndex.data(), vert_count_times_3);
+        mesh.m_boneIndex.resize(vert_count_times_joint_count);
+        header = dalp::assemble_4_bytes_array<int32_t>(header, mesh.m_boneIndex.data(), vert_count_times_joint_count);
 
         return header;
     }
@@ -277,16 +278,24 @@ namespace {
         for (int32_t i = 0; i < vertex_count; ++i) {
             auto& vert = mesh.m_vertices.emplace_back();
 
-            float fbuf[11];
-            header = dalp::assemble_4_bytes_array<float>(header, fbuf, 11);
-            int32_t ibuf[3];
-            header = dalp::assemble_4_bytes_array<int32_t>(header, ibuf, 3);
+            float fbuf[8];
+            header = dalp::assemble_4_bytes_array<float>(header, fbuf, 8);
+            float fbuf_joint[dal::parser::NUM_JOINTS_PER_VERTEX];
+            header = dalp::assemble_4_bytes_array<float>(header, fbuf_joint, dal::parser::NUM_JOINTS_PER_VERTEX);
+            int32_t ibuf_joint[dal::parser::NUM_JOINTS_PER_VERTEX];
+            header = dalp::assemble_4_bytes_array<int32_t>(header, ibuf_joint, dal::parser::NUM_JOINTS_PER_VERTEX);
 
             vert.m_position = glm::vec3{ fbuf[0], fbuf[1], fbuf[2] };
             vert.m_normal = glm::vec3{ fbuf[3], fbuf[4], fbuf[5] };
             vert.m_uv_coords = glm::vec2{ fbuf[6], fbuf[7] };
-            vert.m_joint_weights = glm::vec3{ fbuf[8], fbuf[9], fbuf[10] };
-            vert.m_joint_indices = glm::ivec3{ ibuf[0], ibuf[1], ibuf[2] };
+
+            static_assert(sizeof(vert.m_joint_weights.x) == sizeof(float));
+            static_assert(sizeof(vert.m_joint_indices.x) == sizeof(int32_t));
+            static_assert(sizeof(vert.m_joint_weights) == sizeof(float) * dal::parser::NUM_JOINTS_PER_VERTEX);
+            static_assert(sizeof(vert.m_joint_indices) == sizeof(int32_t) * dal::parser::NUM_JOINTS_PER_VERTEX);
+
+            memcpy(&vert.m_joint_weights, fbuf_joint, sizeof(vert.m_joint_weights));
+            memcpy(&vert.m_joint_indices, ibuf_joint, sizeof(vert.m_joint_indices));
         }
 
         const auto index_count = dalp::make_int32(header); header += 4;
