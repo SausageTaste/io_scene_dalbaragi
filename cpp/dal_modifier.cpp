@@ -76,16 +76,34 @@ namespace {
     }
 
 
-    using render_unit_straight_t = dal::parser::RenderUnit<dal::parser::Mesh_Straight>;
-
-    render_unit_straight_t* find_same_material(const render_unit_straight_t& criteria, std::vector<render_unit_straight_t>& render_units) {
-        for (auto& x : render_units) {
-            if (x.m_material == criteria.m_material) {
+    template <typename _Mesh>
+    dal::parser::RenderUnit<_Mesh>* find_same_material(const dal::parser::RenderUnit<_Mesh>& criteria, std::vector<dal::parser::RenderUnit<_Mesh>>& units) {
+        for (auto& x : units)
+            if (x.m_material == criteria.m_material)
                 return &x;
-            }
-        }
 
         return nullptr;
+    };
+
+    template <typename _Mesh>
+    std::vector<dal::parser::RenderUnit<_Mesh>> merge_by_material(const std::vector<dal::parser::RenderUnit<_Mesh>>& units) {
+        std::vector<dal::parser::RenderUnit<_Mesh>> output;
+        if (units.empty())
+            return output;
+
+        output.push_back(units[0]);
+
+        for (size_t i = 1; i < units.size(); ++i) {
+            const auto& this_unit = units[i];
+            auto dst_unit = ::find_same_material(this_unit, output);
+
+            if (nullptr != dst_unit)
+                dst_unit->m_mesh.concat(this_unit.m_mesh);
+            else
+                output.push_back(this_unit);
+        }
+
+        return output;
     }
 
 }
@@ -119,29 +137,21 @@ namespace dal::parser {
         return output;
     }
 
-    /*
-    Model_Straight merge_by_material(const Model_Straight& model) {
-        dal::parser::Model_Straight output;
 
-        output.m_aabb = model.m_aabb;
-        output.m_animations = model.m_animations;
-        output.m_skeleton = model.m_skeleton;
-
-        output.m_render_units.push_back(model.m_render_units.at(0));
-
-        for (size_t i = 1; i < model.m_render_units.size(); ++i) {
-            const auto& this_unit = model.m_render_units[i];
-            auto dst_unit = ::find_same_material(this_unit, output.m_render_units);
-            if (nullptr != dst_unit) {
-                dst_unit->m_mesh.concat(this_unit.m_mesh);
-            }
-            else {
-                output.m_render_units.push_back(this_unit);
-            }
-        }
-
-        return output;
+    std::vector<RenderUnit<Mesh_Straight>> merge_by_material(const std::vector<RenderUnit<Mesh_Straight>>& units) {
+        return ::merge_by_material(units);
     }
-    */
+
+    std::vector<RenderUnit<Mesh_StraightJoint>> merge_by_material(const std::vector<RenderUnit<Mesh_StraightJoint>>& units) {
+        return ::merge_by_material(units);
+    }
+
+    std::vector<RenderUnit<Mesh_Indexed>> merge_by_material(const std::vector<RenderUnit<Mesh_Indexed>>& units) {
+        return ::merge_by_material(units);
+    }
+
+    std::vector<RenderUnit<Mesh_IndexedJoint>> merge_by_material(const std::vector<RenderUnit<Mesh_IndexedJoint>>& units) {
+        return ::merge_by_material(units);
+    }
 
 }

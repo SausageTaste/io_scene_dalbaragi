@@ -89,6 +89,12 @@ namespace dal::parser {
             this->m_indices.push_back(this->m_vertices.size());
             this->m_vertices.push_back(vert);
         }
+
+        void concat(const TMesh_Indexed<_Vertex>& other) {
+            for (const auto index : other.m_indices) {
+                this->add_vertex(other.m_vertices[index]);
+            }
+        }
     };
 
     using Mesh_Indexed = TMesh_Indexed<Vertex>;

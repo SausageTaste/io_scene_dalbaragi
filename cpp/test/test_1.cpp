@@ -174,27 +174,43 @@ namespace {
         std::cout << "        joints: " << model->m_skeleton.m_joints.size() << std::endl;
         std::cout << "        animations: " << model->m_animations.size() << std::endl;
 
-        const auto binary = dal::parser::build_binary_model(*model);
-        const auto zipped_second = dalp::zip_binary_model(binary->data(), binary->size());
-        const auto unzipped_second = dalp::unzip_dmd(zipped_second->data(), zipped_second->size());
-        const auto model_second = dal::parser::parse_dmd(unzipped_second->data(), unzipped_second->size());
+        {
+            const auto binary = dal::parser::build_binary_model(*model);
+            const auto zipped_second = dalp::zip_binary_model(binary->data(), binary->size());
+            const auto unzipped_second = dalp::unzip_dmd(zipped_second->data(), zipped_second->size());
+            const auto model_second = dal::parser::parse_dmd(unzipped_second->data(), unzipped_second->size());
 
-        std::cout << "    * Second model parsed" << std::endl;
-        std::cout << "        render units straight:       " << model_second->m_units_straight.size() << std::endl;
-        std::cout << "        render units straight joint: " << model_second->m_units_straight_joint.size() << std::endl;
-        std::cout << "        render units indexed:        " << model_second->m_units_indexed.size() << std::endl;
-        std::cout << "        render units indexed joint:  " << model_second->m_units_indexed_joint.size() << std::endl;
-        std::cout << "        joints: " << model_second->m_skeleton.m_joints.size() << std::endl;
-        std::cout << "        animations: " << model_second->m_animations.size() << std::endl;
+            std::cout << "    * Second model parsed" << std::endl;
+            std::cout << "        render units straight:       " << model_second->m_units_straight.size() << std::endl;
+            std::cout << "        render units straight joint: " << model_second->m_units_straight_joint.size() << std::endl;
+            std::cout << "        render units indexed:        " << model_second->m_units_indexed.size() << std::endl;
+            std::cout << "        render units indexed joint:  " << model_second->m_units_indexed_joint.size() << std::endl;
+            std::cout << "        joints: " << model_second->m_skeleton.m_joints.size() << std::endl;
+            std::cout << "        animations: " << model_second->m_animations.size() << std::endl;
 
-        std::cout << "    * Built binary" << std::endl;
-        std::cout << "        original zipped   binary size: " << zipped.size() << std::endl;
-        std::cout << "        original unzipped binary size: " << unzipped->size() << std::endl;
-        std::cout << "        built    zipped   binary size: " << zipped_second->size() << std::endl;
-        std::cout << "        built    unzipped binary size: " << unzipped_second->size() << std::endl;
-        std::cout << "        compare: " << ::compare_binary_buffers(*unzipped_second, *unzipped) << std::endl;
+            std::cout << "    * Built binary" << std::endl;
+            std::cout << "        original zipped   binary size: " << zipped.size() << std::endl;
+            std::cout << "        original unzipped binary size: " << unzipped->size() << std::endl;
+            std::cout << "        built    zipped   binary size: " << zipped_second->size() << std::endl;
+            std::cout << "        built    unzipped binary size: " << unzipped_second->size() << std::endl;
+            std::cout << "        compare: " << ::compare_binary_buffers(*unzipped_second, *unzipped) << std::endl;
 
-        ::compare_models(*model, *model_second);
+            ::compare_models(*model, *model_second);
+        }
+
+        {
+            const auto merged_0 = dalp::merge_by_material(model->m_units_straight);
+            const auto merged_1 = dalp::merge_by_material(model->m_units_straight_joint);
+            const auto merged_2 = dalp::merge_by_material(model->m_units_indexed);
+            const auto merged_3 = dalp::merge_by_material(model->m_units_indexed_joint);
+
+            const auto before = model->m_units_straight.size() + model->m_units_straight_joint.size() + model->m_units_indexed.size() + model->m_units_indexed_joint.size();
+            const auto after = merged_0.size() + merged_1.size() + merged_2.size() + merged_3.size();
+
+            std::cout << "    * Merging by material" << std::endl;
+            std::cout << "        before: " << before << std::endl;
+            std::cout << "        after : " << after << std::endl;
+        }
     }
 
     void test_a_model(const std::string& model_path) {

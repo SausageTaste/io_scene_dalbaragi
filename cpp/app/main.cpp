@@ -27,7 +27,7 @@ namespace {
             this->m_last_checked = std::chrono::steady_clock::now();
         }
 
-        double get_elapsed() const const {
+        double get_elapsed() const {
             const auto deltaTime_microsec = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - this->m_last_checked).count();
             return static_cast<double>(deltaTime_microsec) / static_cast<double>(MISCROSEC_PER_SEC);
         }
@@ -94,6 +94,7 @@ namespace {
         std::string m_source_path, m_output_path;
 
         bool m_work_indexing = false;
+        bool m_work_merge_by_material = false;
 
     public:
         ArgParser(int argc, char** argv) {
@@ -127,6 +128,10 @@ namespace {
             return this->m_work_indexing;
         }
 
+        bool work_merge_by_material() const {
+            return this->m_work_merge_by_material;
+        }
+
     private:
         void parse(const int argc, const char *const *const argv) {
             using namespace std::string_literals;
@@ -146,6 +151,9 @@ namespace {
                             break;
                         case 'i':
                             this->m_work_indexing = true;
+                            break;
+                        case 'm':
+                            this->m_work_merge_by_material = true;
                             break;
                         default:
                             throw std::runtime_error{ "unkown argument: "s + one };
@@ -176,6 +184,18 @@ int main(int argc, char* argv[]) try {
     timer.check();
     auto model = ::load_model(parser.source_path().c_str());
     std::cout << " done (" << timer.get_elapsed() << ")\n";
+
+    if (parser.work_merge_by_material()) {
+        std::cout << "    Merging by material";
+        timer.check();
+
+        model.m_units_straight = dal::parser::merge_by_material(model.m_units_straight);
+        model.m_units_straight_joint = dal::parser::merge_by_material(model.m_units_straight_joint);
+        model.m_units_indexed = dal::parser::merge_by_material(model.m_units_indexed);
+        model.m_units_indexed_joint = dal::parser::merge_by_material(model.m_units_indexed_joint);
+
+        std::cout << " done (" << timer.get_elapsed() << ")\n";
+    }
 
     if (parser.work_indexing()) {
         std::cout << "    Indexing";
