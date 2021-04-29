@@ -244,12 +244,12 @@ namespace {
 
 
 int main() {
-    //::create_indexed_model(::find_cpp_path() + "/test/irin.dmd", ::find_cpp_path() + "/test/irin_indexed.dmd");
-    //::create_indexed_model(::find_cpp_path() + "/test/sponza.dmd", ::find_cpp_path() + "/test/sponza_indexed.dmd");
+    for (auto entry : std::filesystem::directory_iterator(::find_cpp_path() + "/test")) {
+        if (entry.path().extension().string() == ".dmd") {
+            std::cout << std::endl;
+            ::test_a_model(entry.path().string());
+        }
+    }
 
-    std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/irin.dmd");
-    std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/irin_indexed.dmd");
-    std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/sponza.dmd");
-    std::cout << std::endl; ::test_a_model(::find_cpp_path() + "/test/sponza_indexed.dmd");
     std::cout << std::endl; ::test_byte_tools();
 }
