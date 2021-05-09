@@ -70,7 +70,7 @@ class _MaterialParser:
             return None
         elif cls.NODE_GROUP == linked_shader.bl_idname:
             if "XPS Shader" == linked_shader.node_tree.name_full:
-                return cls.__parse_xps_shader(linked_shader)
+                return cls.__parse_xps_shader(linked_shader, alpha_blend_enabled)
             else:
                 raise RuntimeError("[DAL] Not supported shader type: {}".format(linked_shader.node_tree.name_full))
         else:
@@ -132,8 +132,10 @@ class _MaterialParser:
         return material
 
     @classmethod
-    def __parse_xps_shader(cls, linked_shader):
+    def __parse_xps_shader(cls, linked_shader, alpha_blend: bool):
         material = rwd.Scene.Material()
+
+        material.m_alphaBlend = alpha_blend
 
         image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, linked_shader.inputs["Diffuse"])
         if image_node is not None:
