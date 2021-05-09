@@ -214,6 +214,7 @@ def _build_bin_material(material: rwd.Scene.Material) -> bytearray:
 
     data += byt.to_float32(material.m_roughness)
     data += byt.to_float32(material.m_metallic)
+    data += byt.to_bool1(material.m_alphaBlend)
     data += byt.to_nullTerminated(material.m_albedoMap)
     data += byt.to_nullTerminated(material.m_roughnessMap)
     data += byt.to_nullTerminated(material.m_metallicMap)
