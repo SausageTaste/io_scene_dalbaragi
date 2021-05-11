@@ -26,6 +26,10 @@ namespace {
             return *this;
         }
 
+        void append_bool8(const bool v) {
+            this->m_data.push_back(v ? 1 : 0);
+        }
+
         void append_int32(const int32_t v) {
             this->append_4_bytes(v);
         }
@@ -254,6 +258,7 @@ namespace {
 
         output.append_float32(material.m_roughness);
         output.append_float32(material.m_metallic);
+        output.append_bool8(material.alpha_blend);
         output.append_str(material.m_albedo_map);
         output.append_str(material.m_roughness_map);
         output.append_str(material.m_metallic_map);

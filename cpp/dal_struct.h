@@ -53,6 +53,7 @@ namespace dal::parser {
         std::string m_emision_map;
         float m_roughness = 0.5;
         float m_metallic = 1;
+        bool alpha_blend = false;
 
         bool operator==(const Material& other) const;
     };
