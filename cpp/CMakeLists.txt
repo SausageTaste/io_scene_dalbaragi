@@ -1,8 +1,27 @@
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.11.0)
+
+include(FetchContent)
 
 project(Dalbaragi-Model-Parser
     LANGUAGES CXX
 )
+
+
+# Definitions
+# ----------------------------------------------------------------------------------
+
+FetchContent_Declare(
+    fetch_glm
+    GIT_REPOSITORY https://github.com/g-truc/glm
+    GIT_TAG        0.9.9.8
+)
+
+FetchContent_Declare(
+    fetch_zlib
+    GIT_REPOSITORY https://github.com/madler/zlib
+)
+
+FetchContent_MakeAvailable(fetch_glm)
 
 
 add_library(dalbaragi_model_parser
@@ -16,32 +35,26 @@ target_include_directories(dalbaragi_model_parser PUBLIC .)
 target_compile_features(dalbaragi_model_parser PUBLIC cxx_std_17)
 
 
-######## Import libraries ########
+# Import libraries
+# ----------------------------------------------------------------------------------
 
-set(extern_dir ${CMAKE_CURRENT_SOURCE_DIR}/extern)
-
-
-# zlib
 if (ANDROID)
     target_link_libraries(dalbaragi_model_parser PRIVATE z)
 
 else()
-    if (NOT TARGET zlibstatic)
-        add_subdirectory(${extern_dir}/zlib ${CMAKE_CURRENT_BINARY_DIR}/zlib)
-    endif()
+    FetchContent_MakeAvailable(fetch_zlib)
     target_link_libraries(dalbaragi_model_parser PRIVATE zlibstatic)
-    target_include_directories(dalbaragi_model_parser PRIVATE ${extern_dir}/zlib ${CMAKE_CURRENT_BINARY_DIR}/zlib)
+    target_include_directories(dalbaragi_model_parser PRIVATE ${fetch_zlib_SOURCE_DIR} ${fetch_zlib_BINARY_DIR})
 
 endif()
 
-# GLM
-target_include_directories(dalbaragi_model_parser PUBLIC ${extern_dir}/glm)
+target_link_libraries(dalbaragi_model_parser PUBLIC glm::glm)
 
 
-######## Test ########
+# Test
+# ----------------------------------------------------------------------------------
 
 enable_testing()
-
 
 add_executable(dal_parser_test_1
     test/test_1.cpp
@@ -53,6 +66,7 @@ target_link_libraries(dal_parser_test_1 PRIVATE dalbaragi_model_parser)
 target_include_directories(dal_parser_test_1 PRIVATE .)
 
 
-######## App ########
+# App
+# ----------------------------------------------------------------------------------
 
 add_subdirectory(./app)
