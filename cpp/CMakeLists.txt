@@ -7,7 +7,8 @@ project(Dalbaragi-Model-Parser
 )
 
 
-######## Definitions ########
+# Definitions
+# ----------------------------------------------------------------------------------
 
 FetchContent_Declare(
     fetch_glm
@@ -34,12 +35,9 @@ target_include_directories(dalbaragi_model_parser PUBLIC .)
 target_compile_features(dalbaragi_model_parser PUBLIC cxx_std_17)
 
 
-######## Import libraries ########
+# Import libraries
+# ----------------------------------------------------------------------------------
 
-set(extern_dir ${CMAKE_CURRENT_SOURCE_DIR}/extern)
-
-
-# zlib
 if (ANDROID)
     target_link_libraries(dalbaragi_model_parser PRIVATE z)
 
@@ -50,14 +48,13 @@ else()
 
 endif()
 
-# GLM
 target_link_libraries(dalbaragi_model_parser PUBLIC glm::glm)
 
 
-######## Test ########
+# Test
+# ----------------------------------------------------------------------------------
 
 enable_testing()
-
 
 add_executable(dal_parser_test_1
     test/test_1.cpp
@@ -69,6 +66,7 @@ target_link_libraries(dal_parser_test_1 PRIVATE dalbaragi_model_parser)
 target_include_directories(dal_parser_test_1 PRIVATE .)
 
 
-######## App ########
+# App
+# ----------------------------------------------------------------------------------
 
 add_subdirectory(./app)
