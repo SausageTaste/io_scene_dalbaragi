@@ -50,7 +50,7 @@ namespace {
     void fill_mesh_basic(dal::parser::Mesh_Indexed& output, const dal::parser::Mesh_Straight& input) {
         const auto vertex_count = input.m_vertices.size() / 3;
 
-        for (int i = 0; i < vertex_count; ++i) {
+        for (size_t i = 0; i < vertex_count; ++i) {
             dal::parser::Vertex vert;
 
             vert.m_position = glm::vec3{
