@@ -95,6 +95,12 @@ namespace {
 
         for (size_t i = 1; i < units.size(); ++i) {
             const auto& this_unit = units[i];
+
+            if (this_unit.m_material.alpha_blend) {
+                output.push_back(this_unit);
+                continue;
+            }
+
             auto dst_unit = ::find_same_material(this_unit, output);
 
             if (nullptr != dst_unit)
