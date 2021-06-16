@@ -1,6 +1,7 @@
 #include "dal_modifier.h"
 
 #include <unordered_set>
+#include <unordered_map>
 
 
 namespace {
@@ -207,6 +208,29 @@ namespace {
 
         return ::make_set_difference(useless_joints, vital_joints);
     }
+
+
+    class JointReplaceMap {
+
+    private:
+        std::unordered_map<std::string, std::string> m_map;
+
+    public:
+        JointReplaceMap(const dal::parser::Skeleton& skeleton) {
+            for (auto& joint : skeleton.m_joints) {
+                this->m_map[joint.m_name] = joint.m_name;
+            }
+        }
+
+        void replace(const std::string& from_name, const std::string& to_name) {
+            for (auto& iter : this->m_map) {
+                if (iter.first == from_name) {
+                    iter.second = to_name;
+                }
+            }
+        }
+
+    };
 
 }
 
