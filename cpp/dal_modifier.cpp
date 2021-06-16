@@ -232,6 +232,38 @@ namespace {
 
     };
 
+    bool is_joint_order_valid(const dal::parser::Skeleton& skeleton) {
+        if (-1 != skeleton.m_joints[0].m_parent_index)
+            return false;
+
+        for (size_t i = 1; i < skeleton.m_joints.size(); ++i) {
+            const auto& joint_i = skeleton.m_joints[i];
+            const auto& parent_name = skeleton.m_joints[joint_i.m_parent_index].m_name;
+
+            if (parent_name.empty())
+                continue;
+
+            bool has_parent = false;
+
+            for (size_t j = 0; j < skeleton.m_joints.size(); ++j) {
+                const auto& joint_j = skeleton.m_joints[j];
+
+                if (joint_j.m_name == parent_name) {
+                    if (i <= j) {
+                        return false;
+                    }
+                    else {
+                        has_parent = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!has_parent)
+                return false;
+        }
+    }
+
 }
 
 
@@ -281,13 +313,15 @@ namespace dal::parser {
     }
 
 
-    void reduce_joints(dal::parser::Model& model) {
+    bool reduce_joints(dal::parser::Model& model) {
         if (model.m_animations.empty())
-            return;
+            return false;
+        if (!::is_joint_order_valid(model.m_skeleton))
+            return false;
 
         const auto to_remove = ::get_joint_names_to_remove(model.m_animations, model.m_skeleton);
 
-        return;
+        return true;
     }
 
 }

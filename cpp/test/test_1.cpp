@@ -215,7 +215,7 @@ namespace {
         {
             std::cout << "    * Reducing joints" << std::endl;
             auto model_cpy = model.value();
-            dalp::reduce_joints(model_cpy);
+            std::cout << "        result: " << dalp::reduce_joints(model_cpy) << std::endl;
         }
     }
 
