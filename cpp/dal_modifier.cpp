@@ -1,5 +1,7 @@
 #include "dal_modifier.h"
 
+#include <unordered_set>
+
 
 namespace {
 
@@ -115,6 +117,98 @@ namespace {
 }
 
 
+// For reduce_joints
+namespace {
+
+    std::unordered_set<std::string> make_set_intersection(
+        const std::unordered_set<std::string>& a,
+        const std::unordered_set<std::string>& b
+    ) {
+        std::unordered_set<std::string> output;
+
+        auto& smaller_set = a.size() < b.size() ? a : b;
+        auto& larger_set = a.size() < b.size() ? b : a;
+
+        for (auto iter = smaller_set.begin(); iter != smaller_set.end(); ++iter) {
+            if (larger_set.end() != larger_set.find(*iter)) {
+                output.insert(*iter);
+            }
+        }
+
+        return output;
+    }
+
+    std::unordered_set<std::string> make_set_difference(
+        const std::unordered_set<std::string>& a,
+        const std::unordered_set<std::string>& b
+    ) {
+        std::unordered_set<std::string> output;
+
+        for (auto iter = a.begin(); iter != a.end(); ++iter) {
+            if (b.end() == b.find(*iter)) {
+                output.insert(*iter);
+            }
+        }
+
+        return output;
+    }
+
+
+    bool is_joint_useless(const dal::parser::AnimJoint& joint) {
+        if (!joint.m_translates.empty())
+            return false;
+        else if (!joint.m_rotations.empty())
+            return false;
+        else if (!joint.m_scales.empty())
+            return false;
+        else
+            return true;
+    }
+
+    auto get_useless_joint_names(const dal::parser::Animation& anim) {
+        std::unordered_set<std::string> output;
+
+        for (auto& joint : anim.m_joints) {
+            if (::is_joint_useless(joint)) {
+                output.insert(joint.m_name);
+            }
+        }
+
+        return output;
+    }
+
+    auto get_vital_joint_names(const dal::parser::Skeleton& skeleton) {
+        std::unordered_set<std::string> output, super_parents;
+
+        for (auto& joint : skeleton.m_joints) {
+            if (-1 == joint.m_parent_index) {
+                output.insert(joint.m_name);
+                continue;
+            }
+
+            const auto& parent_name = skeleton.m_joints.at(joint.m_parent_index).m_name;
+
+            if (output.end() != output.find(parent_name)) {
+                super_parents.insert(joint.m_name);
+                output.insert(joint.m_name);
+            }
+        }
+
+        return output;
+    }
+
+    auto get_joint_names_to_remove(const std::vector<dal::parser::Animation>& animations, const dal::parser::Skeleton& skeleton) {
+        auto useless_joints = ::get_useless_joint_names(animations[0]);
+
+        for (int i = 1; i < animations.size(); ++i)
+            useless_joints = ::make_set_intersection(useless_joints, ::get_useless_joint_names(animations[i]));
+
+        return ::make_set_difference(useless_joints, ::get_vital_joint_names(skeleton));
+    }
+
+}
+
+
 namespace dal::parser {
 
     Mesh_Indexed convert_to_indexed(const Mesh_Straight& input) {
@@ -158,6 +252,16 @@ namespace dal::parser {
 
     std::vector<RenderUnit<Mesh_IndexedJoint>> merge_by_material(const std::vector<RenderUnit<Mesh_IndexedJoint>>& units) {
         return ::merge_by_material(units);
+    }
+
+
+    void reduce_joints(dal::parser::Model& model) {
+        if (model.m_animations.empty())
+            return;
+
+        const auto to_remove = ::get_joint_names_to_remove(model.m_animations, model.m_skeleton);
+
+        return;
     }
 
 }
