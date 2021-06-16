@@ -178,19 +178,24 @@ namespace {
     }
 
     auto get_vital_joint_names(const dal::parser::Skeleton& skeleton) {
+        // Super parents' children are all vital
         std::unordered_set<std::string> output, super_parents;
 
         for (auto& joint : skeleton.m_joints) {
             if (-1 == joint.m_parent_index) {
                 output.insert(joint.m_name);
-                continue;
             }
-
-            const auto& parent_name = skeleton.m_joints.at(joint.m_parent_index).m_name;
-
-            if (output.end() != output.find(parent_name)) {
+            else if (dal::parser::JointType::hair_root == joint.m_joint_type || dal::parser::JointType::skirt_root == joint.m_joint_type) {
                 super_parents.insert(joint.m_name);
                 output.insert(joint.m_name);
+            }
+            else {
+                const auto& parent_name = skeleton.m_joints.at(joint.m_parent_index).m_name;
+
+                if (super_parents.end() != super_parents.find(parent_name)) {
+                    super_parents.insert(joint.m_name);
+                    output.insert(joint.m_name);
+                }
             }
         }
 
@@ -198,12 +203,13 @@ namespace {
     }
 
     auto get_joint_names_to_remove(const std::vector<dal::parser::Animation>& animations, const dal::parser::Skeleton& skeleton) {
-        auto useless_joints = ::get_useless_joint_names(animations[0]);
+        const auto vital_joints = ::get_vital_joint_names(skeleton);
 
+        auto useless_joints = ::get_useless_joint_names(animations[0]);
         for (int i = 1; i < animations.size(); ++i)
             useless_joints = ::make_set_intersection(useless_joints, ::get_useless_joint_names(animations[i]));
 
-        return ::make_set_difference(useless_joints, ::get_vital_joint_names(skeleton));
+        return ::make_set_difference(useless_joints, vital_joints);
     }
 
 }
