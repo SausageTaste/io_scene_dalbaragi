@@ -88,6 +88,7 @@ def _build_bin_joint_keyframes(keyframes: rwd.Scene.JointKeyframes) -> bytearray
 
     data = bytearray()
 
+    data += byt.to_nullTerminated(keyframes.m_name)
     data += _build_bin_mat4(keyframes.m_transform)
 
     poses = list(keyframes.iterPoses())

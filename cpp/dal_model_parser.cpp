@@ -129,6 +129,7 @@ namespace {
 
     const uint8_t* parse_animJoint(const uint8_t* header, const uint8_t* const end, dalp::AnimJoint& output) {
         {
+            output.m_name = reinterpret_cast<const char*>(header); header += output.m_name.size() + 1;
             header = parse_mat4(header, end, output.m_transform);
         }
 
