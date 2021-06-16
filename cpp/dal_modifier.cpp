@@ -222,6 +222,14 @@ namespace {
             }
         }
 
+        const std::string* at(const std::string& key) const {
+            const auto iter = this->m_map.find(key);
+            if (this->m_map.end() != iter)
+                return &iter->second;
+            else
+                return nullptr;
+        }
+
         void replace(const std::string& from_name, const std::string& to_name) {
             for (auto& iter : this->m_map) {
                 if (iter.first == from_name) {
@@ -231,6 +239,7 @@ namespace {
         }
 
     };
+
 
     bool is_joint_order_valid(const dal::parser::Skeleton& skeleton) {
         if (-1 != skeleton.m_joints[0].m_parent_index)
