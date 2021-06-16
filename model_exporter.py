@@ -130,15 +130,18 @@ def _build_bin_animation(anim: rwd.Scene.Animation, id_map: Dict[str, int]) -> b
     # Joints
     data += byt.to_int32(len(id_map))
 
-    dummy_joint_data = _build_bin_joint_keyframes(rwd.Scene.JointKeyframes("dummy"))
-    data_list: List[Optional[bytearray]] = [dummy_joint_data for _ in range(len(id_map))]
+    data_list: List[Optional[bytearray]] = [None for _ in range(len(id_map))]
 
     for joint in anim.m_joints:
         index = id_map[joint.m_name]
         data_list[index] = _build_bin_joint_keyframes(joint)
 
-    for x in data_list:
-        data += x
+    for i, x in enumerate(data_list):
+        if x is None:
+            joint_name = list(id_map.keys())[list(id_map.values()).index(i)]
+            data += _build_bin_joint_keyframes(rwd.Scene.JointKeyframes(joint_name))
+        else:
+            data += x
 
     return data
 
