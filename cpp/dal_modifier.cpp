@@ -120,11 +120,10 @@ namespace {
 // For reduce_joints
 namespace {
 
-    std::unordered_set<std::string> make_set_intersection(
-        const std::unordered_set<std::string>& a,
-        const std::unordered_set<std::string>& b
-    ) {
-        std::unordered_set<std::string> output;
+    using str_set_t = std::unordered_set<std::string>;
+
+    ::str_set_t make_set_intersection(const ::str_set_t& a, const ::str_set_t& b) {
+        ::str_set_t output;
 
         auto& smaller_set = a.size() < b.size() ? a : b;
         auto& larger_set = a.size() < b.size() ? b : a;
@@ -138,11 +137,8 @@ namespace {
         return output;
     }
 
-    std::unordered_set<std::string> make_set_difference(
-        const std::unordered_set<std::string>& a,
-        const std::unordered_set<std::string>& b
-    ) {
-        std::unordered_set<std::string> output;
+    ::str_set_t make_set_difference(const ::str_set_t& a, const ::str_set_t& b) {
+        ::str_set_t output;
 
         for (auto iter = a.begin(); iter != a.end(); ++iter) {
             if (b.end() == b.find(*iter)) {
@@ -166,7 +162,7 @@ namespace {
     }
 
     auto get_useless_joint_names(const dal::parser::Animation& anim) {
-        std::unordered_set<std::string> output;
+        ::str_set_t output;
 
         for (auto& joint : anim.m_joints) {
             if (::is_joint_useless(joint)) {
@@ -179,7 +175,7 @@ namespace {
 
     auto get_vital_joint_names(const dal::parser::Skeleton& skeleton) {
         // Super parents' children are all vital
-        std::unordered_set<std::string> output, super_parents;
+        ::str_set_t output, super_parents;
 
         for (auto& joint : skeleton.m_joints) {
             if (-1 == joint.m_parent_index) {
