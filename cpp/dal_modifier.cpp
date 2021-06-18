@@ -121,6 +121,9 @@ namespace {
 // For reduce_joints
 namespace {
 
+    using dal::parser::jointID_t;
+
+
     using str_set_t = std::unordered_set<std::string>;
 
     ::str_set_t make_set_union(const ::str_set_t& a, const ::str_set_t& b) {

@@ -10,6 +10,9 @@
 
 namespace dal::parser {
 
+    using jointID_t = int32_t;
+
+
     struct AABB3 {
         glm::vec3 m_min, m_max;
     };
@@ -109,8 +112,6 @@ namespace dal::parser {
         _Mesh m_mesh;
         Material m_material;
     };
-
-    using jointID_t = int32_t;
 
     enum class JointType {
         basic        = 0,
