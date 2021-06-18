@@ -85,12 +85,6 @@ class EmportDalModel(Operator, ExportHelper):
         default=True,
     )
 
-    optionBool_removeUselessJoints = BoolProperty(
-        name="Remove useless joints",
-        description="Remove all the joints without keyframes.",
-        default=False,
-    )
-
     """
     enum_example = EnumProperty(
         name        = "Example Enum",
@@ -107,13 +101,6 @@ class EmportDalModel(Operator, ExportHelper):
         print("[DAL] Started exporting Dalbaragi model")
 
         scene = bpa.parse_raw_data()
-        # mfd.MaterialDuplacateRemover.process(scene.m_render_units, scene.m_static_actors)
-        if self.optionBool_removeUselessJoints:
-            if len(scene.m_animations):
-                assert len(scene.m_skeletons)
-                mfd.JointRemover.process(scene.m_skeletons[0], scene.m_animations, scene.m_models.values())
-            else:
-                print("[DAL] WARN::There is no animation so removing joints is not possible.")
         print("[DAL] Building done")
 
         if self.optionBool_createReadable:
