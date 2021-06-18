@@ -432,14 +432,18 @@ namespace dal::parser {
         for (auto& unit : model.m_units_indexed_joint) {
             for (auto& vert : unit.m_mesh.m_vertices) {
                 for (size_t i = 0; i < 4; ++i) {
-                    vert.m_joint_indices[0] = index_replace_map.find(vert.m_joint_indices[0])->second;
+                    const auto new_index = index_replace_map.find(vert.m_joint_indices[i])->second;
+                    assert(-1 <= new_index && new_index < static_cast<int64_t>(new_skeleton.m_joints.size()));
+                    vert.m_joint_indices[i] = new_index;
                 }
             }
         }
 
         for (auto& unit : model.m_units_straight_joint) {
             for (auto& index : unit.m_mesh.m_boneIndex) {
-                index = index_replace_map.find(index)->second;
+                const auto new_index = index_replace_map.find(index)->second;
+                assert(-1 <= new_index && new_index < static_cast<int64_t>(new_skeleton.m_joints.size()));
+                index = new_index;
             }
         }
 
