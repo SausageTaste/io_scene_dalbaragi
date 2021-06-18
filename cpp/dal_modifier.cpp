@@ -300,11 +300,11 @@ namespace {
         }
 
     private:
-        int32_t find_by_name(const std::string& name) {
+        jointID_t find_by_name(const std::string& name) {
             if (this->NO_PARENT_NAME == name)
                 return -1;
 
-            for (int32_t i = 0; i < this->m_data.size(); ++i) {
+            for (jointID_t i = 0; i < this->m_data.size(); ++i) {
                 if (this->m_data[i].m_name == name) {
                     return i;
                 }
@@ -345,12 +345,12 @@ namespace {
         return output;
     }
 
-    std::unordered_map<int32_t, int32_t> make_index_replace_map(
+    std::unordered_map<jointID_t, jointID_t> make_index_replace_map(
         const dal::parser::Skeleton& from_skeleton,
         const dal::parser::Skeleton& to_skeleton,
         const JointParentNameManager& jname_manager
     ) {
-        std::unordered_map<int32_t, int32_t> output;
+        std::unordered_map<jointID_t, jointID_t> output;
         output[-1] = -1;
 
         for (size_t i = 0; i < from_skeleton.m_joints.size(); ++i) {

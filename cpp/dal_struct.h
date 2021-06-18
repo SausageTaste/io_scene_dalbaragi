@@ -67,7 +67,7 @@ namespace dal::parser {
 
     struct Mesh_StraightJoint : public Mesh_Straight {
         std::vector<float> m_boneWeights;
-        std::vector<int32_t> m_boneIndex;
+        std::vector<jointID_t> m_boneIndex;
 
         void concat(const Mesh_StraightJoint& other);
     };
@@ -110,6 +110,8 @@ namespace dal::parser {
         Material m_material;
     };
 
+    using jointID_t = int32_t;
+
     enum class JointType {
         basic        = 0,
         hair_root    = 1,
@@ -118,7 +120,7 @@ namespace dal::parser {
 
     struct SkelJoint {
         std::string m_name;
-        int32_t m_parent_index;
+        jointID_t m_parent_index;
         JointType m_joint_type;
         glm::mat4 m_offset_mat;
     };
@@ -127,7 +129,7 @@ namespace dal::parser {
         std::vector<SkelJoint> m_joints;
 
         // Returns -1 if not found
-        int32_t find_by_name(const std::string& name) const;
+        jointID_t find_by_name(const std::string& name) const;
     };
 
     struct AnimJoint {

@@ -48,8 +48,8 @@ namespace dal::parser {
     }
 
 
-    int32_t Skeleton::find_by_name(const std::string& name) const {
-        for (int32_t i = 0; i < this->m_joints.size(); ++i) {
+    jointID_t Skeleton::find_by_name(const std::string& name) const {
+        for (jointID_t i = 0; i < this->m_joints.size(); ++i) {
             if (this->m_joints[i].m_name == name) {
                 return i;
             }
