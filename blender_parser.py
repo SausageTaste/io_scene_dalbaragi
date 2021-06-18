@@ -642,6 +642,7 @@ def parse_raw_data() -> rwd.Scene:
     for action in bpy.data.actions:
         animation = _AnimationParser.parse(action)
         animation.cleanUp()
+        animation.removeUselessJoints()
         scene.m_animations.append(animation)
 
     return scene

@@ -211,6 +211,12 @@ namespace {
             std::cout << "        before: " << before << std::endl;
             std::cout << "        after : " << after << std::endl;
         }
+
+        {
+            std::cout << "    * Reducing joints" << std::endl;
+            auto model_cpy = model.value();
+            std::cout << "        result: " << dalp::reduce_joints(model_cpy) << std::endl;
+        }
     }
 
     void test_a_model(const std::string& model_path) {

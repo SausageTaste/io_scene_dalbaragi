@@ -96,6 +96,7 @@ namespace {
         bool m_work_indexing = false;
         bool m_work_merge_by_material = false;
         bool m_work_flip_uv_coord_v = false;
+        bool m_work_reduce_joints = false;
 
     public:
         ArgParser(int argc, char** argv) {
@@ -137,6 +138,10 @@ namespace {
             return this->m_work_flip_uv_coord_v;
         }
 
+        bool work_reduce_joints() const {
+            return this->m_work_reduce_joints;
+        }
+
     private:
         void parse(const int argc, const char *const *const argv) {
             using namespace std::string_literals;
@@ -162,6 +167,9 @@ namespace {
                             break;
                         case 'v':
                             this->m_work_flip_uv_coord_v = true;
+                            break;
+                        case 'r':
+                            this->m_work_reduce_joints = true;
                             break;
                         default:
                             throw std::runtime_error{ "unkown argument: "s + one };
@@ -281,6 +289,19 @@ int main(int argc, char* argv[]) try {
         model.m_units_straight_joint.clear();
 
         std::cout << " done (" << timer.get_elapsed() << ")\n";
+    }
+
+    if (parser.work_reduce_joints()) {
+        std::cout << "    Reducing joints";
+        timer.check();
+
+        if (dal::parser::reduce_joints(model)) {
+            std::cout << " done (" << timer.get_elapsed() << ")\n";
+        }
+        else {
+            std::cout << " failed (" << timer.get_elapsed() << ")\n";
+            return -1;
+        }
     }
 
     std::cout << "    Exporting";

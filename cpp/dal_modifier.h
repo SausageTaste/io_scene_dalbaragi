@@ -15,4 +15,6 @@ namespace dal::parser {
     std::vector<RenderUnit<Mesh_Indexed      >> merge_by_material(const std::vector<RenderUnit<Mesh_Indexed      >>& units);
     std::vector<RenderUnit<Mesh_IndexedJoint >> merge_by_material(const std::vector<RenderUnit<Mesh_IndexedJoint >>& units);
 
+    bool reduce_joints(dal::parser::Model& model);
+
 }

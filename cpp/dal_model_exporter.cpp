@@ -197,6 +197,7 @@ namespace {
     ::BinaryBuildBuffer _build_bin_joint_keyframes(const dalp::AnimJoint& joint) {
         ::BinaryBuildBuffer output;
 
+        output.append_str(joint.m_name);
         output.append_mat4(joint.m_transform);
 
         output.append_int32(joint.m_translates.size());

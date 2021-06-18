@@ -10,6 +10,9 @@
 
 namespace dal::parser {
 
+    using jointID_t = int32_t;
+
+
     struct AABB3 {
         glm::vec3 m_min, m_max;
     };
@@ -67,7 +70,7 @@ namespace dal::parser {
 
     struct Mesh_StraightJoint : public Mesh_Straight {
         std::vector<float> m_boneWeights;
-        std::vector<int32_t> m_boneIndex;
+        std::vector<jointID_t> m_boneIndex;
 
         void concat(const Mesh_StraightJoint& other);
     };
@@ -118,13 +121,16 @@ namespace dal::parser {
 
     struct SkelJoint {
         std::string m_name;
-        int32_t m_parent_index;
+        jointID_t m_parent_index;
         JointType m_joint_type;
         glm::mat4 m_offset_mat;
     };
 
     struct Skeleton {
         std::vector<SkelJoint> m_joints;
+
+        // Returns -1 if not found
+        jointID_t find_by_name(const std::string& name) const;
     };
 
     struct AnimJoint {
@@ -137,6 +143,8 @@ namespace dal::parser {
         void add_translate(float time, float x, float y, float z);
         void add_rotation(float time, float w, float x, float y, float z);
         void add_scale(float time, float x);
+
+        bool is_identity_transform() const;
     };
 
     struct Animation {

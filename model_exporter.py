@@ -88,6 +88,7 @@ def _build_bin_joint_keyframes(keyframes: rwd.Scene.JointKeyframes) -> bytearray
 
     data = bytearray()
 
+    data += byt.to_nullTerminated(keyframes.m_name)
     data += _build_bin_mat4(keyframes.m_transform)
 
     poses = list(keyframes.iterPoses())
@@ -127,17 +128,9 @@ def _build_bin_animation(anim: rwd.Scene.Animation, id_map: Dict[str, int]) -> b
     data += byt.to_float32(anim.m_tickPerSec)
 
     # Joints
-    data += byt.to_int32(len(id_map))
-
-    dummy_joint_data = _build_bin_joint_keyframes(rwd.Scene.JointKeyframes("dummy"))
-    data_list: List[Optional[bytearray]] = [dummy_joint_data for _ in range(len(id_map))]
-
+    data += byt.to_int32(len(anim.m_joints))
     for joint in anim.m_joints:
-        index = id_map[joint.m_name]
-        data_list[index] = _build_bin_joint_keyframes(joint)
-
-    for x in data_list:
-        data += x
+        data += _build_bin_joint_keyframes(joint)
 
     return data
 

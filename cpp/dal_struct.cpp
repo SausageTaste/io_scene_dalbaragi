@@ -48,6 +48,17 @@ namespace dal::parser {
     }
 
 
+    jointID_t Skeleton::find_by_name(const std::string& name) const {
+        for (jointID_t i = 0; i < this->m_joints.size(); ++i) {
+            if (this->m_joints[i].m_name == name) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+
     void AnimJoint::add_translate(float time, float x, float y, float z) {
         auto& added = this->m_translates.emplace_back();
 
@@ -67,6 +78,17 @@ namespace dal::parser {
 
         added.first = time;
         added.second = x;
+    }
+
+    bool AnimJoint::is_identity_transform() const {
+        if (!this->m_translates.empty())
+            return false;
+        else if (!this->m_rotations.empty())
+            return false;
+        else if (!this->m_scales.empty())
+            return false;
+        else
+            return true;
     }
 
 }
