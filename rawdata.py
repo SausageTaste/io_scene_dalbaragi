@@ -467,6 +467,15 @@ class Scene:
 
             self.__keyframes = new_list
 
+        def removeUselessJoints(self):
+            new_list: List[Scene.JointKeyframes] = []
+
+            for joint in self.__keyframes:
+                if not joint.isUseless():
+                    new_list.append(joint)
+
+            self.__keyframes = new_list
+
         def calcDurationTick(self) -> float:
             max_value = 0.0
 
