@@ -125,6 +125,9 @@ namespace dal::parser {
 
     struct Skeleton {
         std::vector<SkelJoint> m_joints;
+
+        // Returns -1 if not found
+        int32_t find_by_name(const std::string& name) const;
     };
 
     struct AnimJoint {
@@ -137,6 +140,8 @@ namespace dal::parser {
         void add_translate(float time, float x, float y, float z);
         void add_rotation(float time, float w, float x, float y, float z);
         void add_scale(float time, float x);
+
+        bool is_identity_transform() const;
     };
 
     struct Animation {
