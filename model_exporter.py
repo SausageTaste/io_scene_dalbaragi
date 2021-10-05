@@ -260,4 +260,7 @@ def make_binary_dmd(scene: rwd.Scene):
     data += byt.to_int32(0)
     data += byt.to_int32(0)
 
+    # Signature
+    data += byt.to_nullTerminated("")
+
     return data
