@@ -67,26 +67,26 @@ class EmportDalModel(Operator, ExportHelper):
 
     filename_ext = ".dmd"
 
-    filter_glob = StringProperty(
+    filter_glob: StringProperty(
         default="*.dmd",
         options={'HIDDEN'},
         maxlen=255,  # Max internal buffer length, longer would be clamped.
     )
 
-    optionBool_copyImages = BoolProperty(
+    optionBool_copyImages: BoolProperty(
         name="Copy textures",
         description="Copy textures to same path as exported model file.",
         default=False,
     )
 
-    optionBool_createReadable = BoolProperty(
+    optionBool_createReadable: BoolProperty(
         name="Create readable file",
         description="Create a txt file that contains model info.",
         default=True,
     )
 
     """
-    enum_example = EnumProperty(
+    enum_example: EnumProperty(
         name        = "Example Enum",
         description = "Choose between two items",
         items       = (
