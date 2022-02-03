@@ -27,7 +27,7 @@ bl_info = {
     "version": (1, 0, 0),
     "blender": (2, 80, 0),
     "location": "File > Export > Dalbaragi Model (.dmd)",
-    "description": "Export a model file for Dalbargi engine.",
+    "description": "Export a model file for Dalbaragi engine.",
     "warning": "Under development.",
     "wiki_url": "",
     "category": "Import-Export",
@@ -35,23 +35,24 @@ bl_info = {
 }
 
 
-def _copyImage(image: bpy.types.Image, dstpath: str) -> None:
+def _copy_image(image: bpy.types.Image, dst_path: str) -> None:
     # Not packed
     if image.packed_file is None:
-        srcpath = bpy.path.abspath(image.filepath)
-        if os.path.isfile(srcpath):
-            shutil.copyfile(srcpath, dstpath)
-            print("[DAL] Image copied: {}".format(dstpath))
+        src_path = bpy.path.abspath(image.filepath)
+        if os.path.isfile(src_path):
+            shutil.copyfile(src_path, dst_path)
+            print("[DAL] Image copied: {}".format(dst_path))
         else:
-            raise FileNotFoundError("[DAL] Image not found: {}".format(srcpath))
+            raise FileNotFoundError("[DAL] Image not found: {}".format(src_path))
     # Packed
     else:
         packed = image.packed_files[0]
         original_path = packed.filepath
-        packed.filepath = dstpath
+        packed.filepath = dst_path
         packed.save()
         packed.filepath = original_path
-        print("[DAL] Image exported from packed: {}".format(dstpath))
+        print("[DAL] Image exported from packed: {}".format(dst_path))
+
 
 def _split_path_3(path: str) -> Tuple[str, str, str]:
     rest, ext = os.path.splitext(path)
@@ -60,7 +61,7 @@ def _split_path_3(path: str) -> Tuple[str, str, str]:
 
 
 class EmportDalModel(Operator, ExportHelper):
-    """Export binary map file for Dalbargi engine."""
+    """Export binary map file for Dalbaragi engine."""
 
     bl_idname = "export_model.dmd"
     bl_label = "Export DMD"
@@ -123,12 +124,13 @@ class EmportDalModel(Operator, ExportHelper):
             for name in img_names:
                 image: bpy.types.Image = bpy.data.images[name]
                 dst_path = save_fol + "/" + name
-                _copyImage(image, dst_path)
+                _copy_image(image, dst_path)
             print("[DAL] Image copied")
 
         print("[DAL] Finished")
         self.report({'INFO'}, "Export done: dmd")
         return {'FINISHED'}
+
 
 class ExportDalMap(Operator, ExportHelper):
     bl_idname = "export_map.dlb"
@@ -199,6 +201,7 @@ class DalExportSubMenu(bpy.types.Menu):
 def menu_func_export(self, context):
     self.layout.menu(DalExportSubMenu.bl_idname)
 
+
 def register():
     importlib.reload(byt)
     importlib.reload(smt)
@@ -213,6 +216,7 @@ def register():
     bpy.utils.register_class(ExportDalMap)
     bpy.utils.register_class(DalExportSubMenu)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
+
 
 def unregister():
     bpy.utils.unregister_class(EmportDalModel)
