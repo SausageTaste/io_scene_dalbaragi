@@ -7,26 +7,26 @@ from . import rawdata as rwd
 from . import smalltype as smt
 
 
-BLENDER_OBJ_TYPE_MESH        = "MESH"
-BLENDER_OBJ_TYPE_CURVE       = "CURVE"
-BLENDER_OBJ_TYPE_SURFACE     = "SURFACE"
-BLENDER_OBJ_TYPE_META        = "META"
-BLENDER_OBJ_TYPE_FONT        = "FONT"
-BLENDER_OBJ_TYPE_ARMATURE    = "ARMATURE"
-BLENDER_OBJ_TYPE_LATTICE     = "LATTICE"
-BLENDER_OBJ_TYPE_EMPTY       = "EMPTY"
-BLENDER_OBJ_TYPE_GPENCIL     = "GPENCIL"
-BLENDER_OBJ_TYPE_CAMERA      = "CAMERA"
-BLENDER_OBJ_TYPE_LIGHT       = "LIGHT"
-BLENDER_OBJ_TYPE_SPEAKER     = "SPEAKER"
-BLENDER_OBJ_TYPE_LIGHT_PROBE = "LIGHT_PROBE"
+_BLENDER_OBJ_TYPE_MESH        = "MESH"
+_BLENDER_OBJ_TYPE_CURVE       = "CURVE"
+_BLENDER_OBJ_TYPE_SURFACE     = "SURFACE"
+_BLENDER_OBJ_TYPE_META        = "META"
+_BLENDER_OBJ_TYPE_FONT        = "FONT"
+_BLENDER_OBJ_TYPE_ARMATURE    = "ARMATURE"
+_BLENDER_OBJ_TYPE_LATTICE     = "LATTICE"
+_BLENDER_OBJ_TYPE_EMPTY       = "EMPTY"
+_BLENDER_OBJ_TYPE_GPENCIL     = "GPENCIL"
+_BLENDER_OBJ_TYPE_CAMERA      = "CAMERA"
+_BLENDER_OBJ_TYPE_LIGHT       = "LIGHT"
+_BLENDER_OBJ_TYPE_SPEAKER     = "SPEAKER"
+_BLENDER_OBJ_TYPE_LIGHT_PROBE = "LIGHT_PROBE"
 
-BLENDER_MATERIAL_BLEND_OPAQUE = "OPAQUE"
-BLENDER_MATERIAL_BLEND_CLIP   = "CLIP"
-BLENDER_MATERIAL_BLEND_HASHED = "HASHED"
-BLENDER_MATERIAL_BLEND_BLEND  = "BLEND"
+_BLENDER_MATERIAL_BLEND_OPAQUE = "OPAQUE"
+_BLENDER_MATERIAL_BLEND_CLIP   = "CLIP"
+_BLENDER_MATERIAL_BLEND_HASHED = "HASHED"
+_BLENDER_MATERIAL_BLEND_BLEND  = "BLEND"
 
-PROPERTIES_TO_IGNORE = (
+__PROPERTIES_TO_IGNORE = (
     "_RNA_UI",
     "cycles"
 )
@@ -34,17 +34,20 @@ PROPERTIES_TO_IGNORE = (
 
 # In blender's coordinate system, -z is down.
 # But in Dalbaragi engine, -y is down and -z is far direction.
-def _fix_rotation(v: smt.Vec3) -> smt.Vec3:
+def __fix_vec3_orientation(v: smt.Vec3) -> smt.Vec3:
     return smt.Vec3(v.x, v.z, -v.y)
 
-def _fix_quat_orientation(q: smt.Quat) -> smt.Quat:
-    v = _fix_rotation(smt.Vec3(q.x, q.y, q.z))
+
+def __fix_quat_orientation(q: smt.Quat) -> smt.Quat:
+    v = __fix_vec3_orientation(smt.Vec3(q.x, q.y, q.z))
     return smt.Quat(q.w, v.x, v.y, v.z)
 
-def _to_degree(radian: float) -> float:
+
+def __to_degrees(radian: float) -> float:
     return float(radian) * 180.0 / math.pi
 
-def _get_objects():
+
+def _gen_blender_objects():
     for obj in bpy.context.scene.objects:
         yield obj
 
@@ -60,9 +63,9 @@ class _MaterialParser:
     def parse(cls, blender_material) -> Optional[rwd.Scene.Material]:
         assert blender_material is not None
 
-        shader_output = cls.__findNodeNamed(cls.NODE_MATERIAL_OUTPUT, blender_material.node_tree.nodes)
+        shader_output = cls.__find_node_named(cls.NODE_MATERIAL_OUTPUT, blender_material.node_tree.nodes)
         linked_shader = shader_output.inputs["Surface"].links[0].from_node
-        alpha_blend_enabled = True if blender_material.blend_method != BLENDER_MATERIAL_BLEND_OPAQUE else False
+        alpha_blend_enabled = True if blender_material.blend_method != _BLENDER_MATERIAL_BLEND_OPAQUE else False
 
         if cls.NODE_BSDF == linked_shader.bl_idname:
             return cls.__parse_principled_bsdf(linked_shader, alpha_blend_enabled)
@@ -79,26 +82,26 @@ class _MaterialParser:
             return None
 
     @staticmethod
-    def __findNodeNamed(name: str, nodes):
+    def __find_node_named(name: str, nodes):
         for node in nodes:
             if name == node.bl_idname:
                 return node
         return None
 
     @classmethod
-    def __findNodeRecurNamed(cls, name, parent_node):
+    def __find_node_recur_named(cls, name, parent_node):
         if hasattr(parent_node, "links"):
             for linked in parent_node.links:
                 node = linked.from_node
                 if name == node.bl_idname:
                     return node
                 else:
-                    res = cls.__findNodeRecurNamed(name, node)
+                    res = cls.__find_node_recur_named(name, node)
                     if res is not None:
                         return res
         if hasattr(parent_node, "inputs"):
             for nodeinput in parent_node.inputs:
-                res = cls.__findNodeRecurNamed(name, nodeinput)
+                res = cls.__find_node_recur_named(name, nodeinput)
                 if res is not None:
                     return res
 
@@ -115,19 +118,19 @@ class _MaterialParser:
         material.m_roughness = node_roughness.default_value
         material.m_metallic = node_metallic.default_value
 
-        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, bsdf.inputs["Base Color"])
+        image_node = cls.__find_node_recur_named(cls.NODE_TEX_IMAGE, bsdf.inputs["Base Color"])
         if image_node is not None:
             material.m_albedoMap = image_node.image.name
 
-        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, node_roughness)
+        image_node = cls.__find_node_recur_named(cls.NODE_TEX_IMAGE, node_roughness)
         if image_node is not None:
             material.m_metallicMap = image_node.image.name
 
-        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, node_roughness)
+        image_node = cls.__find_node_recur_named(cls.NODE_TEX_IMAGE, node_roughness)
         if image_node is not None:
             material.m_roughnessMap = image_node.image.name
 
-        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, bsdf.inputs["Normal"])
+        image_node = cls.__find_node_recur_named(cls.NODE_TEX_IMAGE, bsdf.inputs["Normal"])
         if image_node is not None:
             material.m_normalMap = image_node.image.name
 
@@ -139,11 +142,11 @@ class _MaterialParser:
 
         material.m_alphaBlend = alpha_blend
 
-        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, linked_shader.inputs["Diffuse"])
+        image_node = cls.__find_node_recur_named(cls.NODE_TEX_IMAGE, linked_shader.inputs["Diffuse"])
         if image_node is not None:
             material.m_albedoMap = image_node.image.name
 
-        image_node = cls.__findNodeRecurNamed(cls.NODE_TEX_IMAGE, linked_shader.inputs["Bump Map"])
+        image_node = cls.__find_node_recur_named(cls.NODE_TEX_IMAGE, linked_shader.inputs["Bump Map"])
         if image_node is not None:
             material.m_normalMap = image_node.image.name
 
@@ -156,176 +159,179 @@ class _MaterialParser:
             print("\t", x, "->", getattr(obj, x))
 
 
-class _AnimationParser:
-    class _ActionAssembler:
-        class _JointData:
-            class _TimepointDict:
-                def __init__(self):
-                    self.__data: Dict[float, Dict[int, float]] = {}
+class _TimepointDict:
+    def __init__(self):
+        self.__data: Dict[float, Dict[int, float]] = {}
 
-                def add(self, timepoint: float, channel: int, value: float):
-                    assert isinstance(timepoint, float)
-                    assert isinstance(channel, int)
-                    assert isinstance(value, float)
+    def add(self, timepoint: float, channel: int, value: float):
+        assert isinstance(timepoint, float)
+        assert isinstance(channel, int)
+        assert isinstance(value, float)
 
-                    if timepoint not in self.__data.keys():
-                        self.__data[timepoint] = {}
-                    self.__data[timepoint][channel] = value
+        if timepoint not in self.__data.keys():
+            self.__data[timepoint] = {}
+        self.__data[timepoint][channel] = value
 
-                def get(self, timepoint: float, channel: int) -> float:
-                    assert isinstance(channel, int)
-                    assert isinstance(timepoint, float)
+    def get(self, timepoint: float, channel: int) -> float:
+        assert isinstance(channel, int)
+        assert isinstance(timepoint, float)
 
-                    return self.__data[timepoint][channel]
+        return self.__data[timepoint][channel]
 
-                def getExtended(self, timepoint: float, channel: int) -> float:
-                    assert isinstance(channel, int)
-                    assert isinstance(timepoint, float)
+    def get_extended(self, timepoint: float, channel: int) -> float:
+        assert isinstance(channel, int)
+        assert isinstance(timepoint, float)
 
-                    try:
-                        return self.__data[timepoint][channel]
-                    except KeyError:
-                        requested_order = self.__timepointToOrder(timepoint)
-                        prev_order = requested_order - 1
-                        if prev_order < 0:
-                            raise RuntimeError("[DAL] First keyframe need all its channels with a value.")
-                        prev_timepoint = self.__orderToTimepoint(prev_order)
-                        return self.get(prev_timepoint, channel)
+        try:
+            return self.__data[timepoint][channel]
+        except KeyError:
+            requested_index = self.__convert_timepoint_to_index(timepoint)
+            prev_index = requested_index - 1
+            if prev_index < 0:
+                raise RuntimeError("[DAL] First keyframe need all its channels with a value.")
+            prev_timepoint = self.__convert_index_to_timepoint(prev_index)
+            return self.get(prev_timepoint, channel)
 
-                def iterTimepoints(self) -> iter:
-                    return iter(self.__getSortedTimepoints())
+    def iter_timepoints(self) -> iter:
+        return iter(self.__make_sorted_timepoints())
 
-                def __getSortedTimepoints(self) -> List[float]:
-                    timepoints = list(self.__data.keys())
-                    timepoints.sort()
-                    return timepoints
+    def __make_sorted_timepoints(self) -> List[float]:
+        timepoints = list(self.__data.keys())
+        timepoints.sort()
+        return timepoints
 
-                def __orderToTimepoint(self, order: int) -> float:
-                    assert isinstance(order, int)
-                    assert order >= 0
-                    return self.__getSortedTimepoints()[order]
+    def __convert_index_to_timepoint(self, order: int) -> float:
+        assert isinstance(order, int)
+        assert order >= 0
+        return self.__make_sorted_timepoints()[order]
 
-                def __timepointToOrder(self, timepoint: float) -> int:
-                    assert isinstance(timepoint, float)
-                    return self.__getSortedTimepoints().index(timepoint)
-
-            def __init__(self):
-                # For a pos and scale, x=0, y=1, z=2
-                # For a quat, w=0, x=1, y=2, z=3
-                self.__poses = self._TimepointDict()
-                self.__quats = self._TimepointDict()
-                self.__scales = self._TimepointDict()
-
-            @property
-            def m_poses(self):
-                return self.__poses
-            @property
-            def m_quats(self):
-                return self.__quats
-            @property
-            def m_scales(self):
-                return self.__scales
-
-        def __init__(self):
-            self.__jointsData: Dict[str, _AnimationParser._ActionAssembler._JointData] = {}
-
-        def add(self, joint_name: str, var_name: str, timepoint: float, channel: int, value: float):
-            joint_name = str(joint_name)
-            var_name = str(var_name)
-
-            if joint_name not in self.__jointsData.keys():
-                self.__jointsData[joint_name] = self._JointData()
-
-            if "location" == var_name:
-                self.__jointsData[joint_name].m_poses.add(timepoint, channel, value)
-            elif "rotation_quaternion" == var_name:
-                self.__jointsData[joint_name].m_quats.add(timepoint, channel, value)
-            elif "scale" == var_name:
-                self.__jointsData[joint_name].m_scales.add(timepoint, channel, value)
-            else:
-                print('[DAL] WARN::Unkown variable for a joint: "{}"'.format(var_name))
-
-        @property
-        def m_jointsData(self):
-            return self.__jointsData
-
-    @classmethod
-    def parse(cls, blender_action: bpy.types.Action):
-        assert isinstance(blender_action, bpy.types.Action)
-
-        anim = rwd.Scene.Animation(blender_action.name, bpy.context.scene.render.fps)
-
-        assembler = cls._ActionAssembler()
-        for fcu in blender_action.fcurves:
-            # var_name is either location, rotation_quaternion or scale
-            # channel stands for x, y, z for locations, w, x, y, z for quat, x, y, z for scale.
-            joint_name, var_name = cls.__splitFcuDataPath(fcu.data_path)
-            channel = fcu.array_index
-
-            for keyframe in fcu.keyframe_points:
-                timepoint = keyframe.co[0]
-                value = keyframe.co[1]
-                assembler.add(joint_name, var_name, timepoint, channel, value)
-
-        for joint_name, joint_data in assembler.m_jointsData.items():
-            joint_keyframes = anim.newJoint(joint_name)
-
-            poses = joint_data.m_poses
-            for tp in poses.iterTimepoints():
-                x = poses.get(tp, 0)
-                y = poses.get(tp, 1)
-                z = poses.get(tp, 2)
-                joint_keyframes.addPos(tp, x, y, z)
-
-            rots = joint_data.m_quats
-            for tp in rots.iterTimepoints():
-                w = rots.get(tp, 0)
-                x = rots.get(tp, 1)
-                y = rots.get(tp, 2)
-                z = rots.get(tp, 3)
-                joint_keyframes.addRotate(tp, w, x, y, z)
-
-            scales = joint_data.m_scales
-            for tp in scales.iterTimepoints():
-                x = scales.get(tp, 0)
-                y = scales.get(tp, 1)
-                z = scales.get(tp, 2)
-                average_scale = (x + y + z) / 3
-                joint_keyframes.addScale(tp, average_scale)
-
-        return anim
-
-    @staticmethod
-    def __splitFcuDataPath(path: str) -> Tuple[str, str]:
-        pass1 = path.split('"')
-        bone_name = pass1[1]
-
-        pass2 = pass1[2].split(".")
-        var_name = pass2[-1]
-
-        return bone_name, var_name
+    def __convert_timepoint_to_index(self, timepoint: float) -> int:
+        assert isinstance(timepoint, float)
+        return self.__make_sorted_timepoints().index(timepoint)
 
 
-def _parse_transform(obj) -> smt.Transform:
+class _JointData:
+    def __init__(self):
+        # Channels for a pos and scale are x=0, y=1, z=2
+        # For a quat, w=0, x=1, y=2, z=3
+        self.__poses = _TimepointDict()
+        self.__quats = _TimepointDict()
+        self.__scales = _TimepointDict()
+
+    @property
+    def poses(self):
+        return self.__poses
+
+    @property
+    def quats(self):
+        return self.__quats
+
+    @property
+    def scales(self):
+        return self.__scales
+
+
+class _ActionAssembler:
+    def __init__(self):
+        self.__joints: Dict[str, _JointData] = {}
+
+    def items(self):
+        return self.__joints.items()
+
+    def add(self, joint_name: str, var_name: str, timepoint: float, channel: int, value: float):
+        joint_name = str(joint_name)
+        var_name = str(var_name)
+
+        if joint_name not in self.__joints.keys():
+            self.__joints[joint_name] = _JointData()
+
+        if "location" == var_name:
+            self.__joints[joint_name].poses.add(timepoint, channel, value)
+        elif "rotation_quaternion" == var_name:
+            self.__joints[joint_name].quats.add(timepoint, channel, value)
+        elif "scale" == var_name:
+            self.__joints[joint_name].scales.add(timepoint, channel, value)
+        else:
+            print('[DAL] WARN::Unknown variable for a joint: "{}"'.format(var_name))
+
+
+def __split_fcu_data_path(path: str) -> Tuple[str, str]:
+    pass1 = path.split('"')
+    bone_name = pass1[1]
+
+    pass2 = pass1[2].split(".")
+    var_name = pass2[-1]
+
+    return bone_name, var_name
+
+
+def __parse_animation(blender_action: bpy.types.Action):
+    assert isinstance(blender_action, bpy.types.Action)
+
+    anim = rwd.Scene.Animation(blender_action.name, bpy.context.scene.render.fps)
+
+    assembler = _ActionAssembler()
+    for fcu in blender_action.fcurves:
+        # var_name is either location, rotation_quaternion or scale
+        # channel stands for x, y, z for locations, w, x, y, z for quat, x, y, z for scale.
+        joint_name, var_name = __split_fcu_data_path(fcu.data_path)
+        channel = fcu.array_index
+
+        for keyframe in fcu.keyframe_points:
+            timepoint = keyframe.co[0]
+            value = keyframe.co[1]
+            assembler.add(joint_name, var_name, timepoint, channel, value)
+
+    for joint_name, joint_data in assembler.items():
+        joint_keyframes = anim.newJoint(joint_name)
+
+        poses = joint_data.poses
+        for tp in poses.iter_timepoints():
+            x = poses.get(tp, 0)
+            y = poses.get(tp, 1)
+            z = poses.get(tp, 2)
+            joint_keyframes.addPos(tp, x, y, z)
+
+        quats = joint_data.quats
+        for tp in quats.iter_timepoints():
+            w = quats.get(tp, 0)
+            x = quats.get(tp, 1)
+            y = quats.get(tp, 2)
+            z = quats.get(tp, 3)
+            joint_keyframes.addRotate(tp, w, x, y, z)
+
+        scales = joint_data.scales
+        for tp in scales.iter_timepoints():
+            x = scales.get(tp, 0)
+            y = scales.get(tp, 1)
+            z = scales.get(tp, 2)
+            average_scale = (x + y + z) / 3
+            joint_keyframes.addScale(tp, average_scale)
+
+    return anim
+
+
+def __parse_transform(obj) -> smt.Transform:
     dst = smt.Transform()
 
     dst.m_pos.x = obj.location[0]
     dst.m_pos.y = obj.location[1]
     dst.m_pos.z = obj.location[2]
-    dst.m_pos = _fix_rotation(dst.m_pos)
+    dst.m_pos = __fix_vec3_orientation(dst.m_pos)
 
-    dst.m_rotate = _fix_quat_orientation(smt.Quat(
-            obj.rotation_quaternion[0],
-            obj.rotation_quaternion[1],
-            obj.rotation_quaternion[2],
-            obj.rotation_quaternion[3],
+    dst.m_rotate = __fix_quat_orientation(smt.Quat(
+        obj.rotation_quaternion[0],
+        obj.rotation_quaternion[1],
+        obj.rotation_quaternion[2],
+        obj.rotation_quaternion[3],
     ))
 
     dst.m_scale = (obj.scale[0] + obj.scale[1] + obj.scale[2]) / 3
 
     return dst
 
-def _parse_skeleton(blender_armature) -> rwd.Scene.Skeleton:
+
+def __parse_skeleton(blender_armature) -> rwd.Scene.Skeleton:
     assert isinstance(blender_armature, bpy.types.Armature)
 
     skeleton = rwd.Scene.Skeleton(blender_armature.name)
@@ -346,7 +352,8 @@ def _parse_skeleton(blender_armature) -> rwd.Scene.Skeleton:
 
     return skeleton
 
-def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
+
+def __parse_model(obj, data_id: int) -> rwd.Scene.Model:
     assert isinstance(obj.data, bpy.types.Mesh)
 
     model = rwd.Scene.Model(data_id)
@@ -375,14 +382,14 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
     for face in obj.data.polygons:
         material_index = int(face.material_index)
 
-        verts_per_face = len(face.vertices)
-        assert len(face.loop_indices) == verts_per_face
-        if 3 == verts_per_face:
+        vert_count_per_face = len(face.vertices)
+        assert len(face.loop_indices) == vert_count_per_face
+        if 3 == vert_count_per_face:
             vert_indices = (0, 1, 2)
-        elif 4 == verts_per_face:
+        elif 4 == vert_count_per_face:
             vert_indices = (0, 1, 2, 0, 2, 3)
         else:
-            print("[DAL] WARN: Loop with {} vertices is not supported, thus omitted".format(verts_per_face))
+            print("[DAL] WARN: Loop with {} vertices is not supported, thus omitted".format(vert_count_per_face))
             continue
 
         for i in vert_indices:
@@ -390,7 +397,7 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
             vert_index: int = face.vertices[i]
             vertex_data = obj.data.vertices[vert_index].co
             vertex = smt.Vec3(vertex_data[0], vertex_data[1], vertex_data[2])
-            vertex = _fix_rotation(vertex)
+            vertex = __fix_vec3_orientation(vertex)
 
             model.m_aabb.resizeToContain(vertex.x, vertex.y, vertex.z)
             if units[material_index] is None:
@@ -407,20 +414,20 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
             else:
                 normal_data = face.normal
             normal = smt.Vec3(normal_data[0], normal_data[1], normal_data[2])
-            normal = _fix_rotation(normal)
+            normal = __fix_vec3_orientation(normal)
             normal.normalize()
 
             # Rest
-            vdata = rwd.Scene.VertexData()
-            vdata.m_vertex = vertex
-            vdata.m_uvCoord = uv_coord
-            vdata.m_normal = normal
+            vert_data = rwd.Scene.VertexData()
+            vert_data.m_vertex = vertex
+            vert_data.m_uvCoord = uv_coord
+            vert_data.m_normal = normal
 
             for g in obj.data.vertices[vert_index].groups:
                 group_name = str(obj.vertex_groups[g.group].name)
-                vdata.addJoint(group_name, g.weight)
+                vert_data.addJoint(group_name, g.weight)
 
-            units[material_index].m_mesh.addVertex(vdata)
+            units[material_index].m_mesh.addVertex(vert_data)
 
     for unit in units:
         if unit is not None:
@@ -428,7 +435,8 @@ def _parse_model(obj, data_id: int) -> rwd.Scene.Model:
 
     return model
 
-def _parse_light_base(obj, light: rwd.Scene.ILight) -> None:
+
+def __parse_light_base(obj, light: rwd.Scene.ILight) -> None:
     light.m_name = obj.name
 
     light.m_color.x = obj.data.color.r
@@ -438,14 +446,15 @@ def _parse_light_base(obj, light: rwd.Scene.ILight) -> None:
     light.m_useShadow = obj.data.use_shadow
     light.m_intensity = obj.data.energy
 
-def _parse_light_point(obj):
+
+def __parse_light_point(obj):
     assert isinstance(obj.data, bpy.types.PointLight)
 
     plight = rwd.Scene.PointLight()
 
-    _parse_light_base(obj, plight)
+    __parse_light_base(obj, plight)
 
-    plight.m_pos = _fix_rotation(smt.Vec3(obj.location.x, obj.location.y, obj.location.z))
+    plight.m_pos = __fix_vec3_orientation(smt.Vec3(obj.location.x, obj.location.y, obj.location.z))
 
     if not obj.data.use_custom_distance:
         print("[DAL] WARN::custom distance is not enabled for light \"{}\"".format(plight.m_name))
@@ -454,12 +463,13 @@ def _parse_light_point(obj):
 
     return plight
 
-def _parse_light_directional(obj):
+
+def __parse_light_directional(obj):
     assert isinstance(obj.data, bpy.types.SunLight)
 
     dlight = rwd.Scene.DirectionalLight()
 
-    _parse_light_base(obj, dlight)
+    __parse_light_base(obj, dlight)
 
     quat = smt.Quat()
     quat.w = obj.rotation_quaternion[0]
@@ -467,18 +477,19 @@ def _parse_light_directional(obj):
     quat.y = obj.rotation_quaternion[2]
     quat.z = obj.rotation_quaternion[3]
     down = smt.Vec3(0, 0, -1)  # Take a look at the comment near "_fix_rotation" function
-    dlight.m_direction = _fix_rotation(quat.rotateVec(down))
+    dlight.m_direction = __fix_vec3_orientation(quat.rotateVec(down))
 
     return dlight
 
-def _parse_light_spot(obj):
+
+def __parse_light_spot(obj):
     assert isinstance(obj.data, bpy.types.SpotLight)
 
     slight = rwd.Scene.SpotLight()
 
-    _parse_light_base(obj, slight)
+    __parse_light_base(obj, slight)
 
-    slight.m_pos = _fix_rotation(smt.Vec3(obj.location.x, obj.location.y, obj.location.z))
+    slight.m_pos = __fix_vec3_orientation(smt.Vec3(obj.location.x, obj.location.y, obj.location.z))
 
     if not obj.data.use_custom_distance:
         print("[DAL] WARN::custom distance is not enabled for light \"{}\"".format(slight.m_name))
@@ -491,18 +502,18 @@ def _parse_light_spot(obj):
     quat.y = obj.rotation_quaternion[2]
     quat.z = obj.rotation_quaternion[3]
     down = smt.Vec3(0, 0, -1)  # Take a look at the comment near "_fix_rotation" function
-    slight.m_direction = _fix_rotation(quat.rotateVec(down))
+    slight.m_direction = __fix_vec3_orientation(quat.rotateVec(down))
 
-    slight.m_spotDegree = _to_degree(obj.data.spot_size)
+    slight.m_spotDegree = __to_degrees(obj.data.spot_size)
     slight.m_spotBlend = float(obj.data.spot_blend)
 
     return slight
 
 
 # Special meshes
-def _parse_water_plane(obj) -> rwd.Scene.WaterPlane:
-    model = _parse_model(obj, 0)
-    transform = _parse_transform(obj)
+def __parse_water_plane(obj) -> rwd.Scene.WaterPlane:
+    model = __parse_model(obj, 0)
+    transform = __parse_transform(obj)
     aabb = model.m_aabb
     aabb.m_min = transform.transform(aabb.m_min)
     aabb.m_max = transform.transform(aabb.m_max)
@@ -520,19 +531,20 @@ def _parse_water_plane(obj) -> rwd.Scene.WaterPlane:
 
     return water
 
-def _parse_env_map(obj) -> rwd.Scene.EnvMap:
-    transform = _parse_transform(obj)
+
+def __parse_env_map(obj) -> rwd.Scene.EnvMap:
+    transform = __parse_transform(obj)
 
     envmap = rwd.Scene.EnvMap()
 
     name_start_index = str(obj.name).index("%", 1) + 1
     envmap.m_name = str(obj.name)[name_start_index:]
-    envmap.m_pos = _fix_rotation(smt.Vec3(obj.location.x, obj.location.y, obj.location.z))
+    envmap.m_pos = __fix_vec3_orientation(smt.Vec3(obj.location.x, obj.location.y, obj.location.z))
 
     if "pcorrect" in obj and "true" == obj["pcorrect"]:
         for face in obj.data.polygons:
-            point = _fix_rotation(smt.Vec3(face.center.x, face.center.y, face.center.z))
-            normal = _fix_rotation(smt.Vec3(face.normal.x, face.normal.y, face.normal.z))
+            point = __fix_vec3_orientation(smt.Vec3(face.center.x, face.center.y, face.center.z))
+            normal = __fix_vec3_orientation(smt.Vec3(face.normal.x, face.normal.y, face.normal.z))
 
             point = transform.transform(point)
             normal = transform.transform0(normal)
@@ -545,12 +557,12 @@ def _parse_env_map(obj) -> rwd.Scene.EnvMap:
     return envmap
 
 
-def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None:
+def __parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None:
     for obj in objects:
         type_str = str(obj.type)
         obj_name = str(obj.name)
 
-        if BLENDER_OBJ_TYPE_MESH == type_str:
+        if _BLENDER_OBJ_TYPE_MESH == type_str:
             if "%" == obj_name[0]:
                 tail = obj_name.find("%", 1)
                 if -1 == tail:
@@ -559,11 +571,11 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
 
                 if "envmap" == special_mesh_type:
                     print("[DAL] Parsing environment map: " + obj_name)
-                    envmap = _parse_env_map(obj)
+                    envmap = __parse_env_map(obj)
                     scene.m_envmaps.append(envmap)
                 elif "water" == special_mesh_type:
                     print("[DAL] Parsing water: " + obj_name)
-                    water = _parse_water_plane(obj)
+                    water = __parse_water_plane(obj)
                     scene.m_waters.append(water)
                 else:
                     raise RuntimeError(
@@ -578,16 +590,16 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
                 print("[DAL] Parsing actor: " + obj_name)
                 data_id = id(obj.data)
                 if data_id not in scene.m_models.keys():
-                    scene.m_models[data_id] = _parse_model(obj, data_id)
+                    scene.m_models[data_id] = __parse_model(obj, data_id)
                 scene.m_models[data_id].m_refCount += 1
 
                 actor = rwd.Scene.StaticActor()
                 actor.m_name = obj.name
                 actor.m_renderUnitID = data_id
-                actor.m_transform = _parse_transform(obj)
+                actor.m_transform = __parse_transform(obj)
 
                 for key in (str(xx) for xx in obj.keys()):
-                    if key in PROPERTIES_TO_IGNORE:
+                    if key in __PROPERTIES_TO_IGNORE:
                         continue
                     elif "collider" == key:
                         value = obj[key]
@@ -612,22 +624,22 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
                         print("[DAL] WARN: property '{}' ignored in object '{}'".format(key, obj_name))
 
                 scene.m_static_actors.append(actor)
-        elif BLENDER_OBJ_TYPE_ARMATURE == type_str:
+        elif _BLENDER_OBJ_TYPE_ARMATURE == type_str:
             print("[DAL] Parsing skeleton: " + obj_name)
-            skeleton = _parse_skeleton(obj.data)
+            skeleton = __parse_skeleton(obj.data)
             scene.m_skeletons.append(skeleton)
-        elif BLENDER_OBJ_TYPE_LIGHT == type_str:
+        elif _BLENDER_OBJ_TYPE_LIGHT == type_str:
             if isinstance(obj.data, bpy.types.PointLight):
                 print("[DAL] Parsing point light: " + obj_name)
-                plight = _parse_light_point(obj)
+                plight = __parse_light_point(obj)
                 scene.m_plights.append(plight)
             elif isinstance(obj.data, bpy.types.SunLight):
                 print("[DAL] Parsing sun light: " + obj_name)
-                dlight = _parse_light_directional(obj)
+                dlight = __parse_light_directional(obj)
                 scene.m_dlights.append(dlight)
             elif isinstance(obj.data, bpy.types.SpotLight):
                 print("[DAL] Parsing spot light: " + obj_name)
-                slight = _parse_light_spot(obj)
+                slight = __parse_light_spot(obj)
                 scene.m_slights.append(slight)
             else:
                 raise RuntimeError("Unkown type of light: {}".format(type(obj.data)))
@@ -639,22 +651,23 @@ def _parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> None
 def parse_raw_data() -> rwd.Scene:
     scene = rwd.Scene()
 
-    _parse_objects(_get_objects(), scene, True)
+    __parse_objects(_gen_blender_objects(), scene, True)
 
     for action in bpy.data.actions:
-        animation = _AnimationParser.parse(action)
+        animation = __parse_animation(action)
         animation.cleanUp()
         animation.removeUselessJoints()
         scene.m_animations.append(animation)
 
     return scene
 
+
 def parse_raw_data_map() -> Dict[str, rwd.Scene]:
     scenes: Dict[str, rwd.Scene] = {}
 
     for collection in bpy.data.collections:
         scene = rwd.Scene()
-        _parse_objects(collection.all_objects, scene, False)
+        __parse_objects(collection.all_objects, scene, False)
         scenes[collection.name] = scene
 
     return scenes
