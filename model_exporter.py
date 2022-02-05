@@ -30,8 +30,12 @@ def _make_aabb_of_models(models: Iterable[rwd.Scene.Model]) -> rwd.smt.AABB3:
 def _divide_meshes_with_joints(scene: rwd.Scene, joint_id_map: Dict[str, int]):
     units_with_joints: List[Tuple[str, rwd.Scene.RenderUnit]] = []
     units_without_joints: List[Tuple[str, rwd.Scene.RenderUnit]] = []
+
     for actor in scene.m_static_actors:
         for unit in scene.m_models[actor.m_renderUnitID].m_renderUnits:
+            if 0 == unit.m_mesh.size():
+                continue
+
             if unit.m_mesh.hasJoint() and (joint_id_map is not None):
                 units_with_joints.append((actor.m_name, unit))
             else:
