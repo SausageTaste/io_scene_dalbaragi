@@ -48,7 +48,7 @@ def __to_degrees(radian: float) -> float:
 
 
 def _gen_blender_objects():
-    for obj in bpy.context.scene.objects:
+    for obj in bpy.data.objects:
         yield obj
 
 
