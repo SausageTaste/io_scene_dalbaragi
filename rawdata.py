@@ -785,31 +785,54 @@ class Scene:
         return data
 
     def printInfo(self, println: Callable) -> None:
+        println("#### Models ####")
         for model_id, model in self.m_models.items():
-            println(
-                '[DAL] Render unit{{ id={}, ref_count={}, render units={} }}'.format(
-                    model_id, model.m_refCount, len(model.m_renderUnits)
-                )
-            )
-        for actor in self.m_static_actors:
-            println('[DAL] Static actor{{ name="{}", uid={} }}'.format(actor.m_name, actor.m_renderUnitID))
+            println(f"* {model_id}")
+            println(f"    ref count: {model.m_refCount}")
+
+            for i, unit in enumerate(model.m_renderUnits):
+                if i > 5: break
+
+                println(f"    * render unit[{i}]")
+                println(f"        mesh size: {unit.m_mesh.size()}")
+                println(f"        skeleton name: {unit.m_mesh.m_skeletonName}")
+                println(f"        albedo map: {unit.m_material.m_albedoMap}")
+
+        println("#### Static actors ####")
+        for i, actor in enumerate(self.m_static_actors):
+            if i > 5: break
+
+            println(f"  * {actor.m_name}")
+            println(f"      render unit id: {actor.m_renderUnitID}")
+            println(f"      transform: {actor.m_transform.makeJson()}")
+
+        println("#### Skeletons ####")
         for skeleton in self.m_skeletons:
-            println('[DAL] Skeleton{{ name="{}", joints={} }}'.format(skeleton.m_name, len(skeleton)))
-            for joint in skeleton:
-                println('[DAL]    {}'.format(joint))
+            println(f'  * {skeleton.m_name}')
+            for i, joint in enumerate(skeleton):
+                if i > 5: break
+
+                println(f'    * joint[{i}] "{joint.m_name}"')
+                println(f'        type: {joint.m_jointType}')
+                println(f'        parent name: {joint.m_parentName}')
+
+        println("#### Animations ####")
         for anim in self.m_animations:
-            println('[DAL] Animation{{ name="{}", joints={} }}'.format(anim.m_name, len(anim.m_joints)))
-            for joint in anim.m_joints:
-                println('[DAL]    Joint{{ name="{}" }}'.format(joint.m_name))
+            println(f'  * "{anim.m_name}"')
+            for i, joint in enumerate(anim.m_joints):
+                if i > 5: break
+
+                println(f'    * joint[{i}] "{joint.m_name}"')
                 for tp, pos in joint.iterPoses():
-                    println('[DAL]        Pos   at {} : {{ {}, {}, {} }}'.format(tp, pos.x, pos.y, pos.z))
+                    println('        Pos   at {} : {{ {}, {}, {} }}'.format(tp, pos.x, pos.y, pos.z))
                 for tp, quat in joint.iterRotates():
-                    println(
-                        '[DAL]        rot   at {} : {{ {}, {}, {}, {} }}'.format(tp, quat.w, quat.x, quat.y, quat.z))
+                    println('        rot   at {} : {{ {}, {}, {}, {} }}'.format(tp, quat.w, quat.x, quat.y, quat.z))
                 for tp, scale in joint.iterScales():
-                    println('[DAL]        scale at {} : {}'.format(tp, scale))
+                    println('        scale at {} : {}'.format(tp, scale))
+
+        println("#### Skipped ####")
         for name, reason in self.m_skipped_objs:
-            println('[DAL] Skipped {{ name="{}", reason="{}" }}'.format(name, reason))
+            println('  * name="{}", reason="{}"'.format(name, reason))
 
     def imageNames(self) -> Set[str]:
         img_names = set()
