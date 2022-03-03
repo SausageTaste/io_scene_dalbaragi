@@ -4,6 +4,7 @@ import struct
 def to_bool1(v: bool) -> bytes:
     return b"\x01" if v else b"\x00"
 
+
 def to_int16(v: int) -> bytes:
     res = struct.pack("<i", int(v))
 
@@ -16,11 +17,14 @@ def to_int16(v: int) -> bytes:
 
     return res[0:2]
 
+
 def to_int32(v: int) -> bytes:
     return struct.pack("<i", int(v))
 
+
 def to_float32(v: float) -> bytes:
     return struct.pack("<f", float(v))
+
 
 def to_nullTerminated(v: str) -> bytes:
     return v.encode(encoding="utf8") + b'\0'

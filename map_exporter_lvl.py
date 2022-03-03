@@ -11,7 +11,7 @@ from . import smalltype as smt
 MAX_DLIGHT_COUNT = 3
 
 
-def __find_envmap_index(name: str, envmaps: Iterable[rwd.Scene.EnvMap]) -> int:
+def __find_envmap_index(name: str, envmaps: Iterable[rwd.EnvMap]) -> int:
     if not name:
         return -1
 
@@ -59,8 +59,8 @@ def __build_bin_transform(trans: smt.Transform) -> bytearray:
 
 
 # id_map is None if skeleton doesn't exist.
-def __build_bin_mesh(mesh: rwd.Scene.Mesh) -> bytearray:
-    assert isinstance(mesh, rwd.Scene.Mesh)
+def __build_bin_mesh(mesh: rwd.Mesh) -> bytearray:
+    assert isinstance(mesh, rwd.Mesh)
 
     data = bytearray()
 
@@ -86,13 +86,13 @@ def __build_bin_mesh(mesh: rwd.Scene.Mesh) -> bytearray:
     return data
 
 
-def __build_bin_render_unit(unit: rwd.Scene.RenderUnit):
-    assert isinstance(unit, rwd.Scene.RenderUnit)
+def __build_bin_render_unit(unit: rwd.RenderUnit):
+    assert isinstance(unit, rwd.RenderUnit)
 
     data = bytearray()
 
     # Material
-    material: rwd.Scene.Material = unit.m_material
+    material: rwd.Material = unit.m_material
     data += byt.to_float32(material.m_roughness)
     data += byt.to_float32(material.m_metallic)
 
@@ -115,8 +115,8 @@ def __build_bin_render_unit(unit: rwd.Scene.RenderUnit):
     return data
 
 
-def __build_bin_model(model: rwd.Scene.Model) -> bytearray:
-    assert isinstance(model, rwd.Scene.Model)
+def __build_bin_model(model: rwd.Model) -> bytearray:
+    assert isinstance(model, rwd.Model)
 
     data = bytearray()
 
@@ -135,8 +135,8 @@ def __build_bin_model(model: rwd.Scene.Model) -> bytearray:
     return data
 
 
-def __build_bin_static_actor(actor: rwd.Scene.StaticActor):
-    assert isinstance(actor, rwd.Scene.StaticActor)
+def __build_bin_static_actor(actor: rwd.StaticActor):
+    assert isinstance(actor, rwd.StaticActor)
 
     result = bytearray()
 
@@ -147,8 +147,8 @@ def __build_bin_static_actor(actor: rwd.Scene.StaticActor):
     return result
 
 
-def __build_bin_water_plane(water: rwd.Scene.WaterPlane) -> bytearray:
-    assert isinstance(water, rwd.Scene.WaterPlane)
+def __build_bin_water_plane(water: rwd.WaterPlane) -> bytearray:
+    assert isinstance(water, rwd.WaterPlane)
 
     result = bytearray()
 
@@ -166,7 +166,7 @@ def __build_bin_water_plane(water: rwd.Scene.WaterPlane) -> bytearray:
     return result
 
 
-def __build_bin_envmap(envmap: rwd.Scene.EnvMap) -> bytearray:
+def __build_bin_envmap(envmap: rwd.EnvMap) -> bytearray:
     data = bytearray()
 
     data += __build_bin_vec3(envmap.m_pos)
@@ -183,7 +183,7 @@ def __build_bin_envmap(envmap: rwd.Scene.EnvMap) -> bytearray:
     return data
 
 
-def __build_bin_light(light: rwd.Scene.ILight) -> bytearray:
+def __build_bin_light(light: rwd.ILight) -> bytearray:
     result = bytearray()
 
     result += byt.to_nullTerminated(light.m_name)
@@ -194,7 +194,7 @@ def __build_bin_light(light: rwd.Scene.ILight) -> bytearray:
     return result
 
 
-def __build_bin_plight(plight: rwd.Scene.PointLight) -> bytearray:
+def __build_bin_plight(plight: rwd.PointLight) -> bytearray:
     result = __build_bin_light(plight)
 
     result += __build_bin_vec3(plight.m_pos)
@@ -204,7 +204,7 @@ def __build_bin_plight(plight: rwd.Scene.PointLight) -> bytearray:
     return result
 
 
-def __build_bin_slight(slight: rwd.Scene.SpotLight) -> bytearray:
+def __build_bin_slight(slight: rwd.SpotLight) -> bytearray:
     result = __build_bin_light(slight)
 
     result += __build_bin_vec3(slight.m_pos)
@@ -229,7 +229,7 @@ def make_binary_dmc(scene: rwd.Scene):
     data += byt.to_int32(len(scene.m_models))
     for i, mid_n_model in enumerate(scene.m_models.items()):
         model_id, model = mid_n_model
-        model: rwd.Scene.Model
+        model: rwd.Model
 
         data += __build_bin_model(model)
 
@@ -284,7 +284,7 @@ def __build_bin_chunk_info(chunk: mpd.Level.MapChunk) -> bytearray:
     return result
 
 
-def __build_bin_dlight(dlight: rwd.Scene.DirectionalLight) -> bytearray:
+def __build_bin_dlight(dlight: rwd.DirectionalLight) -> bytearray:
     result = __build_bin_light(dlight)
 
     result += __build_bin_vec3(dlight.m_direction)
@@ -293,7 +293,7 @@ def __build_bin_dlight(dlight: rwd.Scene.DirectionalLight) -> bytearray:
 
 
 def make_binary_dlb(level: mpd.Level) -> bytearray:
-    dlights: List[rwd.Scene.DirectionalLight] = []
+    dlights: List[rwd.DirectionalLight] = []
     for name, chunk in level.items():
         dlights += chunk.m_data.m_dlights
     if len(dlights) > MAX_DLIGHT_COUNT:

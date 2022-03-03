@@ -10,7 +10,7 @@ from . import byteutils as byt
 NUM_JOINTS_PER_VERTEX = 4
 
 
-def _make_joints_id_map(skeleton: rwd.Scene.Skeleton) -> Dict[str, int]:
+def _make_joints_id_map(skeleton: rwd.Skeleton) -> Dict[str, int]:
     result = dict()
 
     for i, joint in enumerate(skeleton.m_joints):
@@ -19,7 +19,8 @@ def _make_joints_id_map(skeleton: rwd.Scene.Skeleton) -> Dict[str, int]:
 
     return result
 
-def _make_aabb_of_models(models: Iterable[rwd.Scene.Model]) -> rwd.smt.AABB3:
+
+def _make_aabb_of_models(models: Iterable[rwd.Model]) -> rwd.smt.AABB3:
     aabb = rwd.smt.AABB3()
 
     for model in models:
@@ -27,9 +28,10 @@ def _make_aabb_of_models(models: Iterable[rwd.Scene.Model]) -> rwd.smt.AABB3:
 
     return aabb
 
+
 def _divide_meshes_with_joints(scene: rwd.Scene, joint_id_map: Dict[str, int]):
-    units_with_joints: List[Tuple[str, rwd.Scene.RenderUnit]] = []
-    units_without_joints: List[Tuple[str, rwd.Scene.RenderUnit]] = []
+    units_with_joints: List[Tuple[str, rwd.RenderUnit]] = []
+    units_without_joints: List[Tuple[str, rwd.RenderUnit]] = []
 
     for actor in scene.m_static_actors:
         for unit in scene.m_models[actor.m_renderUnitID].m_renderUnits:
@@ -54,6 +56,7 @@ def _build_bin_mat4(mat: smt.Mat4) -> bytearray:
 
     return bytearray(np.array(floatlist, dtype=np.float32).tobytes())
 
+
 def _build_bin_aabb(aabb: smt.AABB3) -> bytearray:
     assert isinstance(aabb, smt.AABB3)
 
@@ -68,8 +71,9 @@ def _build_bin_aabb(aabb: smt.AABB3) -> bytearray:
 
     return data
 
-def _build_bin_skeleton(skeleton: rwd.Scene.Skeleton, id_map: Dict[str, int]) -> bytearray:
-    assert isinstance(skeleton, rwd.Scene.Skeleton)
+
+def _build_bin_skeleton(skeleton: rwd.Skeleton, id_map: Dict[str, int]) -> bytearray:
+    assert isinstance(skeleton, rwd.Skeleton)
 
     if len(skeleton) > rwd.MAX_JOINT_COUNT:
         raise RuntimeError("the number of joints in \"{}\" exceeds capacity {}".format(len(skeleton), rwd.MAX_JOINT_COUNT))
@@ -87,8 +91,9 @@ def _build_bin_skeleton(skeleton: rwd.Scene.Skeleton, id_map: Dict[str, int]) ->
 
     return data
 
-def _build_bin_joint_keyframes(keyframes: rwd.Scene.JointKeyframes) -> bytearray:
-    assert isinstance(keyframes, rwd.Scene.JointKeyframes)
+
+def _build_bin_joint_keyframes(keyframes: rwd.JointKeyframes) -> bytearray:
+    assert isinstance(keyframes, rwd.JointKeyframes)
 
     data = bytearray()
 
@@ -121,8 +126,9 @@ def _build_bin_joint_keyframes(keyframes: rwd.Scene.JointKeyframes) -> bytearray
 
     return data
 
-def _build_bin_animation(anim: rwd.Scene.Animation, id_map: Dict[str, int]) -> bytearray:
-    assert isinstance(anim, rwd.Scene.Animation)
+
+def _build_bin_animation(anim: rwd.Animation, id_map: Dict[str, int]) -> bytearray:
+    assert isinstance(anim, rwd.Animation)
     assert 0.0 != anim.m_tickPerSec
 
     data = bytearray()
@@ -138,9 +144,10 @@ def _build_bin_animation(anim: rwd.Scene.Animation, id_map: Dict[str, int]) -> b
 
     return data
 
+
 # id_map is None if skeleton doesn't exist.
-def _build_bin_mesh_without_joint(mesh: rwd.Scene.Mesh) -> Tuple[int, bytearray]:
-    assert isinstance(mesh, rwd.Scene.Mesh)
+def _build_bin_mesh_without_joint(mesh: rwd.Mesh) -> Tuple[int, bytearray]:
+    assert isinstance(mesh, rwd.Mesh)
 
     data = bytearray()
 
@@ -165,8 +172,9 @@ def _build_bin_mesh_without_joint(mesh: rwd.Scene.Mesh) -> Tuple[int, bytearray]
 
     return num_vertices, data
 
-def _build_bin_mesh_with_joint(mesh: rwd.Scene.Mesh, id_map: Optional[Dict[str, int]]) -> bytearray:
-    assert isinstance(mesh, rwd.Scene.Mesh)
+
+def _build_bin_mesh_with_joint(mesh: rwd.Mesh, id_map: Optional[Dict[str, int]]) -> bytearray:
+    assert isinstance(mesh, rwd.Mesh)
     assert mesh.hasJoint() and (id_map is not None)
 
     num_vertices, data = _build_bin_mesh_without_joint(mesh)
@@ -206,7 +214,8 @@ def _build_bin_mesh_with_joint(mesh: rwd.Scene.Mesh, id_map: Optional[Dict[str, 
 
     return data
 
-def _build_bin_material(material: rwd.Scene.Material) -> bytearray:
+
+def _build_bin_material(material: rwd.Material) -> bytearray:
     data = bytearray()
 
     data += byt.to_float32(material.m_roughness)
