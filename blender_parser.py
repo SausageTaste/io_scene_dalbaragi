@@ -578,16 +578,14 @@ def __parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> Non
                     water = __parse_water_plane(obj)
                     scene.m_waters.append(water)
                 else:
-                    raise RuntimeError(
-                        "invalid special mesh type \'{}\' for object \'{}\'".format(special_mesh_type, obj_name)
-                    )
+                    raise RuntimeError(f"invalid special mesh type '{special_mesh_type}' for object '{obj_name}'")
             else:
                 if (not obj.visible_get()) and ignore_hidden:
-                    print("[DAL] Ignoring hidden actor: {}, {}".format(obj_name, type_str))
+                    print(f"[DAL] Ignoring hidden actor: {obj_name}, {type_str}")
                     scene.m_skipped_objs.append((obj.name, "Hidden object"))
                     continue
 
-                print("[DAL] Parsing actor: " + obj_name)
+                print(f"[DAL] Parsing actor: {obj_name}")
                 data_id = id(obj.data)
                 if data_id not in scene.m_models.keys():
                     scene.m_models[data_id] = __parse_model(obj, data_id)
@@ -608,7 +606,7 @@ def __parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> Non
                         elif value in rwd.Scene.StaticActor.COLLIDER_TYPE_MAP.keys():
                             actor.m_collider = rwd.Scene.StaticActor.COLLIDER_TYPE_MAP[value]
                         else:
-                            raise RuntimeError("Unidentified collider type '{}' in object '{}'".format(value, obj_name))
+                            raise RuntimeError(f"Unidentified collider type '{value}' in object '{obj_name}'")
 
                         if rwd.Scene.StaticActor.ColliderType.mesh == actor.m_collider:
                             scene.m_models[data_id].m_hasMeshCollider = True
@@ -619,9 +617,9 @@ def __parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> Non
                         elif postfix.isnumeric():
                             actor.setEnvmapOf(int(postfix), obj[key])
                         else:
-                            raise RuntimeError("Invalid envmap syntax \'{}\' for \'{}\'".format(key, obj.name))
+                            raise RuntimeError(f"Invalid envmap syntax '{key}' for '{obj_name}'")
                     else:
-                        print("[DAL] WARN: property '{}' ignored in object '{}'".format(key, obj_name))
+                        print(f"[DAL] WARN: property '{key}' ignored in object '{obj_name}'")
 
                 scene.m_static_actors.append(actor)
         elif _BLENDER_OBJ_TYPE_ARMATURE == type_str:
@@ -642,10 +640,10 @@ def __parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> Non
                 slight = __parse_light_spot(obj)
                 scene.m_slights.append(slight)
             else:
-                raise RuntimeError("Unkown type of light: {}".format(type(obj.data)))
+                raise RuntimeError(f"Unknown type of light: {type(obj.data)}")
         else:
-            print("[DAL] Ignoring not supported object type: {}, {}".format(obj_name, type_str))
-            scene.m_skipped_objs.append((obj.name, "Not supported object type: {}".format(type_str)))
+            print(f"[DAL] Ignoring not supported object type: {obj_name}, {type_str}")
+            scene.m_skipped_objs.append((obj.name, f"Not supported object type: {type_str}"))
 
 
 def parse_raw_data() -> rwd.Scene:
