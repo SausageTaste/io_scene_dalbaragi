@@ -48,7 +48,7 @@ def __to_degrees(radian: float) -> float:
 
 
 def _gen_blender_objects():
-    for obj in bpy.context.scene.objects:
+    for obj in bpy.data.objects:
         yield obj
 
 
@@ -60,7 +60,7 @@ class _MaterialParser:
     NODE_GROUP           = "ShaderNodeGroup"
 
     @classmethod
-    def parse(cls, blender_material) -> Optional[rwd.Scene.Material]:
+    def parse(cls, blender_material) -> Optional[rwd.Material]:
         assert blender_material is not None
 
         shader_output = cls.__find_node_named(cls.NODE_MATERIAL_OUTPUT, blender_material.node_tree.nodes)
@@ -108,8 +108,8 @@ class _MaterialParser:
         return None
 
     @classmethod
-    def __parse_principled_bsdf(cls, bsdf, alpha_blend: bool) -> rwd.Scene.Material:
-        material = rwd.Scene.Material()
+    def __parse_principled_bsdf(cls, bsdf, alpha_blend: bool) -> rwd.Material:
+        material = rwd.Material()
 
         node_roughness = bsdf.inputs["Roughness"]
         node_metallic  = bsdf.inputs["Metallic"]
@@ -138,7 +138,7 @@ class _MaterialParser:
 
     @classmethod
     def __parse_xps_shader(cls, linked_shader, alpha_blend: bool):
-        material = rwd.Scene.Material()
+        material = rwd.Material()
 
         material.m_alphaBlend = alpha_blend
 
@@ -268,7 +268,7 @@ def __split_fcu_data_path(path: str) -> Tuple[str, str]:
 def __parse_animation(blender_action: bpy.types.Action):
     assert isinstance(blender_action, bpy.types.Action)
 
-    anim = rwd.Scene.Animation(blender_action.name, bpy.context.scene.render.fps)
+    anim = rwd.Animation(blender_action.name, bpy.context.scene.render.fps)
 
     assembler = _ActionAssembler()
     for fcu in blender_action.fcurves:
@@ -331,10 +331,10 @@ def __parse_transform(obj) -> smt.Transform:
     return dst
 
 
-def __parse_skeleton(blender_armature) -> rwd.Scene.Skeleton:
+def __parse_skeleton(blender_armature) -> rwd.Skeleton:
     assert isinstance(blender_armature, bpy.types.Armature)
 
-    skeleton = rwd.Scene.Skeleton(blender_armature.name)
+    skeleton = rwd.Skeleton(blender_armature.name)
 
     for bone in blender_armature.bones:
         parent_name = ""
@@ -344,25 +344,25 @@ def __parse_skeleton(blender_armature) -> rwd.Scene.Skeleton:
         joint_data = skeleton.newJoint(bone.name, parent_name)
 
         if bone.get("dal_phy_hairRoot", None) is not None:
-            joint_data.m_jointType = rwd.Scene.JointType.hair_root
+            joint_data.m_jointType = rwd.JointType.hair_root
         elif bone.get("dal_phy_skirtRoot", None) is not None:
-            joint_data.m_jointType = rwd.Scene.JointType.skirt_root
+            joint_data.m_jointType = rwd.JointType.skirt_root
 
         joint_data.m_offsetMat.set(bone.matrix_local)
 
     return skeleton
 
 
-def __parse_model(obj, data_id: int) -> rwd.Scene.Model:
+def __parse_model(obj, data_id: int) -> rwd.Model:
     assert isinstance(obj.data, bpy.types.Mesh)
 
-    model = rwd.Scene.Model(data_id)
+    model = rwd.Model(data_id)
 
     armature = obj.find_armature()
     armature_name = "" if armature is None else armature.name
     del armature
 
-    units: List[Optional[rwd.Scene.RenderUnit]] = []
+    units: List[Optional[rwd.RenderUnit]] = []
 
     # Generate render units with materials
     if 0 == len(obj.data.materials):
@@ -372,7 +372,7 @@ def __parse_model(obj, data_id: int) -> rwd.Scene.Model:
         if material is None:
             units.append(None)
         else:
-            unit = rwd.Scene.RenderUnit()
+            unit = rwd.RenderUnit()
             unit.m_material = material
             unit.m_mesh.m_skeletonName = armature_name
             units.append(unit)
@@ -418,7 +418,7 @@ def __parse_model(obj, data_id: int) -> rwd.Scene.Model:
             normal.normalize()
 
             # Rest
-            vert_data = rwd.Scene.VertexData()
+            vert_data = rwd.VertexData()
             vert_data.m_vertex = vertex
             vert_data.m_uvCoord = uv_coord
             vert_data.m_normal = normal
@@ -436,7 +436,7 @@ def __parse_model(obj, data_id: int) -> rwd.Scene.Model:
     return model
 
 
-def __parse_light_base(obj, light: rwd.Scene.ILight) -> None:
+def __parse_light_base(obj, light: rwd.ILight) -> None:
     light.m_name = obj.name
 
     light.m_color.x = obj.data.color.r
@@ -450,7 +450,7 @@ def __parse_light_base(obj, light: rwd.Scene.ILight) -> None:
 def __parse_light_point(obj):
     assert isinstance(obj.data, bpy.types.PointLight)
 
-    plight = rwd.Scene.PointLight()
+    plight = rwd.PointLight()
 
     __parse_light_base(obj, plight)
 
@@ -467,7 +467,7 @@ def __parse_light_point(obj):
 def __parse_light_directional(obj):
     assert isinstance(obj.data, bpy.types.SunLight)
 
-    dlight = rwd.Scene.DirectionalLight()
+    dlight = rwd.DirectionalLight()
 
     __parse_light_base(obj, dlight)
 
@@ -485,7 +485,7 @@ def __parse_light_directional(obj):
 def __parse_light_spot(obj):
     assert isinstance(obj.data, bpy.types.SpotLight)
 
-    slight = rwd.Scene.SpotLight()
+    slight = rwd.SpotLight()
 
     __parse_light_base(obj, slight)
 
@@ -511,14 +511,14 @@ def __parse_light_spot(obj):
 
 
 # Special meshes
-def __parse_water_plane(obj) -> rwd.Scene.WaterPlane:
+def __parse_water_plane(obj) -> rwd.WaterPlane:
     model = __parse_model(obj, 0)
     transform = __parse_transform(obj)
     aabb = model.m_aabb
     aabb.m_min = transform.transform(aabb.m_min)
     aabb.m_max = transform.transform(aabb.m_max)
 
-    water = rwd.Scene.WaterPlane()
+    water = rwd.WaterPlane()
 
     water.m_centerPos = smt.Vec3(
         (aabb.m_min.x + aabb.m_max.x) / 2,
@@ -532,10 +532,10 @@ def __parse_water_plane(obj) -> rwd.Scene.WaterPlane:
     return water
 
 
-def __parse_env_map(obj) -> rwd.Scene.EnvMap:
+def __parse_env_map(obj) -> rwd.EnvMap:
     transform = __parse_transform(obj)
 
-    envmap = rwd.Scene.EnvMap()
+    envmap = rwd.EnvMap()
 
     name_start_index = str(obj.name).index("%", 1) + 1
     envmap.m_name = str(obj.name)[name_start_index:]
@@ -578,22 +578,20 @@ def __parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> Non
                     water = __parse_water_plane(obj)
                     scene.m_waters.append(water)
                 else:
-                    raise RuntimeError(
-                        "invalid special mesh type \'{}\' for object \'{}\'".format(special_mesh_type, obj_name)
-                    )
+                    raise RuntimeError(f"invalid special mesh type '{special_mesh_type}' for object '{obj_name}'")
             else:
                 if (not obj.visible_get()) and ignore_hidden:
-                    print("[DAL] Ignoring hidden actor: {}, {}".format(obj_name, type_str))
+                    print(f"[DAL] Ignoring hidden actor: {obj_name}, {type_str}")
                     scene.m_skipped_objs.append((obj.name, "Hidden object"))
                     continue
 
-                print("[DAL] Parsing actor: " + obj_name)
+                print(f"[DAL] Parsing actor: {obj_name}")
                 data_id = id(obj.data)
                 if data_id not in scene.m_models.keys():
                     scene.m_models[data_id] = __parse_model(obj, data_id)
                 scene.m_models[data_id].m_refCount += 1
 
-                actor = rwd.Scene.StaticActor()
+                actor = rwd.StaticActor()
                 actor.m_name = obj.name
                 actor.m_renderUnitID = data_id
                 actor.m_transform = __parse_transform(obj)
@@ -604,13 +602,13 @@ def __parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> Non
                     elif "collider" == key:
                         value = obj[key]
                         if "" == value:
-                            actor.m_collider = rwd.Scene.StaticActor.ColliderType.aabb
-                        elif value in rwd.Scene.StaticActor.COLLIDER_TYPE_MAP.keys():
-                            actor.m_collider = rwd.Scene.StaticActor.COLLIDER_TYPE_MAP[value]
+                            actor.m_collider = rwd.StaticActor.ColliderType.aabb
+                        elif value in rwd.StaticActor.COLLIDER_TYPE_MAP.keys():
+                            actor.m_collider = rwd.StaticActor.COLLIDER_TYPE_MAP[value]
                         else:
-                            raise RuntimeError("Unidentified collider type '{}' in object '{}'".format(value, obj_name))
+                            raise RuntimeError(f"Unidentified collider type '{value}' in object '{obj_name}'")
 
-                        if rwd.Scene.StaticActor.ColliderType.mesh == actor.m_collider:
+                        if rwd.StaticActor.ColliderType.mesh == actor.m_collider:
                             scene.m_models[data_id].m_hasMeshCollider = True
                     elif key.startswith("envmap"):
                         postfix = key[6:]
@@ -619,9 +617,9 @@ def __parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> Non
                         elif postfix.isnumeric():
                             actor.setEnvmapOf(int(postfix), obj[key])
                         else:
-                            raise RuntimeError("Invalid envmap syntax \'{}\' for \'{}\'".format(key, obj.name))
+                            raise RuntimeError(f"Invalid envmap syntax '{key}' for '{obj_name}'")
                     else:
-                        print("[DAL] WARN: property '{}' ignored in object '{}'".format(key, obj_name))
+                        print(f"[DAL] WARN: property '{key}' ignored in object '{obj_name}'")
 
                 scene.m_static_actors.append(actor)
         elif _BLENDER_OBJ_TYPE_ARMATURE == type_str:
@@ -642,10 +640,10 @@ def __parse_objects(objects: iter, scene: rwd.Scene, ignore_hidden: bool) -> Non
                 slight = __parse_light_spot(obj)
                 scene.m_slights.append(slight)
             else:
-                raise RuntimeError("Unkown type of light: {}".format(type(obj.data)))
+                raise RuntimeError(f"Unknown type of light: {type(obj.data)}")
         else:
-            print("[DAL] Ignoring not supported object type: {}, {}".format(obj_name, type_str))
-            scene.m_skipped_objs.append((obj.name, "Not supported object type: {}".format(type_str)))
+            print(f"[DAL] Ignoring not supported object type: {obj_name}, {type_str}")
+            scene.m_skipped_objs.append((obj.name, f"Not supported object type: {type_str}"))
 
 
 def parse_raw_data() -> rwd.Scene:

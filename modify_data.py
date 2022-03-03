@@ -5,7 +5,7 @@ from . import rawdata as rwd
 
 class JointRemover:
     class _JointReplaceMap:
-        def __init__(self, skeleton: rwd.Scene.Skeleton):
+        def __init__(self, skeleton: rwd.Skeleton):
             self.__map = {"": ""}
 
             for joint in skeleton.m_joints:
@@ -29,13 +29,13 @@ class JointRemover:
             return self.__map
 
     @classmethod
-    def process(cls, skel: rwd.Scene.Skeleton, anims: List[rwd.Scene.Animation], models: Iterable[rwd.Scene.Model]):
+    def process(cls, skel: rwd.Skeleton, anims: List[rwd.Animation], models: Iterable[rwd.Model]):
         # There is a better idea. Remove all useless joints in animations, and use that info to determine whether remove
         # a joint from the skeleton or not.
 
-        uselesses = cls.__getSetOfNamesOfUselesses(anims[0])
+        uselesses = cls.__getSetOfNamesOfTheUseless(anims[0])
         for anim in anims[1:]:
-            uselesses = uselesses.intersection(cls.__getSetOfNamesOfUselesses(anim))
+            uselesses = uselesses.intersection(cls.__getSetOfNamesOfTheUseless(anim))
         uselesses = uselesses.difference(skel.getVitalJoints())
 
         replace_map = cls.__removeAndMakeReplaceMap(skel, uselesses)
@@ -56,8 +56,8 @@ class JointRemover:
                             pass
 
     @classmethod
-    def __getSetOfNamesOfUselesses(cls, animation: rwd.Scene.Animation) -> Set[str]:
-        assert isinstance(animation, rwd.Scene.Animation)
+    def __getSetOfNamesOfTheUseless(cls, animation: rwd.Animation) -> Set[str]:
+        assert isinstance(animation, rwd.Animation)
 
         result = set()
         for joint in animation.m_joints:
@@ -66,7 +66,7 @@ class JointRemover:
         return result
 
     @classmethod
-    def __removeAndMakeReplaceMap(cls, skeleton: rwd.Scene.Skeleton, remove_list: Set[str]) -> Dict[str, str]:
+    def __removeAndMakeReplaceMap(cls, skeleton: rwd.Skeleton, remove_list: Set[str]) -> Dict[str, str]:
         replace_map = cls._JointReplaceMap(skeleton)
 
         # make replace map
@@ -78,7 +78,7 @@ class JointRemover:
                 replace_map.replace(joint.m_name, parent_name)
 
         # remove joints and replace parent names
-        new_joints: List[rwd.Scene.Joint] = []
+        new_joints: List[rwd.Joint] = []
         for joint in skeleton.m_joints:
             if joint.m_name not in remove_list:
                 joint.m_parentName = replace_map[joint.m_parentName]
@@ -91,7 +91,7 @@ class JointRemover:
 '''
 class MaterialDuplacateRemover:
     @classmethod
-    def process(cls, units: Dict[int, rwd.Scene.RenderUnit], static_actors: List[rwd.Scene.StaticActor]) -> None:
+    def process(cls, units: Dict[int, rwd.RenderUnit], static_actors: List[rwd.StaticActor]) -> None:
         replace_map = cls.__makeReplaceMap(units)
 
         for id_removed, id_preserved in replace_map.items():
@@ -116,7 +116,7 @@ class MaterialDuplacateRemover:
                 static_actors.append(actor)
 
     @classmethod
-    def __makeReplaceMap(cls, units: Dict[int, rwd.Scene.RenderUnit]) -> Dict[int, int]:
+    def __makeReplaceMap(cls, units: Dict[int, rwd.RenderUnit]) -> Dict[int, int]:
         preserved: Set[int] = set()
         replace_map: Dict[int, int] = {}  # id to remove, id to preserve
 

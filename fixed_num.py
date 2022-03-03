@@ -58,5 +58,6 @@ def main():
     print("Float: {} / {} = {}".format(a_float, b_float, a_float / b_float))
     print("Fixed: {} / {} = {}".format(a_fixed, b_fixed, a_fixed / b_fixed))
 
+
 if __name__ == '__main__':
     main()
