@@ -119,11 +119,13 @@ class EmportDalModel(Operator, ExportHelper):
         print("[DAL] Model exported: " + self.filepath)
 
         if self.optionBool_copyImages:
-            img_names = scene.imageNames()
-            save_fol = os.path.split(self.filepath)[0].replace("\\", "/")
-            for name in img_names:
+            img_save_fol_path = os.path.splitext(self.filepath)[0] + "_textures"
+            if not os.path.isdir(img_save_fol_path):
+                os.mkdir(img_save_fol_path)
+
+            for name in scene.imageNames():
                 image: bpy.types.Image = bpy.data.images[name]
-                dst_path = save_fol + "/" + name
+                dst_path = os.path.join(img_save_fol_path, name)
                 _copy_image(image, dst_path)
             print("[DAL] Image copied")
 
