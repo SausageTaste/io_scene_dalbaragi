@@ -1,5 +1,6 @@
 import enum
 import math
+from typing import Optional
 
 import bpy
 
@@ -33,10 +34,110 @@ class ObjType(enum.Enum):
     spotlight = "SLIGHT"
 
 
-# In blender's coordinate system, -z is down.
-# But in Dalbaragi engine, -y is down and -z is far direction.
-def __fix_vec3_orientation(v: smt.Vec3) -> smt.Vec3:
-    return smt.Vec3(v.x, v.z, -v.y)
+class _MaterialParser:
+    __NODE_BSDF = "ShaderNodeBsdfPrincipled"
+    __NODE_HOLDOUT = "ShaderNodeHoldout"
+    __NODE_MATERIAL_OUTPUT = "ShaderNodeOutputMaterial"
+    __NODE_TEX_IMAGE = "ShaderNodeTexImage"
+    __NODE_GROUP = "ShaderNodeGroup"
+
+    __BLEND_OPAQUE = "OPAQUE"
+    __BLEND_CLIP = "CLIP"
+    __BLEND_HASHED = "HASHED"
+    __BLEND_BLEND = "BLEND"
+
+    @classmethod
+    def parse(cls, blender_material) -> Optional[dst.Material]:
+        assert blender_material is not None
+
+        shader_output = cls.__find_node_named(cls.__NODE_MATERIAL_OUTPUT, blender_material.node_tree.nodes)
+        linked_shader = shader_output.inputs["Surface"].links[0].from_node
+        alpha_blend_enabled = True if blender_material.blend_method != cls.__BLEND_OPAQUE else False
+
+        if cls.__NODE_BSDF == linked_shader.bl_idname:
+            return cls.__parse_principled_bsdf(linked_shader, alpha_blend_enabled)
+        elif cls.__NODE_HOLDOUT == linked_shader.bl_idname:
+            return None
+        elif cls.__NODE_GROUP == linked_shader.bl_idname:
+            if "XPS Shader" == linked_shader.node_tree.name_full:
+                return cls.__parse_xps_shader(linked_shader, alpha_blend_enabled)
+            else:
+                print("Not supported shader type: {}".format(linked_shader.node_tree.name_full))
+                return None
+        else:
+            print("Not supported shader type: {}".format(linked_shader.bl_idname))
+            return None
+
+    @staticmethod
+    def __find_node_named(name: str, nodes):
+        for node in nodes:
+            if name == node.bl_idname:
+                return node
+        return None
+
+    @classmethod
+    def __find_node_recur_named(cls, name, parent_node):
+        if hasattr(parent_node, "links"):
+            for linked in parent_node.links:
+                node = linked.from_node
+                if name == node.bl_idname:
+                    return node
+                else:
+                    res = cls.__find_node_recur_named(name, node)
+                    if res is not None:
+                        return res
+        if hasattr(parent_node, "inputs"):
+            for node_input in parent_node.inputs:
+                res = cls.__find_node_recur_named(name, node_input)
+                if res is not None:
+                    return res
+
+        return None
+
+    @classmethod
+    def __parse_principled_bsdf(cls, bsdf, alpha_blend: bool) -> dst.Material:
+        material = dst.Material()
+
+        node_roughness = bsdf.inputs["Roughness"]
+        node_metallic = bsdf.inputs["Metallic"]
+
+        material.transparency = alpha_blend
+        material.roughness = node_roughness.default_value
+        material.metallic = node_metallic.default_value
+
+        image_node = cls.__find_node_recur_named(cls.__NODE_TEX_IMAGE, bsdf.inputs["Base Color"])
+        if image_node is not None:
+            material.albedo_map = image_node.image.name
+
+        image_node = cls.__find_node_recur_named(cls.__NODE_TEX_IMAGE, node_roughness)
+        if image_node is not None:
+            material.roughness_map = image_node.image.name
+
+        image_node = cls.__find_node_recur_named(cls.__NODE_TEX_IMAGE, node_roughness)
+        if image_node is not None:
+            material.metallic_map = image_node.image.name
+
+        image_node = cls.__find_node_recur_named(cls.__NODE_TEX_IMAGE, bsdf.inputs["Normal"])
+        if image_node is not None:
+            material.normal_map = image_node.image.name
+
+        return material
+
+    @classmethod
+    def __parse_xps_shader(cls, linked_shader, alpha_blend: bool) -> dst.Material:
+        material = dst.Material()
+
+        material.transparency = alpha_blend
+
+        image_node = cls.__find_node_recur_named(cls.__NODE_TEX_IMAGE, linked_shader.inputs["Diffuse"])
+        if image_node is not None:
+            material.albedo_map = image_node.image.name
+
+        image_node = cls.__find_node_recur_named(cls.__NODE_TEX_IMAGE, linked_shader.inputs["Bump Map"])
+        if image_node is not None:
+            material.normal_map = image_node.image.name
+
+        return material
 
 
 def __parse_mesh(obj, mesh: dst.Mesh):
@@ -105,6 +206,14 @@ def __parse_mesh_actor(obj, scene: dst.Scene):
     actor = scene.new_mesh_actor()
     __parse_actor(obj, actor)
     actor.mesh_name = obj.data.name
+
+    for bpy_mat in obj.data.materials:
+        if scene.has_material(bpy_mat.name):
+            continue
+        material = _MaterialParser.parse(bpy_mat)
+        if material is not None:
+            material.name = bpy_mat.name
+            scene.add_material(material)
 
     try:
         scene.find_mesh_by_name(actor.mesh_name)

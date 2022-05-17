@@ -155,7 +155,103 @@ class Mesh:
 
 class Material:
     def __init__(self):
-        pass
+        self.__name = ""
+
+        self.__roughness = 0.5
+        self.__metallic = 0.0
+        self.__transparency = False
+
+        self.__albedo_map = ""
+        self.__roughness_map = ""
+        self.__metallic_map = ""
+        self.__normal_map = ""
+
+    def is_same(self, other: "Material") -> bool:
+        return (
+            self.roughness == other.roughness
+            and self.metallic == other.metallic
+            and self.transparency == other.transparency
+            and self.albedo_map == other.albedo_map
+            and self.roughness_map == other.roughness_map
+            and self.metallic_map == other.metallic_map
+            and self.normal_map == other.normal_map
+        )
+
+    def make_json(self):
+        return {
+            "name": self.name,
+            "roughness": self.roughness,
+            "metallic": self.metallic,
+            "transparency": self.transparency,
+            "albedo map": self.albedo_map,
+            "roughness map": self.roughness_map,
+            "metallic map": self.metallic_map,
+            "normal map": self.normal_map,
+        }
+
+    @property
+    def name(self):
+        return self.__name
+
+    @name.setter
+    def name(self, value):
+        self.__name = str(value)
+
+    @property
+    def roughness(self):
+        return self.__roughness
+
+    @roughness.setter
+    def roughness(self, value):
+        self.__roughness = float(value)
+
+    @property
+    def metallic(self):
+        return self.__metallic
+
+    @metallic.setter
+    def metallic(self, value):
+        self.__metallic = float(value)
+
+    @property
+    def transparency(self):
+        return self.__transparency
+
+    @transparency.setter
+    def transparency(self, value):
+        self.__transparency = bool(value)
+
+    @property
+    def albedo_map(self):
+        return self.__albedo_map
+
+    @albedo_map.setter
+    def albedo_map(self, value):
+        self.__albedo_map = str(value)
+
+    @property
+    def roughness_map(self):
+        return self.__roughness_map
+
+    @roughness_map.setter
+    def roughness_map(self, value):
+        self.__roughness_map = str(value)
+
+    @property
+    def metallic_map(self):
+        return self.__metallic_map
+
+    @metallic_map.setter
+    def metallic_map(self, value):
+        self.__metallic_map = str(value)
+
+    @property
+    def normal_map(self):
+        return self.__normal_map
+
+    @normal_map.setter
+    def normal_map(self, value):
+        self.__normal_map = str(value)
 
 
 class MeshActor(IActor):
@@ -311,6 +407,7 @@ class Scene:
     def make_json(self, bin_arr: BinaryArrayBuilder) -> Dict:
         return {
             "meshes": [xx.make_json(bin_arr) for xx in self.__meshes],
+            "materials": [xx.make_json() for xx in self.__materials],
             "mesh actors": [xx.make_json() for xx in self.__mesh_actors],
             "directional lights": [xx.make_json() for xx in self.__dlights],
             "point lights": [xx.make_json() for xx in self.__plights],
@@ -319,10 +416,34 @@ class Scene:
 
     def find_mesh_by_name(self, name: str):
         for mesh in self.__meshes:
-            if name == mesh.name:
+            if str(name) == mesh.name:
                 return mesh
 
         raise KeyError(f"Mesh named '{name}' does not exist")
+
+    def find_material_by_name(self, name: str):
+        for material in self.__materials:
+            if str(name) == material.name:
+                return material
+
+        raise KeyError(f"Material named '{name}' does not exist")
+
+    def has_material(self, name: str):
+        try:
+            self.find_material_by_name(name)
+        except KeyError:
+            return False
+        else:
+            return True
+
+    def add_material(self, material: Material):
+        try:
+            found_mat = self.find_material_by_name(material.name)
+        except KeyError:
+            self.__materials.append(material)
+        else:
+            if not found_mat.is_same(material):
+                raise RuntimeError()
 
     def new_mesh(self):
         mesh = Mesh()
@@ -354,7 +475,7 @@ class Scene:
 
     def __find_mesh_actor_by_name(self, name: str):
         for x in self.__mesh_actors:
-            if x.name == name:
+            if x.name == str(name):
                 return x
 
         raise KeyError(f"Mesh actor named '{name}' does not exist")
