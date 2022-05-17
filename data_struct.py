@@ -1,5 +1,7 @@
 from typing import List, Dict
 
+import numpy as np
+
 from . import smalltype as smt
 
 
@@ -9,12 +11,14 @@ class IActor:
         self.__parent_name = ""
         self.__collections: List[str] = []
         self.__transform = smt.Transform()
+        self.__hidden = False
 
     def insert_json(self, output: Dict) -> None:
         output["name"] = self.name
-        output["parent name"] = self.__parent_name
-        output["collections"] = self.__collections
+        output["parent name"] = self.parent_name
+        output["collections"] = self.collections
         output["transform"] = self.__transform.makeJson()
+        output["hidden"] = self.hidden
 
     @property
     def name(self):
@@ -51,6 +55,96 @@ class IActor:
     @quat.setter
     def quat(self, value: smt.Quat):
         self.__transform.m_rotate = value
+
+    @property
+    def hidden(self):
+        return self.__hidden
+
+    @hidden.setter
+    def hidden(self, value: bool):
+        self.__hidden = bool(value)
+
+
+class VertexBuffer:
+    def __init__(self):
+        self.__positions = []
+        self.__uv_coordinates = []
+        self.__normals = []
+
+    def make_json(self):
+        return {
+            "vertices": self.__positions,
+            "uv coordinates": self.__uv_coordinates,
+            "normals": self.__normals,
+        }
+
+    def add_vertex(self, position: smt.Vec3, uv_coord: smt.Vec2, normal: smt.Vec3):
+        self.__positions.append(position.x)
+        self.__positions.append(position.y)
+        self.__positions.append(position.z)
+
+        self.__uv_coordinates.append(uv_coord.x)
+        self.__uv_coordinates.append(uv_coord.y)
+
+        self.__normals.append(normal.x)
+        self.__normals.append(normal.y)
+        self.__normals.append(normal.z)
+
+
+class Mesh:
+    def __init__(self):
+        self.__name = ""
+        self.__vertices: Dict[str, VertexBuffer] = {}
+
+    def make_json(self):
+        output = {
+            "name": self.name,
+            "vertices": [],
+        }
+
+        for k, v in self.__vertices.items():
+            output["vertices"].append(v.make_json())
+            output["vertices"][-1]["material name"] = k
+
+        return output
+
+    def add_vertex(self, material_name: str, position: smt.Vec3, uv_coord: smt.Vec2, normal: smt.Vec3):
+        if material_name not in self.__vertices.keys():
+            self.__vertices[material_name] = VertexBuffer()
+        self.__vertices[material_name].add_vertex(position, uv_coord, normal)
+
+    @property
+    def name(self):
+        return self.__name
+
+    @name.setter
+    def name(self, value):
+        self.__name = str(value)
+
+
+class Material:
+    def __init__(self):
+        pass
+
+
+class MeshActor(IActor):
+    def __init__(self):
+        super().__init__()
+
+        self.__mesh_name = ""
+
+    def make_json(self):
+        output = {}
+        IActor.insert_json(self, output)
+        return output
+
+    @property
+    def mesh_name(self):
+        return self.__mesh_name
+
+    @mesh_name.setter
+    def mesh_name(self, value):
+        self.__mesh_name = str(value)
 
 
 class ILight:
@@ -171,21 +265,40 @@ class Spotlight(PointLight):
 
 
 class Scene:
-    __SCENE_KEY_DLIGHTS = "directional lights"
-    __SCENE_KEY_PLIGHTS = "point lights"
-    __SCENE_KEY_SLIGHTS = "spotlights"
-
     def __init__(self):
+        self.__meshes: List[Mesh] = []
+        self.__materials: List[Material] = []
+
+        self.__mesh_actors: List[MeshActor] = []
         self.__dlights: List[DirectionalLight] = []
         self.__plights: List[PointLight] = []
         self.__slights: List[Spotlight] = []
 
     def make_json(self) -> Dict:
         return {
+            "meshes": [xx.make_json() for xx in self.__meshes],
+            "mesh actors": [xx.make_json() for xx in self.__mesh_actors],
             "directional lights": [xx.make_json() for xx in self.__dlights],
             "point lights": [xx.make_json() for xx in self.__plights],
             "spotlights": [xx.make_json() for xx in self.__slights],
         }
+
+    def find_mesh_by_name(self, name: str):
+        for mesh in self.__meshes:
+            if name == mesh.name:
+                return mesh
+
+        raise KeyError(f"Mesh named '{name}' does not exist")
+
+    def new_mesh(self):
+        mesh = Mesh()
+        self.__meshes.append(mesh)
+        return mesh
+
+    def new_mesh_actor(self):
+        mesh = MeshActor()
+        self.__mesh_actors.append(mesh)
+        return mesh
 
     def new_dlight(self):
         light = DirectionalLight()

@@ -21,9 +21,12 @@ class ParseConfigs:
 
 class ObjType(enum.Enum):
     unknown = "UNKNOWN"
-    mesh = "MESH"
     camera = "CAMERA"
     armature = "ARMATURE"
+
+    mesh = "MESH"
+    env_map = "ENVMAP"
+    water_plane = "WATERPLANE"
 
     directional_light = "DLIGHT"
     point_light = "PLIGHT"
@@ -34,6 +37,45 @@ class ObjType(enum.Enum):
 # But in Dalbaragi engine, -y is down and -z is far direction.
 def __fix_vec3_orientation(v: smt.Vec3) -> smt.Vec3:
     return smt.Vec3(v.x, v.z, -v.y)
+
+
+def __parse_mesh(obj, mesh: dst.Mesh):
+    obj_mesh = obj.data
+    assert isinstance(obj_mesh, bpy.types.Mesh)
+    obj_mesh.calc_loop_triangles()
+
+    mesh.name = obj_mesh.name
+
+    armature = obj.find_armature()
+
+    for tri in obj_mesh.loop_triangles:
+        try:
+            material_name = obj.data.materials[tri.material_index].name
+        except IndexError:
+            material_name = ""
+
+        for i in range(3):
+            # Vertex
+            vertex_index: int = tri.vertices[i]
+            vertex_data = obj_mesh.vertices[vertex_index].co
+            vertex = smt.Vec3(vertex_data[0], vertex_data[1], vertex_data[2])
+
+            # UV coord
+            if obj_mesh.uv_layers.active is not None:
+                uv_data = obj_mesh.uv_layers.active.data[tri.loops[i]].uv
+            else:
+                uv_data = (0.0, 0.0)
+            uv_coord = smt.Vec2(uv_data[0], uv_data[1])
+
+            # Normal
+            if tri.use_smooth:
+                normal_data = obj_mesh.vertices[vertex_index].normal
+            else:
+                normal_data = tri.normal
+            normal = smt.Vec3(normal_data[0], normal_data[1], normal_data[2])
+            normal.normalize()
+
+            mesh.add_vertex(material_name, vertex, uv_coord, normal)
 
 
 def __parse_actor(obj, actor: dst.IActor):
@@ -50,6 +92,20 @@ def __parse_actor(obj, actor: dst.IActor):
     actor.quat.x = obj.rotation_quaternion[1]
     actor.quat.y = obj.rotation_quaternion[2]
     actor.quat.z = obj.rotation_quaternion[3]
+
+    actor.hidden = obj.visible_get()
+
+
+def __parse_mesh_actor(obj, scene: dst.Scene):
+    actor = scene.new_mesh_actor()
+    __parse_actor(obj, actor)
+    actor.mesh_name = obj.data.name
+
+    try:
+        scene.find_mesh_by_name(actor.mesh_name)
+    except KeyError:
+        mesh = scene.new_mesh()
+        __parse_mesh(obj, mesh)
 
 
 def __parse_light_base(obj, light: dst.ILight) -> None:
@@ -97,6 +153,7 @@ def __parse_light_spot(obj, slight: dst.Spotlight):
 
 
 def __classify_object_type(obj):
+    obj_name = str(obj.name)
     type_str = str(obj.type)
 
     if "LIGHT" == type_str:
@@ -106,6 +163,22 @@ def __classify_object_type(obj):
             return ObjType.point_light
         elif isinstance(obj.data, bpy.types.SpotLight):
             return ObjType.spotlight
+
+    if "MESH" == type_str:
+        if "%" != obj_name[0]:
+            return ObjType.mesh
+        else:
+            tail = obj_name.find("%", 1)
+            if -1 == tail:
+                tail = len(obj_name)
+            special_mesh_type = obj_name[1:tail]
+
+            if "envmap" == special_mesh_type:
+                return ObjType.env_map
+            elif "water" == special_mesh_type:
+                return ObjType.water_plane
+            else:
+                raise RuntimeError(f"invalid special mesh type '{special_mesh_type}' for object '{obj_name}'")
 
     for x in ObjType:
         if x.value == type_str:
@@ -120,7 +193,10 @@ def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
     for obj in bpy_scene.objects:
         obj_type = __classify_object_type(obj)
 
-        if obj_type == ObjType.directional_light:
+        if obj_type == ObjType.mesh:
+            __parse_mesh_actor(obj, scene)
+
+        elif obj_type == ObjType.directional_light:
             __parse_light_directional(obj, scene.new_dlight())
         elif obj_type == ObjType.point_light:
             __parse_light_point(obj, scene.new_plight())
