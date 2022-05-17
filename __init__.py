@@ -213,10 +213,13 @@ class EmportDalJson(Operator, ExportHelper):
             exclude_hidden_objects=False,
         )
 
-        json_data = dex.parse_scene_json(configs)
+        json_data, bin_data = dex.parse_scene_json(configs)
 
-        with open(self.filepath, "w") as file:
+        with open(self.filepath, "w", encoding="utf8") as file:
             json.dump(json_data, file, indent=4)
+
+        with open(os.path.splitext(self.filepath)[0], "wb") as file:
+            file.write(bin_data)
 
         self.report({'INFO'}, "Done exporting Dalbaragi scene")
         return {'FINISHED'}

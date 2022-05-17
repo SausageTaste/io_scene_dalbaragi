@@ -1,8 +1,23 @@
-from typing import List, Dict
+from typing import List, Dict, Union
 
 import numpy as np
 
 from . import smalltype as smt
+
+
+class BinaryArrayBuilder:
+    def __init__(self):
+        self.__data = bytearray()
+
+    @property
+    def data(self):
+        return bytes(self.__data)
+
+    def add_bin_array(self, arr: Union[bytes, bytearray]):
+        start_index = len(self.__data)
+        self.__data += arr
+        end_index = len(self.__data)
+        return start_index, end_index - start_index
 
 
 class IActor:
@@ -71,11 +86,28 @@ class VertexBuffer:
         self.__uv_coordinates = []
         self.__normals = []
 
-    def make_json(self):
+    def make_json(self, bin_arr: BinaryArrayBuilder):
+        v = np.array(self.__positions, dtype=np.float32).tobytes()
+        t = np.array(self.__uv_coordinates, dtype=np.float32).tobytes()
+        n = np.array(self.__normals, dtype=np.float32).tobytes()
+
+        v_pos, v_size = bin_arr.add_bin_array(v)
+        t_pos, t_size = bin_arr.add_bin_array(t)
+        n_pos, n_size = bin_arr.add_bin_array(n)
+
         return {
-            "vertices": self.__positions,
-            "uv coordinates": self.__uv_coordinates,
-            "normals": self.__normals,
+            "vertices binary data": {
+                "position": v_pos,
+                "size": v_size,
+            },
+            "uv coordinates binary data": {
+                "position": t_pos,
+                "size": t_size,
+            },
+            "normals binary data": {
+                "position": n_pos,
+                "size": n_size,
+            },
         }
 
     def add_vertex(self, position: smt.Vec3, uv_coord: smt.Vec2, normal: smt.Vec3):
@@ -96,14 +128,14 @@ class Mesh:
         self.__name = ""
         self.__vertices: Dict[str, VertexBuffer] = {}
 
-    def make_json(self):
+    def make_json(self, bin_arr: BinaryArrayBuilder):
         output = {
             "name": self.name,
             "vertices": [],
         }
 
         for k, v in self.__vertices.items():
-            output["vertices"].append(v.make_json())
+            output["vertices"].append(v.make_json(bin_arr))
             output["vertices"][-1]["material name"] = k
 
         return output
@@ -274,9 +306,9 @@ class Scene:
         self.__plights: List[PointLight] = []
         self.__slights: List[Spotlight] = []
 
-    def make_json(self) -> Dict:
+    def make_json(self, bin_arr: BinaryArrayBuilder) -> Dict:
         return {
-            "meshes": [xx.make_json() for xx in self.__meshes],
+            "meshes": [xx.make_json(bin_arr) for xx in self.__meshes],
             "mesh actors": [xx.make_json() for xx in self.__mesh_actors],
             "directional lights": [xx.make_json() for xx in self.__dlights],
             "point lights": [xx.make_json() for xx in self.__plights],

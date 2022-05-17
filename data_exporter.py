@@ -206,10 +206,11 @@ def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
     return scene
 
 
-def parse_scene_json(configs: ParseConfigs) -> Dict:
+def parse_scene_json(configs: ParseConfigs):
     output = {}
+    bin_arr = dst.BinaryArrayBuilder()
 
     for bpy_scene in bpy.data.scenes:
-        output[bpy_scene.name] = __parse_scene(bpy_scene, configs).make_json()
+        output[bpy_scene.name] = __parse_scene(bpy_scene, configs).make_json(bin_arr)
 
-    return output
+    return output, bin_arr.data
