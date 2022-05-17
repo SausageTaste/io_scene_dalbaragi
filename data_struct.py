@@ -1,8 +1,6 @@
 import array
 from typing import List, Dict, Union
 
-import numpy as np
-
 from . import smalltype as smt
 
 
@@ -88,9 +86,9 @@ class VertexBuffer:
         self.__normals = array.array("f")
 
     def make_json(self, bin_arr: BinaryArrayBuilder):
-        v = np.array(self.__positions, dtype=np.float32).tobytes()
-        t = np.array(self.__uv_coordinates, dtype=np.float32).tobytes()
-        n = np.array(self.__normals, dtype=np.float32).tobytes()
+        v = self.__positions.tobytes()
+        t = self.__uv_coordinates.tobytes()
+        n = self.__normals.tobytes()
 
         v_pos, v_size = bin_arr.add_bin_array(v)
         t_pos, t_size = bin_arr.add_bin_array(t)
