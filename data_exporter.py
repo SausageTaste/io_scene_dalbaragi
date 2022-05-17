@@ -1,6 +1,5 @@
 import enum
 import math
-from typing import Dict
 
 import bpy
 
@@ -80,6 +79,11 @@ def __parse_mesh(obj, mesh: dst.Mesh):
 
 def __parse_actor(obj, actor: dst.IActor):
     actor.name = obj.name
+
+    if obj.parent is not None:
+        actor.parent_name = obj.parent.name
+    else:
+        actor.parent_name = ""
 
     for c in obj.users_collection:
         actor.collections.append(c.name)
@@ -211,6 +215,7 @@ def parse_scene_json(configs: ParseConfigs):
     bin_arr = dst.BinaryArrayBuilder()
 
     for bpy_scene in bpy.data.scenes:
-        output[bpy_scene.name] = __parse_scene(bpy_scene, configs).make_json(bin_arr)
+        scene = __parse_scene(bpy_scene, configs)
+        output[bpy_scene.name] = scene.make_json(bin_arr)
 
     return output, bin_arr.data

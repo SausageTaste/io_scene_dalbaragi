@@ -1,3 +1,4 @@
+import array
 from typing import List, Dict, Union
 
 import numpy as np
@@ -82,9 +83,9 @@ class IActor:
 
 class VertexBuffer:
     def __init__(self):
-        self.__positions = []
-        self.__uv_coordinates = []
-        self.__normals = []
+        self.__positions = array.array("f")
+        self.__uv_coordinates = array.array("f")
+        self.__normals = array.array("f")
 
     def make_json(self, bin_arr: BinaryArrayBuilder):
         v = np.array(self.__positions, dtype=np.float32).tobytes()
@@ -166,7 +167,10 @@ class MeshActor(IActor):
         self.__mesh_name = ""
 
     def make_json(self):
-        output = {}
+        output = {
+            "mesh name": self.mesh_name,
+        }
+
         IActor.insert_json(self, output)
         return output
 
@@ -346,3 +350,25 @@ class Scene:
         light = Spotlight()
         self.__slights.append(light)
         return light
+
+    def check_validity(self):
+        if not self.__do_all_parents_exist():
+            return False
+
+        return True
+
+    def __find_mesh_actor_by_name(self, name: str):
+        for x in self.__mesh_actors:
+            if x.name == name:
+                return x
+
+        raise KeyError(f"Mesh actor named '{name}' does not exist")
+
+    def __do_all_parents_exist(self):
+        for x in self.__mesh_actors:
+            try:
+                self.__find_mesh_actor_by_name(x.parent_name)
+            except KeyError:
+                return False
+
+        return True
