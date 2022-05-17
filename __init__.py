@@ -1,6 +1,7 @@
 import os
 import zlib
 import json
+import base64
 import shutil
 import importlib
 from typing import Tuple
@@ -197,7 +198,7 @@ class EmportDalJson(Operator, ExportHelper):
     """Export intermediate json data"""
 
     bl_idname = "export_dalbaragi_scene.json"
-    bl_label = "Export Dalbragi scene JSON"
+    bl_label = "Export JSON"
     filename_ext = ".json"
 
     filter_glob: StringProperty(default="*.json", options={'HIDDEN'}, maxlen=255)
@@ -208,6 +209,18 @@ class EmportDalJson(Operator, ExportHelper):
         default=False,
     )
 
+    option_compress_binary: BoolProperty(
+        name="Compress binary",
+        description="Reduce the size of generated binary data",
+        default=True,
+    )
+
+    option_embed_binary: BoolProperty(
+        name="Embed binary data",
+        description="Store binary data in JSON file using Base64",
+        default=True,
+    )
+
     def execute(self, context):
         configs = dex.ParseConfigs(
             exclude_hidden_objects=False,
@@ -215,11 +228,24 @@ class EmportDalJson(Operator, ExportHelper):
 
         json_data, bin_data = dex.parse_scene_json(configs)
 
+        json_data["binary data"] = {
+            "raw size": len(bin_data),
+        }
+
+        if self.option_compress_binary:
+            bin_data = zlib.compress(bin_data, zlib.Z_BEST_COMPRESSION)
+            json_data["binary data"]["compressed size"] = len(bin_data)
+
+        if self.option_embed_binary:
+            encoded = base64.b64encode(bin_data).decode('ascii')
+            json_data["binary data"]["base64 size"] = len(encoded)
+            json_data["binary data"]["base64"] = encoded
+        else:
+            with open(os.path.splitext(self.filepath)[0], "wb") as file:
+                file.write(bin_data)
+
         with open(self.filepath, "w", encoding="utf8") as file:
             json.dump(json_data, file, indent=4)
-
-        with open(os.path.splitext(self.filepath)[0], "wb") as file:
-            file.write(bin_data)
 
         self.report({'INFO'}, "Done exporting Dalbaragi scene")
         return {'FINISHED'}
