@@ -197,23 +197,22 @@ class EmportDalJson(Operator, ExportHelper):
 
     bl_idname = "export_dalbaragi_scene.json"
     bl_label = "Export Dalbragi scene JSON"
-
     filename_ext = ".json"
 
-    filter_glob: StringProperty(
-        default="*.json",
-        options={'HIDDEN'},
-        maxlen=255,  # Max internal buffer length, longer would be clamped.
-    )
+    filter_glob: StringProperty(default="*.json", options={'HIDDEN'}, maxlen=255)
 
-    optionBool_copyImages: BoolProperty(
+    option_copy_images: BoolProperty(
         name="Copy textures",
         description="Copy textures to same path as exported file.",
         default=False,
     )
 
     def execute(self, context):
-        json_data = dex.parse_scene()
+        configs = dex.ParseConfigs(
+            exclude_hidden_objects=False,
+        )
+
+        json_data = dex.parse_scene(configs)
 
         with open(self.filepath, "w") as file:
             json.dump(json_data, file, indent=4)
