@@ -22,6 +22,7 @@ class ObjType(enum.Enum):
     unknown = "UNKNOWN"
     camera = "CAMERA"
     armature = "ARMATURE"
+    emtpy = "EMPTY"
 
     mesh = "MESH"
     env_map = "ENVMAP"
@@ -137,7 +138,8 @@ def __parse_light_point(obj, plight: dst.PointLight):
     __parse_light_base(obj, plight)
 
     if not obj.data.use_custom_distance:
-        print("[DAL] WARN::custom distance is not enabled for light \"{}\"".format(plight.name))
+        # print("[DAL] WARN::custom distance is not enabled for light \"{}\"".format(plight.name))
+        pass
 
     plight.max_distance = float(obj.data.cutoff_distance)
     plight.half_intense_distance = float(obj.data.distance)
@@ -199,6 +201,8 @@ def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
 
         if obj_type == ObjType.mesh:
             __parse_mesh_actor(obj, scene)
+        elif obj_type == ObjType.emtpy:
+            __parse_actor(obj, scene.new_mesh_actor())
 
         elif obj_type == ObjType.directional_light:
             __parse_light_directional(obj, scene.new_dlight())
@@ -216,6 +220,7 @@ def parse_scene_json(configs: ParseConfigs):
 
     for bpy_scene in bpy.data.scenes:
         scene = __parse_scene(bpy_scene, configs)
+        scene.assert_validity()
         output[bpy_scene.name] = scene.make_json(bin_arr)
 
     return output, bin_arr.data
