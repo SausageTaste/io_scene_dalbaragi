@@ -19,6 +19,7 @@ from . import modify_data as mfd
 from . import model_exporter as mex
 from . import map_data as mpd
 from . import map_exporter_lvl as mpx
+from . import data_struct as dst
 from . import data_exporter as dex
 
 
@@ -212,7 +213,7 @@ class EmportDalJson(Operator, ExportHelper):
             exclude_hidden_objects=False,
         )
 
-        json_data = dex.parse_scene(configs)
+        json_data = dex.parse_scene_json(configs)
 
         with open(self.filepath, "w") as file:
             json.dump(json_data, file, indent=4)
@@ -244,6 +245,7 @@ def register():
     importlib.reload(mex)
     importlib.reload(mpd)
     importlib.reload(mpx)
+    importlib.reload(dst)
     importlib.reload(dex)
 
     bpy.utils.register_class(EmportDalModel)
