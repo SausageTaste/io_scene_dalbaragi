@@ -19,6 +19,7 @@ from . import modify_data as mfd
 from . import model_exporter as mex
 from . import map_data as mpd
 from . import map_exporter_lvl as mpx
+from . import data_exporter as dex
 
 
 bl_info = {
@@ -191,6 +192,36 @@ class ExportDalMap(Operator, ExportHelper):
         return {'FINISHED'}
 
 
+class EmportDalJson(Operator, ExportHelper):
+    """Export intermediate json data"""
+
+    bl_idname = "export_dalbaragi_scene.json"
+    bl_label = "Export Dalbragi scene JSON"
+
+    filename_ext = ".json"
+
+    filter_glob: StringProperty(
+        default="*.json",
+        options={'HIDDEN'},
+        maxlen=255,  # Max internal buffer length, longer would be clamped.
+    )
+
+    optionBool_copyImages: BoolProperty(
+        name="Copy textures",
+        description="Copy textures to same path as exported file.",
+        default=False,
+    )
+
+    def execute(self, context):
+        json_data = dex.parse_scene()
+
+        with open(self.filepath, "w") as file:
+            json.dump(json_data, file, indent=4)
+
+        self.report({'INFO'}, "Done exporting Dalbaragi scene")
+        return {'FINISHED'}
+
+
 class DalExportSubMenu(bpy.types.Menu):
     bl_idname = "dal_export_menu"
     bl_label = "Dalbaragi Tools"
@@ -198,6 +229,7 @@ class DalExportSubMenu(bpy.types.Menu):
     def draw(self, context):
         self.layout.operator(EmportDalModel.bl_idname, text="Model (.dmd)")
         self.layout.operator(ExportDalMap.bl_idname, text="Map (.dlb)")
+        self.layout.operator(EmportDalJson.bl_idname, text="Scene (.json)")
 
 
 def menu_func_export(self, context):
@@ -213,9 +245,11 @@ def register():
     importlib.reload(mex)
     importlib.reload(mpd)
     importlib.reload(mpx)
+    importlib.reload(dex)
 
     bpy.utils.register_class(EmportDalModel)
     bpy.utils.register_class(ExportDalMap)
+    bpy.utils.register_class(EmportDalJson)
     bpy.utils.register_class(DalExportSubMenu)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 
@@ -223,6 +257,7 @@ def register():
 def unregister():
     bpy.utils.unregister_class(EmportDalModel)
     bpy.utils.unregister_class(ExportDalMap)
+    bpy.utils.unregister_class(EmportDalJson)
     bpy.utils.unregister_class(DalExportSubMenu)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
 
