@@ -396,6 +396,8 @@ class Spotlight(PointLight):
 
 class Scene:
     def __init__(self):
+        self.__name = ""
+
         self.__meshes: List[Mesh] = []
         self.__materials: List[Material] = []
 
@@ -406,6 +408,7 @@ class Scene:
 
     def make_json(self, bin_arr: BinaryArrayBuilder) -> Dict:
         return {
+            "name": self.name,
             "meshes": [xx.make_json(bin_arr) for xx in self.__meshes],
             "materials": [xx.make_json() for xx in self.__materials],
             "mesh actors": [xx.make_json() for xx in self.__mesh_actors],
@@ -472,6 +475,14 @@ class Scene:
 
     def assert_validity(self):
         self.__assert_all_parents_exist()
+
+    @property
+    def name(self):
+        return self.__name
+
+    @name.setter
+    def name(self, value):
+        self.__name = str(value)
 
     def __find_mesh_actor_by_name(self, name: str):
         for x in self.__mesh_actors:

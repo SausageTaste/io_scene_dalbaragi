@@ -305,6 +305,8 @@ def __classify_object_type(obj):
 def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
     scene = dst.Scene()
 
+    scene.name = bpy_scene.name
+
     for obj in bpy_scene.objects:
         obj_type = __classify_object_type(obj)
 
@@ -324,12 +326,14 @@ def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
 
 
 def parse_scene_json(configs: ParseConfigs):
-    output = {}
+    output = {
+        "scenes": [],
+    }
     bin_arr = dst.BinaryArrayBuilder()
 
     for bpy_scene in bpy.data.scenes:
         scene = __parse_scene(bpy_scene, configs)
         scene.assert_validity()
-        output[bpy_scene.name] = scene.make_json(bin_arr)
+        output["scenes"].append(scene.make_json(bin_arr))
 
     return output, bin_arr.data
