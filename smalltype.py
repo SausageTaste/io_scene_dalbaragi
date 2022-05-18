@@ -236,6 +236,10 @@ class Quat:
     def z(self, value: float):
         self.__z = float(value)
 
+    @property
+    def wxyz(self):
+        return self.w, self.x, self.y, self.z
+
 
 class Mat4:
     # Representation is row major.
@@ -275,10 +279,10 @@ class Transform:
         self.__quat = Quat()
         self.__scale = 1.0
 
-    def makeJson(self):
+    def make_json(self):
         return {
-            "translation": str(self.m_pos),
-            "rotation": str(self.__quat),
+            "translation": self.m_pos.xyz,
+            "rotation": self.__quat.wxyz,
             "scale": self.__scale,
         }
 

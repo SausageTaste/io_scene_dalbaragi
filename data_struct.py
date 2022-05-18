@@ -31,7 +31,7 @@ class IActor:
         output["name"] = self.name
         output["parent name"] = self.parent_name
         output["collections"] = self.collections
-        output["transform"] = self.__transform.makeJson()
+        output["transform"] = self.__transform.make_json()
         output["hidden"] = self.hidden
 
     @property
