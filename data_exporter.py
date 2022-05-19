@@ -148,6 +148,9 @@ def __parse_mesh(obj, mesh: dst.Mesh, skeleton: dst.Skeleton):
     if skeleton is not None:
         joint_name_index_map = skeleton.make_name_index_map()
         mesh.skeleton_name = skeleton.name
+    else:
+        joint_name_index_map = {}
+        mesh.skeleton_name = ""
 
     mesh.name = obj_mesh.name
 
