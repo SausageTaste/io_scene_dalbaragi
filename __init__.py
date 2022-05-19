@@ -226,7 +226,8 @@ class EmportDalJson(Operator, ExportHelper):
             exclude_hidden_objects=False,
         )
 
-        json_data, bin_data = dex.parse_scene_json(configs)
+        scenes, bin_array = dex.parse_scenes(configs)
+        json_data, bin_data = dex.build_json(scenes, bin_array, configs)
 
         json_data["binary data"] = {
             "raw size": len(bin_data),
@@ -246,6 +247,21 @@ class EmportDalJson(Operator, ExportHelper):
 
         with open(self.filepath, "w", encoding="utf8") as file:
             json.dump(json_data, file, indent=4)
+
+        if self.option_copy_images:
+            img_save_fol_path = os.path.splitext(self.filepath)[0] + "_textures"
+            if not os.path.isdir(img_save_fol_path):
+                os.mkdir(img_save_fol_path)
+
+            image_names = set()
+            for scene in scenes:
+                a = scene.get_texture_names()
+                image_names = image_names.union(a)
+
+            for name in image_names:
+                image: bpy.types.Image = bpy.data.images[name]
+                dst_path = os.path.join(img_save_fol_path, name)
+                _copy_image(image, dst_path)
 
         self.report({'INFO'}, "Done exporting Dalbaragi scene")
         return {'FINISHED'}

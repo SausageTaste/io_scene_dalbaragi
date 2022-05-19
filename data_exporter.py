@@ -1,6 +1,6 @@
 import enum
 import math
-from typing import Optional
+from typing import Optional, Tuple, List, Dict
 
 import bpy
 
@@ -325,14 +325,23 @@ def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
     return scene
 
 
-def parse_scene_json(configs: ParseConfigs):
-    output = {
-        "scenes": [],
-    }
+def parse_scenes(configs: ParseConfigs) -> Tuple[List[dst.Scene], dst.BinaryArrayBuilder]:
+    output = []
     bin_arr = dst.BinaryArrayBuilder()
 
     for bpy_scene in bpy.data.scenes:
         scene = __parse_scene(bpy_scene, configs)
+        output.append(scene)
+
+    return output, bin_arr
+
+
+def build_json(scenes: List[dst.Scene], bin_arr: dst.BinaryArrayBuilder, configs: ParseConfigs) -> Tuple[Dict, bytes]:
+    output = {
+        "scenes": [],
+    }
+
+    for scene in scenes:
         scene.assert_validity()
         output["scenes"].append(scene.make_json(bin_arr))
 

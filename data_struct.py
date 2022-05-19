@@ -1,5 +1,5 @@
 import array
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Set
 
 from . import smalltype as smt
 
@@ -437,6 +437,22 @@ class Scene:
             "point lights": [xx.make_json() for xx in self.__plights],
             "spotlights": [xx.make_json() for xx in self.__slights],
         }
+
+    def get_texture_names(self) -> Set[str]:
+        output = set()
+
+        for material in self.__materials:
+            output.add(material.albedo_map)
+            output.add(material.roughness_map)
+            output.add(material.metallic_map)
+            output.add(material.normal_map)
+
+        try:
+            output.remove("")
+        except KeyError:
+            pass
+
+        return output
 
     def find_mesh_by_name(self, name: str):
         for mesh in self.__meshes:
