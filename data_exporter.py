@@ -147,8 +147,6 @@ def __parse_mesh(obj, mesh: dst.Mesh):
 
     mesh.name = obj_mesh.name
 
-    armature = obj.find_armature()
-
     for tri in obj_mesh.loop_triangles:
         try:
             material_name = obj.data.materials[tri.material_index].name
@@ -202,10 +200,30 @@ def __parse_actor(obj, actor: dst.IActor):
     actor.hidden = obj.visible_get()
 
 
+def __parse_armature(obj, skeleton: dst.Skeleton):
+    assert isinstance(obj, bpy.types.Armature)
+
+    for bone in obj.bones:
+        joint = skeleton.new_joint(bone.name)
+
+        if bone.parent is not None:
+            joint.parent_name = bone.parent.name
+
+        for x in dst.JointType:
+            if bone.get(x.value, None) is not None:
+                joint.joint_type = x
+
+        joint.offset_mat.set_blender_mat(bone.matrix_local)
+
+
 def __parse_mesh_actor(obj, scene: dst.Scene):
     actor = scene.new_mesh_actor()
     __parse_actor(obj, actor)
     actor.mesh_name = obj.data.name
+
+    armature = obj.find_armature()
+    if (armature is not None) and (not scene.has_skeleton(armature.name)):
+        __parse_armature(armature.data, scene.new_skeleton(armature.name))
 
     for bpy_mat in obj.data.materials:
         if scene.has_material(bpy_mat.name):

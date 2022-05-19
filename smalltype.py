@@ -273,6 +273,29 @@ class Mat4:
         return ", ".join(col_strings)
 
 
+class Mat4x4:
+    # Column major
+    def __init__(self):
+        self.__data = [
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1,
+        ]
+
+    def set_blender_mat(self, bpy_mat):
+        for row in range(4):
+            for col in range(4):
+                self.__data[self.__make_index(row, col)] = float(bpy_mat[row][col])
+
+    def make_json(self):
+        return self.__data
+
+    @staticmethod
+    def __make_index(row: int, column: int):
+        return row + 4 * column
+
+
 class Transform:
     def __init__(self):
         self.__pos = Vec3()

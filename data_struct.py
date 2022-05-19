@@ -1,3 +1,4 @@
+import enum
 import array
 from typing import List, Dict, Union, Set
 
@@ -255,10 +256,81 @@ class Material:
         self.__normal_map = str(value)
 
 
-class RenderPair:
-    def __init__(self, mesh_name: str, material_name: str):
-        self.__mesh_name = str(mesh_name)
-        self.__material_name = str(material_name)
+class JointType(enum.Enum):
+    basic = "basic"
+    hair_root = "dal_phy_hairRoot"
+    skirt_root = "dal_phy_skirtRoot"
+
+
+class SkelJoint:
+    def __init__(self, name: str):
+        self.__name = str(name)
+        self.__parent_name = ""
+        self.__type = JointType.basic
+        self.__offset_mat = smt.Mat4x4()
+
+    def make_json(self):
+        return {
+            "name": self.name,
+            "parent name": self.parent_name,
+            "joint type": self.joint_type.name,
+            "offset matrix": self.offset_mat.make_json(),
+        }
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def parent_name(self):
+        return self.__parent_name
+
+    @parent_name.setter
+    def parent_name(self, value):
+        self.__parent_name = str(value)
+
+    @property
+    def joint_type(self):
+        return self.__type
+
+    @joint_type.setter
+    def joint_type(self, value):
+        assert isinstance(value, JointType)
+        self.__type = value
+
+    @property
+    def offset_mat(self):
+        return self.__offset_mat
+
+
+class Skeleton:
+    def __init__(self, name: str):
+        self.__name = str(name)
+        self.__joints: List[SkelJoint] = []
+
+    def make_json(self):
+        return {
+            "name": self.name,
+            "joints": [xx.make_json() for xx in self.__joints],
+        }
+
+    def new_joint(self, name: str) -> SkelJoint:
+        if self.__does_joint_name_exist(name):
+            raise RuntimeError(f'Trying to add a joint "{name}", which already exists in skeleton "{self.name}"')
+
+        self.__joints.append(SkelJoint(name))
+        return self.__joints[-1]
+
+    @property
+    def name(self):
+        return self.__name
+
+    def __does_joint_name_exist(self, name: str):
+        name = str(name)
+        for joint in self.__joints:
+            if joint.name == name:
+                return True
+        return False
 
 
 class MeshActor(IActor):
@@ -421,6 +493,7 @@ class Scene:
 
         self.__meshes: List[Mesh] = []
         self.__materials: List[Material] = []
+        self.__skeletons: List[Skeleton] = []
 
         self.__mesh_actors: List[MeshActor] = []
         self.__dlights: List[DirectionalLight] = []
@@ -432,6 +505,7 @@ class Scene:
             "name": self.name,
             "meshes": self.__make_json_for_meshes(bin_arr),
             "materials": [xx.make_json() for xx in self.__materials],
+            "skeletons": [xx.make_json() for xx in self.__skeletons],
             "mesh actors": [xx.make_json(self.__meshes) for xx in self.__mesh_actors],
             "directional lights": [xx.make_json() for xx in self.__dlights],
             "point lights": [xx.make_json() for xx in self.__plights],
@@ -468,9 +542,27 @@ class Scene:
 
         raise KeyError(f"Material named '{name}' does not exist")
 
+    def find_skeleton_by_name(self, name: str):
+        if not name:
+            raise ValueError(f"Invalid skeleton name: {name}")
+
+        for x in self.__skeletons:
+            if str(name) == x.name:
+                return x
+
+        raise KeyError(f"Skeleton named '{name}' does not exist")
+
     def has_material(self, name: str):
         try:
             self.find_material_by_name(name)
+        except KeyError:
+            return False
+        else:
+            return True
+
+    def has_skeleton(self, name: str):
+        try:
+            self.find_skeleton_by_name(name)
         except KeyError:
             return False
         else:
@@ -484,6 +576,14 @@ class Scene:
         else:
             if not found_mat.is_same(material):
                 raise RuntimeError()
+
+    def new_skeleton(self, name):
+        if self.has_skeleton(name):
+            raise RuntimeError()
+
+        x = Skeleton(name)
+        self.__skeletons.append(x)
+        return x
 
     def new_mesh(self):
         mesh = Mesh()
