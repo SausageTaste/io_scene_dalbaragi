@@ -85,28 +85,26 @@ class VertexBuffer:
         self.__uv_coordinates = array.array("f")
         self.__normals = array.array("f")
 
-    def make_json(self, bin_arr: BinaryArrayBuilder):
-        v = self.__positions.tobytes()
-        t = self.__uv_coordinates.tobytes()
-        n = self.__normals.tobytes()
+    def make_json(self, output: Dict, bin_arr: BinaryArrayBuilder):
+        binary_arr = self.__positions.tobytes()
+        pos, size = bin_arr.add_bin_array(binary_arr)
+        output["vertices binary data"] = {
+            "position": pos,
+            "size": size,
+        }
 
-        v_pos, v_size = bin_arr.add_bin_array(v)
-        t_pos, t_size = bin_arr.add_bin_array(t)
-        n_pos, n_size = bin_arr.add_bin_array(n)
+        binary_arr = self.__uv_coordinates.tobytes()
+        pos, size = bin_arr.add_bin_array(binary_arr)
+        output["uv coordinates binary data"] = {
+            "position": pos,
+            "size": size,
+        }
 
-        return {
-            "vertices binary data": {
-                "position": v_pos,
-                "size": v_size,
-            },
-            "uv coordinates binary data": {
-                "position": t_pos,
-                "size": t_size,
-            },
-            "normals binary data": {
-                "position": n_pos,
-                "size": n_size,
-            },
+        binary_arr = self.__normals.tobytes()
+        pos, size = bin_arr.add_bin_array(binary_arr)
+        output["normals binary data"] = {
+            "position": pos,
+            "size": size,
         }
 
     def add_vertex(self, position: smt.Vec3, uv_coord: smt.Vec2, normal: smt.Vec3):
@@ -122,27 +120,30 @@ class VertexBuffer:
         self.__normals.append(normal.z)
 
 
+def _make_mangled_mesh_name(mesh_name: str, material_name: str):
+    return f"{mesh_name}+{material_name}"
+
+
 class Mesh:
     def __init__(self):
         self.__name = ""
         self.__vertices: Dict[str, VertexBuffer] = {}
 
-    def make_json(self, bin_arr: BinaryArrayBuilder):
-        output = {
-            "name": self.name,
-            "vertices": [],
-        }
-
-        for k, v in self.__vertices.items():
-            output["vertices"].append(v.make_json(bin_arr))
-            output["vertices"][-1]["material name"] = k
-
-        return output
+    def make_json(self, output: List[Dict], bin_arr: BinaryArrayBuilder):
+        for material_name, vertex_buffer in self.__vertices.items():
+            output.append({
+                "name": _make_mangled_mesh_name(self.name, material_name)
+            })
+            vertex_buffer.make_json(output[-1], bin_arr)
 
     def add_vertex(self, material_name: str, position: smt.Vec3, uv_coord: smt.Vec2, normal: smt.Vec3):
         if material_name not in self.__vertices.keys():
             self.__vertices[material_name] = VertexBuffer()
         self.__vertices[material_name].add_vertex(position, uv_coord, normal)
+
+    @property
+    def vertex_buffers(self):
+        return self.__vertices.items()
 
     @property
     def name(self):
@@ -254,18 +255,22 @@ class Material:
         self.__normal_map = str(value)
 
 
+class RenderPair:
+    def __init__(self, mesh_name: str, material_name: str):
+        self.__mesh_name = str(mesh_name)
+        self.__material_name = str(material_name)
+
+
 class MeshActor(IActor):
     def __init__(self):
         super().__init__()
 
         self.__mesh_name = ""
 
-    def make_json(self):
-        output = {
-            "mesh name": self.mesh_name,
-        }
-
+    def make_json(self, meshes: List[Mesh]):
+        output = {}
         IActor.insert_json(self, output)
+        output["render pairs"] = self.__make_render_pairs(meshes)
         return output
 
     @property
@@ -275,6 +280,22 @@ class MeshActor(IActor):
     @mesh_name.setter
     def mesh_name(self, value):
         self.__mesh_name = str(value)
+
+    def __make_render_pairs(self, meshes: List[Mesh]) -> List[Dict]:
+        for x in meshes:
+            if x.name == self.mesh_name:
+                selected_mesh = x
+                break
+        else:
+            raise RuntimeError()
+
+        output: List[Dict] = []
+        for mat_name, vert_buf in selected_mesh.vertex_buffers:
+            output.append({
+                "mesh name": _make_mangled_mesh_name(selected_mesh.name, mat_name),
+                "material name": mat_name,
+            })
+        return output
 
 
 class ILight:
@@ -409,9 +430,9 @@ class Scene:
     def make_json(self, bin_arr: BinaryArrayBuilder) -> Dict:
         return {
             "name": self.name,
-            "meshes": [xx.make_json(bin_arr) for xx in self.__meshes],
+            "meshes": self.__make_json_for_meshes(bin_arr),
             "materials": [xx.make_json() for xx in self.__materials],
-            "mesh actors": [xx.make_json() for xx in self.__mesh_actors],
+            "mesh actors": [xx.make_json(self.__meshes) for xx in self.__mesh_actors],
             "directional lights": [xx.make_json() for xx in self.__dlights],
             "point lights": [xx.make_json() for xx in self.__plights],
             "spotlights": [xx.make_json() for xx in self.__slights],
@@ -483,6 +504,12 @@ class Scene:
     @name.setter
     def name(self, value):
         self.__name = str(value)
+
+    def __make_json_for_meshes(self, bin_arr: BinaryArrayBuilder):
+        output = []
+        for mesh in self.__meshes:
+            mesh.make_json(output, bin_arr)
+        return output
 
     def __find_mesh_actor_by_name(self, name: str):
         for x in self.__mesh_actors:
