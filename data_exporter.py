@@ -338,11 +338,7 @@ def parse_scenes(configs: ParseConfigs) -> Tuple[List[dst.Scene], dst.BinaryArra
 
 def build_json(scenes: List[dst.Scene], bin_arr: dst.BinaryArrayBuilder, configs: ParseConfigs) -> Tuple[Dict, bytes]:
     output = {
-        "scenes": [],
+        "scenes": [xx.make_json(bin_arr) for xx in scenes],
     }
-
-    for scene in scenes:
-        scene.assert_validity()
-        output["scenes"].append(scene.make_json(bin_arr))
 
     return output, bin_arr.data

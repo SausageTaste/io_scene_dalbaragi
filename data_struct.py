@@ -510,9 +510,6 @@ class Scene:
         self.__slights.append(light)
         return light
 
-    def assert_validity(self):
-        self.__assert_all_parents_exist()
-
     @property
     def name(self):
         return self.__name
@@ -533,13 +530,3 @@ class Scene:
                 return x
 
         raise KeyError(f"Mesh actor named '{name}' does not exist")
-
-    def __assert_all_parents_exist(self):
-        for x in self.__mesh_actors:
-            if "" == x.parent_name:
-                continue
-
-            try:
-                self.__find_mesh_actor_by_name(x.parent_name)
-            except KeyError:
-                raise RuntimeError(f"Mesh actor '{x.name}' has a invalid parent '{x.parent_name}'")
