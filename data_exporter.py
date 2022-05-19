@@ -140,10 +140,14 @@ class _MaterialParser:
         return material
 
 
-def __parse_mesh(obj, mesh: dst.Mesh):
+def __parse_mesh(obj, mesh: dst.Mesh, skeleton: dst.Skeleton):
     obj_mesh = obj.data
     assert isinstance(obj_mesh, bpy.types.Mesh)
+
     obj_mesh.calc_loop_triangles()
+    if skeleton is not None:
+        joint_name_index_map = skeleton.make_name_index_map()
+        mesh.skeleton_name = skeleton.name
 
     mesh.name = obj_mesh.name
 
@@ -174,7 +178,12 @@ def __parse_mesh(obj, mesh: dst.Mesh):
             normal = smt.Vec3(normal_data[0], normal_data[1], normal_data[2])
             normal.normalize()
 
-            mesh.add_vertex(material_name, vertex, uv_coord, normal)
+            dst_vertex = mesh.add_vertex(material_name, vertex, uv_coord, normal)
+
+            for g in obj.data.vertices[vertex_index].groups:
+                joint_name = str(obj.vertex_groups[g.group].name)
+                joint_index = joint_name_index_map[joint_name]
+                dst_vertex.add_joint(joint_index, g.weight)
 
 
 def __parse_actor(obj, actor: dst.IActor):
@@ -221,9 +230,21 @@ def __parse_mesh_actor(obj, scene: dst.Scene):
     __parse_actor(obj, actor)
     actor.mesh_name = obj.data.name
 
+    # Skeleton
+    # ------------------------------------------------------------------------------------------------------------------
+
     armature = obj.find_armature()
-    if (armature is not None) and (not scene.has_skeleton(armature.name)):
-        __parse_armature(armature.data, scene.new_skeleton(armature.name))
+    if isinstance(armature.data, bpy.types.Armature):
+        if scene.has_skeleton(armature.name):
+            skeleton = scene.find_skeleton_by_name(armature.name)
+        else:
+            skeleton = scene.new_skeleton(armature.name)
+            __parse_armature(armature.data, skeleton)
+    else:
+        skeleton = None
+
+    # Material
+    # ------------------------------------------------------------------------------------------------------------------
 
     for bpy_mat in obj.data.materials:
         if scene.has_material(bpy_mat.name):
@@ -233,11 +254,14 @@ def __parse_mesh_actor(obj, scene: dst.Scene):
             material.name = bpy_mat.name
             scene.add_material(material)
 
+    # Mesh
+    # ------------------------------------------------------------------------------------------------------------------
+
     try:
         scene.find_mesh_by_name(actor.mesh_name)
     except KeyError:
         mesh = scene.new_mesh()
-        __parse_mesh(obj, mesh)
+        __parse_mesh(obj, mesh, skeleton)
 
 
 def __parse_light_base(obj, light: dst.ILight) -> None:

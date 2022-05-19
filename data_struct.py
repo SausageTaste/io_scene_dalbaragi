@@ -1,7 +1,8 @@
 import enum
 import array
-from typing import List, Dict, Union, Set
+from typing import List, Dict, Union, Set, Tuple
 
+from . import byteutils as byt
 from . import smalltype as smt
 
 
@@ -80,45 +81,121 @@ class IActor:
         self.__hidden = bool(value)
 
 
+class Vertex:
+    def __init__(self):
+        self.__pos = smt.Vec3()
+        self.__uv_coord = smt.Vec2()
+        self.__normal = smt.Vec3()
+        self.__joints: List[Tuple[float, int]] = []
+
+    def add_joint(self, joint_index: int, weight: float) -> None:
+        joint_index = int(joint_index)
+        weight = float(weight)
+
+        if 0.0 == weight:
+            return
+        if self.__has_joint_index(joint_index):
+            raise RuntimeError()
+
+        self.__joints.append((weight, joint_index))
+        self.__joints.sort(reverse=True)
+
+    @property
+    def position(self):
+        return self.__pos
+
+    @position.setter
+    def position(self, value):
+        assert isinstance(value, smt.Vec3)
+        self.__pos = value
+
+    @property
+    def uv_coord(self):
+        return self.__uv_coord
+
+    @uv_coord.setter
+    def uv_coord(self, value):
+        assert isinstance(value, smt.Vec2)
+        self.__uv_coord = value
+
+    @property
+    def normal(self):
+        return self.__normal
+
+    @normal.setter
+    def normal(self, value):
+        assert isinstance(value, smt.Vec3)
+        self.__normal = value
+
+    @property
+    def joints(self):
+        return self.__joints
+
+    def __has_joint_index(self, joint_index: int):
+        for j_weight, j_index in self.__joints:
+            if j_index == joint_index:
+                return True
+        return False
+
+
 class VertexBuffer:
     def __init__(self):
-        self.__positions = array.array("f")
-        self.__uv_coordinates = array.array("f")
-        self.__normals = array.array("f")
+        self.__vertices: List[Vertex] = []
 
     def make_json(self, output: Dict, bin_arr: BinaryArrayBuilder):
-        binary_arr = self.__positions.tobytes()
-        pos, size = bin_arr.add_bin_array(binary_arr)
-        output["vertices binary data"] = {
-            "position": pos,
-            "size": size,
-        }
+        positions, uv_coordinates, normals = self.__make_arrays()
+        joints = self.__make_joints_binary_array()
 
-        binary_arr = self.__uv_coordinates.tobytes()
-        pos, size = bin_arr.add_bin_array(binary_arr)
-        output["uv coordinates binary data"] = {
-            "position": pos,
-            "size": size,
-        }
+        binary_arrays = [
+            (positions.tobytes(), "vertices binary data"),
+            (uv_coordinates.tobytes(), "uv coordinates binary data"),
+            (normals.tobytes(), "normals binary data"),
+            (joints, "joints binary data"),
+        ]
 
-        binary_arr = self.__normals.tobytes()
-        pos, size = bin_arr.add_bin_array(binary_arr)
-        output["normals binary data"] = {
-            "position": pos,
-            "size": size,
-        }
+        output["vertex count"] = len(self.__vertices)
+        for binary_data, field_name in binary_arrays:
+            pos, size = bin_arr.add_bin_array(binary_data)
+            output[field_name] = {
+                "position": pos,
+                "size": size,
+            }
 
     def add_vertex(self, position: smt.Vec3, uv_coord: smt.Vec2, normal: smt.Vec3):
-        self.__positions.append(position.x)
-        self.__positions.append(position.y)
-        self.__positions.append(position.z)
+        vertex = Vertex()
+        vertex.position = position
+        vertex.uv_coord = uv_coord
+        vertex.normal = normal
+        self.__vertices.append(vertex)
+        return vertex
 
-        self.__uv_coordinates.append(uv_coord.x)
-        self.__uv_coordinates.append(uv_coord.y)
+    def __make_arrays(self):
+        positions = array.array("f")
+        uv_coordinates = array.array("f")
+        normals = array.array("f")
 
-        self.__normals.append(normal.x)
-        self.__normals.append(normal.y)
-        self.__normals.append(normal.z)
+        for v in self.__vertices:
+            positions.append(v.position.x)
+            positions.append(v.position.y)
+            positions.append(v.position.z)
+
+            uv_coordinates.append(v.uv_coord.x)
+            uv_coordinates.append(v.uv_coord.y)
+
+            normals.append(v.normal.x)
+            normals.append(v.normal.y)
+            normals.append(v.normal.z)
+
+        return positions, uv_coordinates, normals
+
+    def __make_joints_binary_array(self) -> bytearray:
+        output = bytearray()
+        for v in self.__vertices:
+            output += byt.to_int32(len(v.joints))
+            for j_weight, j_index in v.joints:
+                output += byt.to_int32(j_index)
+                output += byt.to_float32(j_weight)
+        return output
 
 
 def _make_mangled_mesh_name(mesh_name: str, material_name: str):
@@ -128,19 +205,22 @@ def _make_mangled_mesh_name(mesh_name: str, material_name: str):
 class Mesh:
     def __init__(self):
         self.__name = ""
+        self.__skeleton_name = ""
         self.__vertices: Dict[str, VertexBuffer] = {}
 
     def make_json(self, output: List[Dict], bin_arr: BinaryArrayBuilder):
         for material_name, vertex_buffer in self.__vertices.items():
             output.append({
-                "name": _make_mangled_mesh_name(self.name, material_name)
+                "name": _make_mangled_mesh_name(self.name, material_name),
+                "skeleton name": self.skeleton_name,
             })
             vertex_buffer.make_json(output[-1], bin_arr)
 
     def add_vertex(self, material_name: str, position: smt.Vec3, uv_coord: smt.Vec2, normal: smt.Vec3):
         if material_name not in self.__vertices.keys():
             self.__vertices[material_name] = VertexBuffer()
-        self.__vertices[material_name].add_vertex(position, uv_coord, normal)
+
+        return self.__vertices[material_name].add_vertex(position, uv_coord, normal)
 
     @property
     def vertex_buffers(self):
@@ -153,6 +233,14 @@ class Mesh:
     @name.setter
     def name(self, value):
         self.__name = str(value)
+
+    @property
+    def skeleton_name(self):
+        return self.__skeleton_name
+
+    @skeleton_name.setter
+    def skeleton_name(self, value: str):
+        self.__skeleton_name = str(value)
 
 
 class Material:
@@ -320,6 +408,12 @@ class Skeleton:
 
         self.__joints.append(SkelJoint(name))
         return self.__joints[-1]
+
+    def make_name_index_map(self):
+        output = dict()
+        for i, joint in enumerate(self.__joints):
+            output[joint.name] = i
+        return output
 
     @property
     def name(self):
