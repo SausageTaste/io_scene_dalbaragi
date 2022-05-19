@@ -221,9 +221,9 @@ def __parse_armature(obj, skeleton: dst.Skeleton):
         if bone.parent is not None:
             joint.parent_name = bone.parent.name
 
-        for x in dst.JointType:
-            if bone.get(x.value, None) is not None:
-                joint.joint_type = x
+        for type_enum, type_specifier in dst.JOINT_TYPE_MAP.items():
+            if bone.get(type_specifier, None) is not None:
+                joint.joint_type = type_enum
 
         joint.offset_mat.set_blender_mat(bone.matrix_local)
 

@@ -345,9 +345,15 @@ class Material:
 
 
 class JointType(enum.Enum):
-    basic = "basic"
-    hair_root = "dal_phy_hairRoot"
-    skirt_root = "dal_phy_skirtRoot"
+    basic = 0
+    hair_root = 1
+    skirt_root = 2
+
+
+JOINT_TYPE_MAP: Dict[JointType, str] = {
+    JointType.hair_root: "dal_phy_hairRoot",
+    JointType.skirt_root: "dal_phy_skirtRoot",
+}
 
 
 class SkelJoint:
@@ -361,7 +367,7 @@ class SkelJoint:
         return {
             "name": self.name,
             "parent name": self.parent_name,
-            "joint type": self.joint_type.name,
+            "joint type": self.joint_type.value,
             "offset matrix": self.offset_mat.make_json(),
         }
 
