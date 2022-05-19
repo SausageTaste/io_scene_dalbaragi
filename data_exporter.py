@@ -237,7 +237,7 @@ def __parse_mesh_actor(obj, scene: dst.Scene):
     # ------------------------------------------------------------------------------------------------------------------
 
     armature = obj.find_armature()
-    if isinstance(armature.data, bpy.types.Armature):
+    if (armature is not None) and isinstance(armature.data, bpy.types.Armature):
         if scene.has_skeleton(armature.name):
             skeleton = scene.find_skeleton_by_name(armature.name)
         else:
