@@ -1,6 +1,6 @@
 import enum
 import array
-from typing import List, Dict, Union, Set, Tuple
+from typing import List, Dict, Union, Set, Tuple, Any
 
 from . import byteutils as byt
 from . import smalltype as smt
@@ -433,6 +433,158 @@ class Skeleton:
         return False
 
 
+class AnimJoint:
+    def __init__(self, name: str):
+        self.__name = str(name)
+        self.__positions: List[Tuple[float, smt.Vec3]] = []
+        self.__rotations: List[Tuple[float, smt.Quat]] = []
+        self.__scales: List[Tuple[float, float]] = []
+
+    def make_json(self):
+        return {
+            "name": self.name,
+            "positions": self.__make_json_positions(),
+            "rotations": self.__make_json_rotations(),
+            "scales": self.__make_json_scales(),
+        }
+
+    def add_position(self, time_point: float, x, y, z) -> None:
+        data = (float(time_point), smt.Vec3(x, y, z))
+        self.__positions.append(data)
+
+    def add_rotation(self, time_point: float, w, x, y, z) -> None:
+        data = (float(time_point), smt.Quat(w, x, y, z))
+        self.__rotations.append(data)
+
+    def add_scale(self, time_point: float, v: float):
+        data = (float(time_point), float(v))
+        self.__scales.append(data)
+
+    def remove_redundant_data(self) -> None:
+        # Positions
+        # --------------------------------------------------------------------------------------------------------------
+
+        poses_new = self.__positions[:]
+
+        poses_new.sort()
+        poses_new: List[Tuple[float, smt.Vec3]] = self.__remove_duplicate_keyframes(poses_new)
+        if 1 == len(poses_new) and poses_new[0][1].isDefault():
+            poses_new.clear()
+
+        # Rotations
+        # --------------------------------------------------------------------------------------------------------------
+
+        rotates_new = self.__rotations[:]
+
+        rotates_new.sort()
+        rotates_new: List[Tuple[float, smt.Quat]] = self.__remove_duplicate_keyframes(rotates_new)
+        if 1 == len(rotates_new) and rotates_new[0][1].isDefault():
+            rotates_new.clear()
+
+        # Scales
+        # --------------------------------------------------------------------------------------------------------------
+
+        scales_new = self.__scales[:]
+
+        scales_new.sort()
+        scales_new: List[Tuple[float, float]] = self.__remove_duplicate_keyframes(scales_new)
+        if 1 == len(scales_new) and smt.isFloatNear(scales_new[0][1], 1):
+            scales_new.clear()
+
+        # Apply changes
+        # --------------------------------------------------------------------------------------------------------------
+
+        self.__positions = poses_new
+        self.__rotations = rotates_new
+        self.__scales = scales_new
+
+    def is_useless(self) -> bool:
+        if len(self.__positions):
+            return False
+        elif len(self.__rotations):
+            return False
+        elif len(self.__scales):
+            return False
+        else:
+            return True
+
+    @property
+    def name(self):
+        return self.__name
+
+    def __make_json_positions(self):
+        output = []
+        for time_point, value in self.__positions:
+            output.append({
+                "time point": time_point,
+                "value": value.xyz,
+            })
+        return output
+
+    def __make_json_rotations(self):
+        output = []
+        for time_point, value in self.__rotations:
+            output.append({
+                "time point": time_point,
+                "value": value.wxyz,
+            })
+        return output
+
+    def __make_json_scales(self):
+        output = []
+        for time_point, value in self.__scales:
+            output.append({
+                "time point": time_point,
+                "value": value,
+            })
+        return output
+
+    @staticmethod
+    def __remove_duplicate_keyframes(arr: List[Tuple[float, Any]]):
+        arr_size = len(arr)
+        if 0 == arr_size:
+            return []
+
+        new_arr = [arr[0]]
+        for i in range(1, arr_size):
+            if arr[i][1] != new_arr[-1][1]:
+                new_arr.append(arr[i])
+        return new_arr
+
+
+class Animation:
+    def __init__(self, name: str, ticks_per_sec: float):
+        self.__name = str(name)
+        self.__ticks_per_sec = float(ticks_per_sec)
+        self.__joints: List[AnimJoint] = []
+
+    def make_json(self):
+        return {
+            "name": self.name,
+            "ticks per seconds": self.__ticks_per_sec,
+            "joints": [xx.make_json() for xx in self.__joints],
+        }
+
+    def new_joint(self, joint_name: str) -> AnimJoint:
+        joint = AnimJoint(joint_name)
+        self.__joints.append(joint)
+        return joint
+
+    def clean_up(self):
+        new_list = []
+
+        for j in self.__joints:
+            j.remove_redundant_data()
+            if not j.is_useless():
+                new_list.append(j)
+
+        self.__joints = new_list
+
+    @property
+    def name(self):
+        return self.__name
+
+
 class MeshActor(IActor):
     def __init__(self):
         super().__init__()
@@ -594,6 +746,7 @@ class Scene:
         self.__meshes: List[Mesh] = []
         self.__materials: List[Material] = []
         self.__skeletons: List[Skeleton] = []
+        self.__animations: List[Animation] = []
 
         self.__mesh_actors: List[MeshActor] = []
         self.__dlights: List[DirectionalLight] = []
@@ -606,6 +759,7 @@ class Scene:
             "meshes": self.__make_json_for_meshes(bin_arr),
             "materials": [xx.make_json() for xx in self.__materials],
             "skeletons": [xx.make_json() for xx in self.__skeletons],
+            "animations": [xx.make_json() for xx in self.__animations],
             "mesh actors": [xx.make_json(self.__meshes) for xx in self.__mesh_actors],
             "directional lights": [xx.make_json() for xx in self.__dlights],
             "point lights": [xx.make_json() for xx in self.__plights],
@@ -689,6 +843,11 @@ class Scene:
         mesh = Mesh()
         self.__meshes.append(mesh)
         return mesh
+
+    def new_animation(self, name: str, ticks_per_sec: float):
+        x = Animation(name, ticks_per_sec)
+        self.__animations.append(x)
+        return x
 
     def new_mesh_actor(self):
         mesh = MeshActor()

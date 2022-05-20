@@ -228,6 +228,154 @@ def __parse_armature(obj, skeleton: dst.Skeleton):
         joint.offset_mat.set_blender_mat(bone.matrix_local)
 
 
+class _TimePointDict:
+    def __init__(self):
+        self.__data: Dict[float, Dict[int, float]] = {}
+
+    def add(self, time_point: float, channel: int, value: float):
+        assert isinstance(time_point, float)
+        assert isinstance(channel, int)
+        assert isinstance(value, float)
+
+        if time_point not in self.__data.keys():
+            self.__data[time_point] = {}
+        self.__data[time_point][channel] = value
+
+    def get(self, time_point: float, channel: int) -> float:
+        assert isinstance(channel, int)
+        assert isinstance(time_point, float)
+
+        return self.__data[time_point][channel]
+
+    def get_extended(self, time_point: float, channel: int) -> float:
+        assert isinstance(channel, int)
+        assert isinstance(time_point, float)
+
+        try:
+            return self.__data[time_point][channel]
+        except KeyError:
+            requested_index = self.__convert_time_point_to_index(time_point)
+            prev_index = requested_index - 1
+            if prev_index < 0:
+                raise RuntimeError("[DAL] First keyframe need all its channels with a value.")
+            prev_time_point = self.__convert_index_to_time_point(prev_index)
+            return self.get(prev_time_point, channel)
+
+    def iter_timepoints(self) -> iter:
+        return iter(self.__make_sorted_timepoints())
+
+    def __make_sorted_timepoints(self) -> List[float]:
+        timepoints = list(self.__data.keys())
+        timepoints.sort()
+        return timepoints
+
+    def __convert_index_to_time_point(self, order: int) -> float:
+        assert isinstance(order, int)
+        assert order >= 0
+        return self.__make_sorted_timepoints()[order]
+
+    def __convert_time_point_to_index(self, time_point: float) -> int:
+        assert isinstance(time_point, float)
+        return self.__make_sorted_timepoints().index(time_point)
+
+
+class _JointData:
+    def __init__(self):
+        # Channels for a pos and scale are x=0, y=1, z=2
+        # For a quat, w=0, x=1, y=2, z=3
+        self.__positions = _TimePointDict()
+        self.__rotations = _TimePointDict()
+        self.__scales = _TimePointDict()
+
+    @property
+    def positions(self):
+        return self.__positions
+
+    @property
+    def rotations(self):
+        return self.__rotations
+
+    @property
+    def scales(self):
+        return self.__scales
+
+
+class _ActionAssembler:
+    def __init__(self):
+        self.__joints: Dict[str, _JointData] = {}
+
+    def items(self):
+        return self.__joints.items()
+
+    def add(self, joint_name: str, var_name: str, time_point: float, channel: int, value: float):
+        joint_name = str(joint_name)
+        var_name = str(var_name)
+
+        if joint_name not in self.__joints.keys():
+            self.__joints[joint_name] = _JointData()
+
+        if "location" == var_name:
+            self.__joints[joint_name].positions.add(time_point, channel, value)
+        elif "rotation_quaternion" == var_name:
+            self.__joints[joint_name].rotations.add(time_point, channel, value)
+        elif "scale" == var_name:
+            self.__joints[joint_name].scales.add(time_point, channel, value)
+        else:
+            raise RuntimeError(f'[DAL] WARN::Unknown variable for a joint: "{var_name}"')
+
+
+# var_name is either location, rotation_quaternion or scale
+def __split_fcu_data_path(path: str) -> Tuple[str, str]:
+    pass1 = path.split('"')
+    bone_name = pass1[1]
+
+    pass2 = pass1[2].split(".")
+    var_name = pass2[-1]
+
+    return bone_name, var_name
+
+
+def __parse_animation(bpy_action, anim: dst.Animation):
+    assert isinstance(bpy_action, bpy.types.Action)
+    assembler = _ActionAssembler()
+
+    for fcu in bpy_action.fcurves:
+        joint_name, var_name = __split_fcu_data_path(fcu.data_path)
+        # channel stands for x, y, z for locations, w, x, y, z for quat, x, y, z for scale.
+        channel = fcu.array_index
+
+        for keyframe in fcu.keyframe_points:
+            time_point = keyframe.co[0]
+            value = keyframe.co[1]
+            assembler.add(joint_name, var_name, time_point, channel, value)
+
+    for j_name, j_data in assembler.items():
+        joint_keyframes = anim.new_joint(j_name)
+
+        for tp in j_data.positions.iter_timepoints():
+            joint_keyframes.add_position(
+                tp,
+                j_data.positions.get(tp, 0),
+                j_data.positions.get(tp, 1),
+                j_data.positions.get(tp, 2),
+            )
+
+        for tp in j_data.rotations.iter_timepoints():
+            joint_keyframes.add_rotation(
+                tp,
+                j_data.rotations.get(tp, 0),
+                j_data.rotations.get(tp, 1),
+                j_data.rotations.get(tp, 2),
+                j_data.rotations.get(tp, 3),
+            )
+
+        for tp in j_data.scales.iter_timepoints():
+            average_scale = (j_data.scales.get(tp, 0) + j_data.scales.get(tp, 1) + j_data.scales.get(tp, 2)) / 3
+            joint_keyframes.add_scale(tp, average_scale)
+
+    return anim
+
+
 def __parse_mesh_actor(obj, scene: dst.Scene):
     actor = scene.new_mesh_actor()
     __parse_actor(obj, actor)
@@ -351,6 +499,10 @@ def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
     scene = dst.Scene()
 
     scene.name = bpy_scene.name
+
+    for action in bpy.data.actions:
+        animation = __parse_animation(action, scene.new_animation(action.name, bpy.context.scene.render.fps))
+        animation.clean_up()
 
     for obj in bpy_scene.objects:
         obj_type = __classify_object_type(obj)
