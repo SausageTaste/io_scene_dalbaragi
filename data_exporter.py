@@ -198,7 +198,7 @@ def __parse_actor(obj, actor: dst.IActor):
         actor.parent_name = ""
 
     for c in obj.users_collection:
-        actor.collections.append(c.name)
+        actor.add_collection_name(c.name)
 
     actor.pos.x = obj.location.x
     actor.pos.y = obj.location.y
@@ -209,7 +209,7 @@ def __parse_actor(obj, actor: dst.IActor):
     actor.quat.y = obj.rotation_quaternion[2]
     actor.quat.z = obj.rotation_quaternion[3]
 
-    actor.hidden = obj.visible_get()
+    actor.hidden = not obj.visible_get()
 
 
 def __parse_armature(obj, skeleton: dst.Skeleton):

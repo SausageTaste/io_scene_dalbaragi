@@ -32,9 +32,12 @@ class IActor:
     def insert_json(self, output: Dict) -> None:
         output["name"] = self.name
         output["parent name"] = self.parent_name
-        output["collections"] = self.collections
+        output["collections"] = self.__collections
         output["transform"] = self.__transform.make_json()
         output["hidden"] = self.hidden
+
+    def add_collection_name(self, collection_name: str):
+        self.__collections.append(str(collection_name))
 
     @property
     def name(self):
@@ -51,10 +54,6 @@ class IActor:
     @parent_name.setter
     def parent_name(self, value: str):
         self.__parent_name = str(value)
-
-    @property
-    def collections(self):
-        return self.__collections
 
     @property
     def pos(self):
