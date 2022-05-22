@@ -1,8 +1,11 @@
 import os
+import sys
 import zlib
 import json
+import pstats
 import base64
 import shutil
+import cProfile
 import importlib
 from typing import Tuple
 
@@ -221,7 +224,17 @@ class EmportDalJson(Operator, ExportHelper):
         default=True,
     )
 
+    option_do_profile: BoolProperty(
+        name="Generate profile result",
+        description="",
+        default=False,
+    )
+
     def execute(self, context):
+        if self.option_do_profile:
+            pr = cProfile.Profile()
+            pr.enable()
+
         configs = dex.ParseConfigs(
             exclude_hidden_objects=False,
         )
@@ -262,6 +275,13 @@ class EmportDalJson(Operator, ExportHelper):
                 image: bpy.types.Image = bpy.data.images[name]
                 dst_path = os.path.join(img_save_fol_path, name)
                 _copy_image(image, dst_path)
+
+        if self.option_do_profile:
+            pr.disable()
+            with open(os.path.splitext(self.filepath)[0] + "_profile.txt", "w", encoding="utf8") as file:
+                ps = pstats.Stats(pr, stream=file)
+                ps.sort_stats("tottime")
+                ps.print_stats()
 
         self.report({'INFO'}, "Done exporting Dalbaragi scene")
         return {'FINISHED'}
