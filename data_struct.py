@@ -748,6 +748,8 @@ class Scene:
     def make_json(self, bin_arr: BinaryArrayBuilder) -> Dict:
         return {
             "name": self.name,
+            "root transform": [1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+
             "meshes": self.__make_json_for_meshes(bin_arr),
             "materials": [xx.make_json() for xx in self.__materials],
             "skeletons": [xx.make_json() for xx in self.__skeletons],
