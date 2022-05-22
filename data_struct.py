@@ -1,6 +1,6 @@
 import enum
 import array
-from typing import List, Dict, Union, Set, Tuple, Any
+from typing import List, Dict, Union, Set, Tuple, Any, Set
 
 from . import byteutils as byt
 from . import smalltype as smt
@@ -88,15 +88,9 @@ class Vertex:
         self.__joints: List[Tuple[float, int]] = []
 
     def add_joint(self, joint_index: int, weight: float) -> None:
-        joint_index = int(joint_index)
-        weight = float(weight)
+        self.__joints.append((float(weight), int(joint_index)))
 
-        if 0.0 == weight:
-            return
-        if self.__has_joint_index(joint_index):
-            raise RuntimeError()
-
-        self.__joints.append((weight, joint_index))
+    def sort_joints(self):
         self.__joints.sort(reverse=True)
 
     @property
@@ -128,13 +122,11 @@ class Vertex:
 
     @property
     def joints(self):
-        return self.__joints
+        return iter(self.__joints)
 
-    def __has_joint_index(self, joint_index: int):
-        for j_weight, j_index in self.__joints:
-            if j_index == joint_index:
-                return True
-        return False
+    @property
+    def joint_count(self):
+        return len(self.__joints)
 
 
 class VertexBuffer:
@@ -190,7 +182,8 @@ class VertexBuffer:
     def __make_joints_binary_array(self) -> bytearray:
         output = bytearray()
         for v in self.__vertices:
-            output += byt.to_int32(len(v.joints))
+            v.sort_joints()
+            output += byt.to_int32(v.joint_count)
             for j_weight, j_index in v.joints:
                 output += byt.to_int32(j_index)
                 output += byt.to_float32(j_weight)
