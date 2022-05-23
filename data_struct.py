@@ -731,6 +731,48 @@ class Spotlight(PointLight):
         self.__spot_blend = float(value)
 
 
+class WaterPlane(IActor):
+    def __init__(self):
+        super().__init__()
+
+        self.__mesh = Mesh()
+
+    def make_json(self, bin_arr: BinaryArrayBuilder):
+        output = {
+            "mesh": []
+        }
+
+        IActor.insert_json(self, output)
+        self.__mesh.make_json(output["mesh"], bin_arr)
+        return output
+
+    @property
+    def mesh(self):
+        return self.__mesh
+
+
+class EnvironmentMap(IActor):
+    def __init__(self):
+        super().__init__()
+
+        self.m_volume: List[smt.Plane] = []
+
+    def make_json(self):
+        output = {}
+        IActor.insert_json(self, output)
+
+        output["volume"] = []
+        for plane in self.m_volume:
+            output["volume"].append(plane.coef())
+
+        return output
+
+    def new_plane(self):
+        plane = smt.Plane()
+        self.m_volume.append(plane)
+        return plane
+
+
 class Scene:
     def __init__(self):
         self.__name = ""
@@ -744,6 +786,8 @@ class Scene:
         self.__dlights: List[DirectionalLight] = []
         self.__plights: List[PointLight] = []
         self.__slights: List[Spotlight] = []
+        self.__water_planes: List[WaterPlane] = []
+        self.__env_maps: List[EnvironmentMap] = []
 
     def make_json(self, bin_arr: BinaryArrayBuilder) -> Dict:
         return {
@@ -758,6 +802,8 @@ class Scene:
             "directional lights": [xx.make_json() for xx in self.__dlights],
             "point lights": [xx.make_json() for xx in self.__plights],
             "spotlights": [xx.make_json() for xx in self.__slights],
+            "water planes": [xx.make_json(bin_arr) for xx in self.__water_planes],
+            "environment maps": [xx.make_json() for xx in self.__env_maps],
         }
 
     def get_texture_names(self) -> Set[str]:
@@ -862,6 +908,16 @@ class Scene:
         light = Spotlight()
         self.__slights.append(light)
         return light
+
+    def new_water_plane(self):
+        water = WaterPlane()
+        self.__water_planes.append(water)
+        return water
+
+    def new_env_map(self):
+        env_map = EnvironmentMap()
+        self.__env_maps.append(env_map)
+        return env_map
 
     @property
     def name(self):

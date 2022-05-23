@@ -140,7 +140,7 @@ class _MaterialParser:
         return material
 
 
-def __parse_mesh(obj, mesh: dst.Mesh, skeleton: dst.Skeleton):
+def __parse_mesh(obj, mesh: dst.Mesh, skeleton: Optional[dst.Skeleton]):
     obj_mesh = obj.data
     assert isinstance(obj_mesh, bpy.types.Mesh)
 
@@ -460,6 +460,27 @@ def __parse_light_spot(obj, slight: dst.Spotlight):
     return slight
 
 
+def __parse_water_plane(obj, water_plane: dst.WaterPlane):
+    __parse_actor(obj, water_plane)
+    __parse_mesh(obj, water_plane.mesh, None)
+
+
+def __parse_env_map(obj, env_map: dst.EnvironmentMap):
+    __parse_actor(obj, env_map)
+
+    name_start_index = str(obj.name).index("%", 1) + 1
+    env_map.name = str(obj.name)[name_start_index:]
+
+    if "pcorrect" in obj and "true" == obj["pcorrect"]:
+        for face in obj.data.polygons:
+            point = smt.Vec3(face.center.x, face.center.y, face.center.z)
+            normal = smt.Vec3(face.normal.x, face.normal.y, face.normal.z)
+            normal.normalize()
+
+            plane = env_map.new_plane()
+            plane.setPointNormal(point, normal)
+
+
 def __classify_object_type(obj):
     obj_name = str(obj.name)
     type_str = str(obj.type)
@@ -518,6 +539,13 @@ def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
             __parse_light_point(obj, scene.new_plight())
         elif obj_type == ObjType.spotlight:
             __parse_light_spot(obj, scene.new_slight())
+        elif obj_type == ObjType.water_plane:
+            __parse_water_plane(obj, scene.new_water_plane())
+        elif obj_type == ObjType.env_map:
+            __parse_env_map(obj, scene.new_env_map())
+
+        else:
+            print(obj.name, obj_type, obj.type)
 
     return scene
 
