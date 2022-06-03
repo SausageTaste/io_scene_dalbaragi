@@ -224,6 +224,17 @@ class EmportDalJson(Operator, ExportHelper):
         default=True,
     )
 
+    option_enum_exclude_hidden: EnumProperty(
+        name="Exclude hidden",
+        description="Choose between two items",
+        items=(
+            ('OPT_1', "None", "All hidden objects will be included in final output"),
+            ('OPT_2', "Meshes", "Only hidden meshes will be excluded"),
+            ('OPT_3', "All", "All types of hidden objects will be excluded"),
+        ),
+        default='OPT_1',
+    )
+
     option_do_profile: BoolProperty(
         name="Generate profile result",
         description="",
@@ -235,10 +246,7 @@ class EmportDalJson(Operator, ExportHelper):
             pr = cProfile.Profile()
             pr.enable()
 
-        configs = dex.ParseConfigs(
-            exclude_hidden_objects=False,
-        )
-
+        configs = self.__parse_config()
         scenes, bin_array = dex.parse_scenes(configs)
         json_data, bin_data = dex.build_json(scenes, bin_array, configs)
 
@@ -285,6 +293,22 @@ class EmportDalJson(Operator, ExportHelper):
 
         self.report({'INFO'}, "Done exporting Dalbaragi scene")
         return {'FINISHED'}
+
+    def __parse_config(self):
+        if "OPT_3" == self.option_enum_exclude_hidden:
+            exclude_obj = True
+            exclude_mesh = True
+        elif "OPT_2" == self.option_enum_exclude_hidden:
+            exclude_obj = False
+            exclude_mesh = True
+        else:
+            exclude_obj = False
+            exclude_mesh = False
+
+        return dex.ParseConfigs(
+            exclude_mesh,
+            exclude_obj,
+        )
 
 
 class DalExportSubMenu(bpy.types.Menu):

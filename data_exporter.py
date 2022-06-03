@@ -14,9 +14,19 @@ _TO_DEGREE = 180.0 / math.pi
 class ParseConfigs:
     def __init__(
         self,
+        exclude_hidden_meshes: bool = False,
         exclude_hidden_objects: bool = False,
     ):
+        self.__exclude_hidden_meshes = bool(exclude_hidden_meshes)
         self.__exclude_hidden_objects = bool(exclude_hidden_objects)
+
+    @property
+    def exclude_hidden_meshes(self):
+        return self.__exclude_hidden_meshes
+
+    @property
+    def exclude_hidden_objects(self):
+        return self.__exclude_hidden_objects
 
 
 class ObjType(enum.Enum):
@@ -526,10 +536,13 @@ def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
         animation.clean_up()
 
     for obj in bpy_scene.objects:
+        if not obj.visible_get() and configs.exclude_hidden_objects:
+            continue
         obj_type = __classify_object_type(obj)
 
         if obj_type == ObjType.mesh:
-            __parse_mesh_actor(obj, scene)
+            if obj.visible_get() or not configs.exclude_hidden_meshes:
+                __parse_mesh_actor(obj, scene)
         elif obj_type == ObjType.emtpy:
             __parse_actor(obj, scene.new_mesh_actor())
 
