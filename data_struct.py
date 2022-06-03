@@ -190,10 +190,6 @@ class VertexBuffer:
         return output
 
 
-def _make_mangled_mesh_name(mesh_name: str, material_name: str):
-    return f"{mesh_name}+{material_name}"
-
-
 class Mesh:
     def __init__(self):
         self.__name = ""
@@ -203,7 +199,7 @@ class Mesh:
     def make_json(self, output: List[Dict], bin_arr: BinaryArrayBuilder):
         for material_name, vertex_buffer in self.__vertices.items():
             output.append({
-                "name": _make_mangled_mesh_name(self.name, material_name),
+                "name": self.get_mangled_name(material_name),
                 "skeleton name": self.skeleton_name,
             })
             vertex_buffer.make_json(output[-1], bin_arr)
@@ -213,6 +209,12 @@ class Mesh:
             self.__vertices[material_name] = VertexBuffer()
 
         return self.__vertices[material_name].add_vertex(position, uv_coord, normal)
+
+    def get_mangled_name(self, material_name: str):
+        if 1 == len(self.__vertices.keys()):
+            return self.name
+        else:
+            return self.__make_mangled_mesh_name(material_name)
 
     @property
     def vertex_buffers(self):
@@ -233,6 +235,9 @@ class Mesh:
     @skeleton_name.setter
     def skeleton_name(self, value: str):
         self.__skeleton_name = str(value)
+
+    def __make_mangled_mesh_name(self, material_name: str):
+        return f"{self.name}+{material_name}"
 
 
 class Material:
@@ -608,7 +613,7 @@ class MeshActor(IActor):
         output: List[Dict] = []
         for mat_name, vert_buf in selected_mesh.vertex_buffers:
             output.append({
-                "mesh name": _make_mangled_mesh_name(selected_mesh.name, mat_name),
+                "mesh name": selected_mesh.get_mangled_name(mat_name),
                 "material name": mat_name,
             })
         return output
