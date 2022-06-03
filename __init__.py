@@ -325,30 +325,42 @@ def menu_func_export(self, context):
     self.layout.menu(DalExportSubMenu.bl_idname)
 
 
-def register():
-    importlib.reload(byt)
-    importlib.reload(smt)
-    importlib.reload(rwd)
-    importlib.reload(bpa)
-    importlib.reload(mfd)
-    importlib.reload(mex)
-    importlib.reload(mpd)
-    importlib.reload(mpx)
-    importlib.reload(dst)
-    importlib.reload(dex)
+modules = (
+    byt,
+    smt,
+    rwd,
+    bpa,
+    mfd,
+    mex,
+    mpd,
+    mpx,
+    dst,
+    dex,
+)
 
-    bpy.utils.register_class(EmportDalModel)
-    bpy.utils.register_class(ExportDalMap)
-    bpy.utils.register_class(EmportDalJson)
-    bpy.utils.register_class(DalExportSubMenu)
+
+classes = (
+    EmportDalModel,
+    ExportDalMap,
+    EmportDalJson,
+    DalExportSubMenu,
+)
+
+
+def register():
+    for mod in modules:
+        importlib.reload(mod)
+
+    for cls in classes:
+        bpy.utils.register_class(cls)
+
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 
 
 def unregister():
-    bpy.utils.unregister_class(EmportDalModel)
-    bpy.utils.unregister_class(ExportDalMap)
-    bpy.utils.unregister_class(EmportDalJson)
-    bpy.utils.unregister_class(DalExportSubMenu)
+    for cls in classes:
+        bpy.utils.unregister_class(cls)
+
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
 
 
