@@ -1,7 +1,11 @@
 import os
+import sys
 import zlib
 import json
+import pstats
+import base64
 import shutil
+import cProfile
 import importlib
 from typing import Tuple
 
@@ -19,6 +23,8 @@ from . import modify_data as mfd
 from . import model_exporter as mex
 from . import map_data as mpd
 from . import map_exporter_lvl as mpx
+from . import data_struct as dst
+from . import data_exporter as dex
 
 
 bl_info = {
@@ -191,6 +197,96 @@ class ExportDalMap(Operator, ExportHelper):
         return {'FINISHED'}
 
 
+class EmportDalJson(Operator, ExportHelper):
+    """Export intermediate json data"""
+
+    bl_idname = "export_dalbaragi_scene.json"
+    bl_label = "Export JSON"
+    filename_ext = ".json"
+
+    filter_glob: StringProperty(default="*.json", options={'HIDDEN'}, maxlen=255)
+
+    option_copy_images: BoolProperty(
+        name="Copy textures",
+        description="Copy textures to same path as exported file.",
+        default=False,
+    )
+
+    option_compress_binary: BoolProperty(
+        name="Compress binary",
+        description="Reduce the size of generated binary data",
+        default=True,
+    )
+
+    option_embed_binary: BoolProperty(
+        name="Embed binary data",
+        description="Store binary data in JSON file using Base64",
+        default=True,
+    )
+
+    option_do_profile: BoolProperty(
+        name="Generate profile result",
+        description="",
+        default=False,
+    )
+
+    def execute(self, context):
+        if self.option_do_profile:
+            pr = cProfile.Profile()
+            pr.enable()
+
+        configs = dex.ParseConfigs(
+            exclude_hidden_objects=False,
+        )
+
+        scenes, bin_array = dex.parse_scenes(configs)
+        json_data, bin_data = dex.build_json(scenes, bin_array, configs)
+
+        json_data["binary data"] = {
+            "raw size": len(bin_data),
+        }
+
+        if self.option_compress_binary:
+            bin_data = zlib.compress(bin_data, zlib.Z_BEST_COMPRESSION)
+            json_data["binary data"]["compressed size"] = len(bin_data)
+
+        if self.option_embed_binary:
+            encoded = base64.b64encode(bin_data).decode('ascii')
+            json_data["binary data"]["base64 size"] = len(encoded)
+            json_data["binary data"]["base64"] = encoded
+        else:
+            with open(os.path.splitext(self.filepath)[0], "wb") as file:
+                file.write(bin_data)
+
+        with open(self.filepath, "w", encoding="utf8") as file:
+            json.dump(json_data, file, indent=4)
+
+        if self.option_copy_images:
+            img_save_fol_path = os.path.splitext(self.filepath)[0] + "_textures"
+            if not os.path.isdir(img_save_fol_path):
+                os.mkdir(img_save_fol_path)
+
+            image_names = set()
+            for scene in scenes:
+                a = scene.get_texture_names()
+                image_names = image_names.union(a)
+
+            for name in image_names:
+                image: bpy.types.Image = bpy.data.images[name]
+                dst_path = os.path.join(img_save_fol_path, name)
+                _copy_image(image, dst_path)
+
+        if self.option_do_profile:
+            pr.disable()
+            with open(os.path.splitext(self.filepath)[0] + "_profile.txt", "w", encoding="utf8") as file:
+                ps = pstats.Stats(pr, stream=file)
+                ps.sort_stats("tottime")
+                ps.print_stats()
+
+        self.report({'INFO'}, "Done exporting Dalbaragi scene")
+        return {'FINISHED'}
+
+
 class DalExportSubMenu(bpy.types.Menu):
     bl_idname = "dal_export_menu"
     bl_label = "Dalbaragi Tools"
@@ -198,6 +294,7 @@ class DalExportSubMenu(bpy.types.Menu):
     def draw(self, context):
         self.layout.operator(EmportDalModel.bl_idname, text="Model (.dmd)")
         self.layout.operator(ExportDalMap.bl_idname, text="Map (.dlb)")
+        self.layout.operator(EmportDalJson.bl_idname, text="Scene (.json)")
 
 
 def menu_func_export(self, context):
@@ -213,9 +310,12 @@ def register():
     importlib.reload(mex)
     importlib.reload(mpd)
     importlib.reload(mpx)
+    importlib.reload(dst)
+    importlib.reload(dex)
 
     bpy.utils.register_class(EmportDalModel)
     bpy.utils.register_class(ExportDalMap)
+    bpy.utils.register_class(EmportDalJson)
     bpy.utils.register_class(DalExportSubMenu)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 
@@ -223,6 +323,7 @@ def register():
 def unregister():
     bpy.utils.unregister_class(EmportDalModel)
     bpy.utils.unregister_class(ExportDalMap)
+    bpy.utils.unregister_class(EmportDalJson)
     bpy.utils.unregister_class(DalExportSubMenu)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
 
