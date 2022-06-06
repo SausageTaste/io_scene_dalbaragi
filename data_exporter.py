@@ -537,11 +537,14 @@ def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
 
     for obj in bpy_scene.objects:
         if not obj.visible_get() and configs.exclude_hidden_objects:
+            scene.ignored_objects.new(obj.name, 'Hidden object')
             continue
         obj_type = __classify_object_type(obj)
 
         if obj_type == ObjType.mesh:
-            if obj.visible_get() or not configs.exclude_hidden_meshes:
+            if not obj.visible_get() and configs.exclude_hidden_meshes:
+                scene.ignored_objects.new(obj.name, 'Hidden mesh')
+            else:
                 __parse_mesh_actor(obj, scene)
         elif obj_type == ObjType.emtpy:
             __parse_actor(obj, scene.new_mesh_actor())
@@ -558,7 +561,7 @@ def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
             __parse_env_map(obj, scene.new_env_map())
 
         else:
-            print(obj.name, obj_type, obj.type)
+            scene.ignored_objects.new(obj.name, f'Not supported object type: {obj_type}, {obj.type}')
 
     return scene
 

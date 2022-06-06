@@ -781,6 +781,44 @@ class EnvironmentMap(IActor):
         return plane
 
 
+class IgnoredObject:
+    def __init__(self, name: str = "", description: str = ""):
+        self.__name = str(name)
+        self.__description = str(description)
+
+    @property
+    def name(self):
+        return self.__name
+
+    @name.setter
+    def name(self, value):
+        self.__name = str(value)
+
+    @property
+    def description(self):
+        return self.__description
+
+    @description.setter
+    def description(self, value):
+        self.__description = str(value)
+
+
+class IgnoredObjectList:
+    def __init__(self):
+        self.__data: List[IgnoredObject] = []
+
+    def new(self, name: str = "", description: str = ""):
+        output = IgnoredObject(name, description)
+        self.__data.append(output)
+        return output
+
+    def make_json(self):
+        output = {}
+        for x in self.__data:
+            output[x.name] = x.description
+        return output
+
+
 class Scene:
     def __init__(self):
         self.__name = ""
@@ -797,6 +835,12 @@ class Scene:
         self.__water_planes: List[WaterPlane] = []
         self.__env_maps: List[EnvironmentMap] = []
 
+        self.__ignored = IgnoredObjectList()
+
+    @property
+    def ignored_objects(self):
+        return self.__ignored
+
     def make_json(self, bin_arr: BinaryArrayBuilder) -> Dict:
         return {
             "name": self.name,
@@ -812,6 +856,8 @@ class Scene:
             "spotlights": [xx.make_json() for xx in self.__slights],
             "water planes": [xx.make_json(bin_arr) for xx in self.__water_planes],
             "environment maps": [xx.make_json() for xx in self.__env_maps],
+
+            "ignored objects": self.ignored_objects.make_json(),
         }
 
     def get_texture_names(self) -> Set[str]:
