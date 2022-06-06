@@ -603,12 +603,15 @@ class MeshActor(IActor):
         self.__mesh_name = str(value)
 
     def __make_render_pairs(self, meshes: List[Mesh]) -> List[Dict]:
+        if "" == self.mesh_name:
+            return []
+
         for x in meshes:
             if x.name == self.mesh_name:
                 selected_mesh = x
                 break
         else:
-            raise RuntimeError()
+            raise RuntimeError(f'A mesh actor "{self.name}" failed to find a mesh named "{self.mesh_name}"')
 
         output: List[Dict] = []
         for mat_name, vert_buf in selected_mesh.vertex_buffers:
