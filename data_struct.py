@@ -6,7 +6,7 @@ from . import byteutils as byt
 from . import smalltype as smt
 
 
-class _NameRegistry:
+class NameRegistry:
     def __init__(self):
         self.__registry: Dict[str, Any] = {}
 
@@ -36,14 +36,14 @@ class BinaryArrayBuilder:
 
 
 class IActor:
-    __registry = _NameRegistry()
-
-    def __init__(self):
+    def __init__(self, name_reg: NameRegistry):
         self.__name = ""
         self.__parent_name = ""
         self.__collections: List[str] = []
         self.__transform = smt.Transform()
         self.__hidden = False
+
+        self.__name_reg = name_reg
 
     def insert_json(self, output: Dict) -> None:
         output["name"] = self.name
@@ -61,7 +61,7 @@ class IActor:
 
     @name.setter
     def name(self, value: str):
-        self.__registry.register(self, value)
+        self.__name_reg.register(self, value)
         self.__name = str(value)
 
     @property
@@ -600,8 +600,8 @@ class Animation:
 
 
 class MeshActor(IActor):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, name_reg: NameRegistry):
+        super().__init__(name_reg)
 
         self.__mesh_name = ""
 
@@ -677,8 +677,8 @@ class ILight:
 
 
 class DirectionalLight(IActor, ILight):
-    def __init__(self):
-        IActor.__init__(self)
+    def __init__(self, name_reg: NameRegistry):
+        IActor.__init__(self, name_reg)
         ILight.__init__(self)
 
     def make_json(self) -> Dict:
@@ -690,8 +690,8 @@ class DirectionalLight(IActor, ILight):
 
 
 class PointLight(IActor, ILight):
-    def __init__(self):
-        IActor.__init__(self)
+    def __init__(self, name_reg: NameRegistry):
+        IActor.__init__(self, name_reg)
         ILight.__init__(self)
 
         self.__max_distance = 0.0
@@ -725,8 +725,8 @@ class PointLight(IActor, ILight):
 
 
 class Spotlight(PointLight):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, name_reg: NameRegistry):
+        super().__init__(name_reg)
 
         self.__spot_degree = 0.0
         self.__spot_blend = 0.0
@@ -757,8 +757,8 @@ class Spotlight(PointLight):
 
 
 class WaterPlane(IActor):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, name_reg: NameRegistry):
+        super().__init__(name_reg)
 
         self.__mesh = Mesh()
 
@@ -777,8 +777,8 @@ class WaterPlane(IActor):
 
 
 class EnvironmentMap(IActor):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, name_reg: NameRegistry):
+        super().__init__(name_reg)
 
         self.m_volume: List[smt.Plane] = []
 
@@ -853,6 +853,8 @@ class Scene:
         self.__env_maps: List[EnvironmentMap] = []
 
         self.__ignored = IgnoredObjectList()
+
+        self.__actor_name_reg = NameRegistry()
 
     @property
     def ignored_objects(self):
@@ -961,32 +963,32 @@ class Scene:
         return x
 
     def new_mesh_actor(self):
-        mesh = MeshActor()
+        mesh = MeshActor(self.__actor_name_reg)
         self.__mesh_actors.append(mesh)
         return mesh
 
     def new_dlight(self):
-        light = DirectionalLight()
+        light = DirectionalLight(self.__actor_name_reg)
         self.__dlights.append(light)
         return light
 
     def new_plight(self):
-        light = PointLight()
+        light = PointLight(self.__actor_name_reg)
         self.__plights.append(light)
         return light
 
     def new_slight(self):
-        light = Spotlight()
+        light = Spotlight(self.__actor_name_reg)
         self.__slights.append(light)
         return light
 
     def new_water_plane(self):
-        water = WaterPlane()
+        water = WaterPlane(self.__actor_name_reg)
         self.__water_planes.append(water)
         return water
 
     def new_env_map(self):
-        env_map = EnvironmentMap()
+        env_map = EnvironmentMap(self.__actor_name_reg)
         self.__env_maps.append(env_map)
         return env_map
 
