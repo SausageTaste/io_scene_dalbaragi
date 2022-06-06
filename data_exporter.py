@@ -214,10 +214,13 @@ def __parse_actor(obj, actor: dst.IActor):
     actor.pos.y = obj.location.y
     actor.pos.z = obj.location.z
 
+    initial_rotate_mode = obj.rotation_mode
+    obj.rotation_mode = "QUATERNION"
     actor.quat.w = obj.rotation_quaternion[0]
     actor.quat.x = obj.rotation_quaternion[1]
     actor.quat.y = obj.rotation_quaternion[2]
     actor.quat.z = obj.rotation_quaternion[3]
+    obj.rotation_mode = initial_rotate_mode
 
     actor.scale.x = obj.scale[0]
     actor.scale.y = obj.scale[1]
