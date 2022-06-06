@@ -6,6 +6,20 @@ from . import byteutils as byt
 from . import smalltype as smt
 
 
+class _NameRegistry:
+    def __init__(self):
+        self.__registry: Dict[str, Any] = {}
+
+    def register(self, obj: Any, name: str):
+        if name in self.__registry.keys():
+            if obj != self.__registry[name]:
+                raise RuntimeError(f'Name collision: "{name}" between {self.__registry[name]}, {obj}')
+            else:
+                return
+        else:
+            self.__registry[name] = obj
+
+
 class BinaryArrayBuilder:
     def __init__(self):
         self.__data = bytearray()
@@ -22,6 +36,8 @@ class BinaryArrayBuilder:
 
 
 class IActor:
+    __registry = _NameRegistry()
+
     def __init__(self):
         self.__name = ""
         self.__parent_name = ""
@@ -45,6 +61,7 @@ class IActor:
 
     @name.setter
     def name(self, value: str):
+        self.__registry.register(self, value)
         self.__name = str(value)
 
     @property
