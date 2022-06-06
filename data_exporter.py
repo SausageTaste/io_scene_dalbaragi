@@ -61,7 +61,12 @@ class _MaterialParser:
         assert blender_material is not None
 
         shader_output = cls.__find_node_named(cls.__NODE_MATERIAL_OUTPUT, blender_material.node_tree.nodes)
-        linked_shader = shader_output.inputs["Surface"].links[0].from_node
+
+        try:
+            linked_shader = shader_output.inputs["Surface"].links[0].from_node
+        except IndexError:
+            return None
+
         alpha_blend_enabled = True if blender_material.blend_method != cls.__BLEND_OPAQUE else False
 
         if cls.__NODE_BSDF == linked_shader.bl_idname:
@@ -195,8 +200,12 @@ def __parse_mesh(obj, mesh: dst.Mesh, skeleton: Optional[dst.Skeleton]):
 
             for g in obj.data.vertices[vertex_index].groups:
                 joint_name = str(obj.vertex_groups[g.group].name)
-                joint_index = joint_name_index_map[joint_name]
-                dst_vertex.add_joint(joint_index, g.weight)
+                try:
+                    joint_index = joint_name_index_map[joint_name]
+                except KeyError:
+                    pass
+                else:
+                    dst_vertex.add_joint(joint_index, g.weight)
 
 
 def __parse_actor(obj, actor: dst.IActor):
@@ -421,6 +430,8 @@ def __parse_mesh_actor(obj, scene: dst.Scene):
         if material is not None:
             material.name = bpy_mat.name
             scene.add_material(material)
+        else:
+            print(f"Failed to parse a material: {bpy_mat.name}")
 
     # Mesh
     # ------------------------------------------------------------------------------------------------------------------
