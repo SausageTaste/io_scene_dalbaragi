@@ -73,6 +73,10 @@ class IActor:
         self.__parent_name = str(value)
 
     @property
+    def transform(self):
+        return self.__transform
+
+    @property
     def pos(self):
         return self.__transform.m_pos
 
@@ -422,11 +426,13 @@ class SkelJoint:
 class Skeleton:
     def __init__(self, name: str):
         self.__name = str(name)
+        self.__transform = smt.Transform()
         self.__joints: List[SkelJoint] = []
 
     def make_json(self):
         return {
             "name": self.name,
+            "transform": self.transform.make_json(),
             "joints": [xx.make_json() for xx in self.__joints],
         }
 
@@ -446,6 +452,10 @@ class Skeleton:
     @property
     def name(self):
         return self.__name
+
+    @property
+    def transform(self):
+        return self.__transform
 
     def __does_joint_name_exist(self, name: str):
         name = str(name)

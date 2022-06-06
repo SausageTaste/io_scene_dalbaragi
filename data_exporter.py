@@ -155,6 +155,24 @@ class _MaterialParser:
         return material
 
 
+def __parse_transform(obj, output: smt.Transform):
+    output.m_pos.x = obj.location.x
+    output.m_pos.y = obj.location.y
+    output.m_pos.z = obj.location.z
+
+    initial_rotate_mode = obj.rotation_mode
+    obj.rotation_mode = "QUATERNION"
+    output.m_rotate.w = obj.rotation_quaternion[0]
+    output.m_rotate.x = obj.rotation_quaternion[1]
+    output.m_rotate.y = obj.rotation_quaternion[2]
+    output.m_rotate.z = obj.rotation_quaternion[3]
+    obj.rotation_mode = initial_rotate_mode
+
+    output.m_scale.x = obj.scale[0]
+    output.m_scale.y = obj.scale[1]
+    output.m_scale.z = obj.scale[2]
+
+
 def __parse_mesh(obj, mesh: dst.Mesh, skeleton: Optional[dst.Skeleton]):
     obj_mesh = obj.data
     assert isinstance(obj_mesh, bpy.types.Mesh)
@@ -219,29 +237,16 @@ def __parse_actor(obj, actor: dst.IActor):
     for c in obj.users_collection:
         actor.add_collection_name(c.name)
 
-    actor.pos.x = obj.location.x
-    actor.pos.y = obj.location.y
-    actor.pos.z = obj.location.z
-
-    initial_rotate_mode = obj.rotation_mode
-    obj.rotation_mode = "QUATERNION"
-    actor.quat.w = obj.rotation_quaternion[0]
-    actor.quat.x = obj.rotation_quaternion[1]
-    actor.quat.y = obj.rotation_quaternion[2]
-    actor.quat.z = obj.rotation_quaternion[3]
-    obj.rotation_mode = initial_rotate_mode
-
-    actor.scale.x = obj.scale[0]
-    actor.scale.y = obj.scale[1]
-    actor.scale.z = obj.scale[2]
-
+    __parse_transform(obj, actor.transform)
     actor.hidden = not obj.visible_get()
 
 
 def __parse_armature(obj, skeleton: dst.Skeleton):
-    assert isinstance(obj, bpy.types.Armature)
+    assert isinstance(obj.data, bpy.types.Armature)
 
-    for bone in obj.bones:
+    __parse_transform(obj, skeleton.transform)
+
+    for bone in obj.data.bones:
         joint = skeleton.new_joint(bone.name)
 
         if bone.parent is not None:
@@ -416,7 +421,7 @@ def __parse_mesh_actor(obj, scene: dst.Scene):
             skeleton = scene.find_skeleton_by_name(armature.name)
         else:
             skeleton = scene.new_skeleton(armature.name)
-            __parse_armature(armature.data, skeleton)
+            __parse_armature(armature, skeleton)
     else:
         skeleton = None
 
