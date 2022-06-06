@@ -219,6 +219,10 @@ def __parse_actor(obj, actor: dst.IActor):
     actor.quat.y = obj.rotation_quaternion[2]
     actor.quat.z = obj.rotation_quaternion[3]
 
+    actor.scale.x = obj.scale[0]
+    actor.scale.y = obj.scale[1]
+    actor.scale.z = obj.scale[2]
+
     actor.hidden = not obj.visible_get()
 
 

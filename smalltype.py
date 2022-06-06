@@ -300,21 +300,21 @@ class Transform:
     def __init__(self):
         self.__pos = Vec3()
         self.__quat = Quat()
-        self.__scale = 1.0
+        self.__scale = Vec3()
 
     def make_json(self):
         return {
             "translation": self.m_pos.xyz,
             "rotation": self.__quat.wxyz,
-            "scale": self.__scale,
+            "scale": self.__scale.xyz,
         }
 
-    def transform(self, v: Vec3) -> Vec3:
+    def __transform(self, v: Vec3) -> Vec3:
         v *= self.__scale
         v = self.__quat.rotateVec(v)
         return v + self.__pos
 
-    def transform0(self, v: Vec3) -> Vec3:
+    def __transform0(self, v: Vec3) -> Vec3:
         v *= self.__scale
         v = self.__quat.rotateVec(v)
         return v
@@ -322,6 +322,7 @@ class Transform:
     @property
     def m_pos(self):
         return self.__pos
+
     @m_pos.setter
     def m_pos(self, v: Vec3):
         assert isinstance(v, Vec3)
@@ -330,6 +331,7 @@ class Transform:
     @property
     def m_rotate(self):
         return self.__quat
+
     @m_rotate.setter
     def m_rotate(self, v: Quat):
         isinstance(v, Quat)
@@ -338,9 +340,11 @@ class Transform:
     @property
     def m_scale(self):
         return self.__scale
+
     @m_scale.setter
-    def m_scale(self, v: float):
-        self.__scale = float(v)
+    def m_scale(self, v: Vec3):
+        assert isinstance(v, Vec3)
+        self.__scale = v
 
 
 class Plane:

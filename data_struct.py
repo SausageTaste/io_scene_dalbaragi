@@ -1,6 +1,6 @@
 import enum
 import array
-from typing import List, Dict, Union, Set, Tuple, Any, Set
+from typing import List, Dict, Union, Tuple, Any, Set
 
 from . import byteutils as byt
 from . import smalltype as smt
@@ -87,6 +87,14 @@ class IActor:
     @quat.setter
     def quat(self, value: smt.Quat):
         self.__transform.m_rotate = value
+
+    @property
+    def scale(self):
+        return self.__transform.m_scale
+
+    @scale.setter
+    def scale(self, value):
+        self.__transform.m_scale = value
 
     @property
     def hidden(self):
