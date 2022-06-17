@@ -1,11 +1,7 @@
 import os
-import sys
 import zlib
 import json
-import pstats
-import base64
 import shutil
-import cProfile
 import importlib
 from typing import Tuple
 
@@ -25,6 +21,7 @@ from . import map_data as mpd
 from . import map_exporter_lvl as mpx
 from . import data_struct as dst
 from . import data_exporter as dex
+from . import export_func as exp
 
 
 bl_info = {
@@ -242,54 +239,16 @@ class EmportDalJson(Operator, ExportHelper):
     )
 
     def execute(self, context):
-        if self.option_do_profile:
-            pr = cProfile.Profile()
-            pr.enable()
-
         configs = self.__parse_config()
-        scenes, bin_array = dex.parse_scenes(configs)
-        json_data, bin_data = dex.build_json(scenes, bin_array, configs)
 
-        json_data["binary data"] = {
-            "raw size": len(bin_data),
-        }
-
-        if self.option_compress_binary:
-            bin_data = zlib.compress(bin_data, zlib.Z_BEST_COMPRESSION)
-            json_data["binary data"]["compressed size"] = len(bin_data)
-
-        if self.option_embed_binary:
-            encoded = base64.b64encode(bin_data).decode('ascii')
-            json_data["binary data"]["base64 size"] = len(encoded)
-            json_data["binary data"]["base64"] = encoded
-        else:
-            with open(os.path.splitext(self.filepath)[0], "wb") as file:
-                file.write(bin_data)
-
-        with open(self.filepath, "w", encoding="utf8") as file:
-            json.dump(json_data, file, indent=4)
-
-        if self.option_copy_images:
-            img_save_fol_path = os.path.splitext(self.filepath)[0] + "_textures"
-            if not os.path.isdir(img_save_fol_path):
-                os.mkdir(img_save_fol_path)
-
-            image_names = set()
-            for scene in scenes:
-                a = scene.get_texture_names()
-                image_names = image_names.union(a)
-
-            for name in image_names:
-                image: bpy.types.Image = bpy.data.images[name]
-                dst_path = os.path.join(img_save_fol_path, name)
-                _copy_image(image, dst_path)
-
-        if self.option_do_profile:
-            pr.disable()
-            with open(os.path.splitext(self.filepath)[0] + "_profile.txt", "w", encoding="utf8") as file:
-                ps = pstats.Stats(pr, stream=file)
-                ps.sort_stats("tottime")
-                ps.print_stats()
+        exp.export_json(
+            self.filepath,
+            configs,
+            self.option_do_profile,
+            self.option_compress_binary,
+            self.option_embed_binary,
+            self.option_copy_images,
+        )
 
         self.report({'INFO'}, "Done exporting Dalbaragi scene")
         return {'FINISHED'}
@@ -336,6 +295,7 @@ modules = (
     mpx,
     dst,
     dex,
+    exp,
 )
 
 
