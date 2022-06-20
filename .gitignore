@@ -2,3 +2,4 @@ __pycache__/
 .idea/
 /build/
 /.vscode/
+/b3dsung.pyd
