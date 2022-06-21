@@ -1,3 +1,4 @@
+import abc
 import array
 from typing import List, Dict, Tuple, Union
 
@@ -184,7 +185,22 @@ class _Mesh:
         return f"{self.name}+{material_name}"
 
 
-class MeshManager:
+class _IMeshManager(abc.ABC):
+    @abc.abstractmethod
+    def get_mesh_mat_pairs(self, mesh_name: str) -> List[Tuple[str, str]]:
+        pass
+
+    # Returns mesh name
+    @abc.abstractmethod
+    def add_bpy_mesh(self, bpy_mesh, skeleton_name: str, joint_name_index_map: Dict[str, int]) -> str:
+        pass
+
+    @abc.abstractmethod
+    def make_json(self, bin_arr: BinaryArrayBuilder):
+        pass
+
+
+class MeshManager(_IMeshManager):
     def __init__(self) -> None:
         self.__meshes = []
 
@@ -279,8 +295,39 @@ class MeshManager:
                         dst_vertex.add_joint(joint_index, g.weight)
 
 
-def create_mesh_manager():
-    return MeshManager()
+class _MeshManagerTester(_IMeshManager):
+    def __init__(self) -> None:
+        self.__managers: List[_IMeshManager] = []
+
+    def add_manager(self, manager: _IMeshManager):
+        self.__managers.append(manager)
+
+    def get_mesh_mat_pairs(self, mesh_name: str) -> List[Tuple[str, str]]:
+        output = None
+        for x in self.__managers:
+            output = x.get_mesh_mat_pairs(mesh_name)
+        return output
+
+    # Returns mesh name
+    def add_bpy_mesh(self, bpy_mesh, skeleton_name: str, joint_name_index_map: Dict[str, int]) -> str:
+        output = None
+        for x in self.__managers:
+            output = x.add_bpy_mesh(bpy_mesh, skeleton_name, joint_name_index_map)
+        return output
+
+    def make_json(self, bin_arr: BinaryArrayBuilder):
+        output = None
+        for x in self.__managers:
+            output = x.make_json(bin_arr)
+        return output
+
+
+def create_mesh_manager() -> _IMeshManager:
+    output = _MeshManagerTester()
+    if csu is not None:
+        output.add_manager(csu.MeshManager())
+    output.add_manager(MeshManager())
+    return output
 
 
 def create_binary_builder():
