@@ -4,6 +4,11 @@ from typing import List, Dict, Tuple, Union
 from . import byteutils as byt
 from . import smalltype as smt
 
+try:
+    from . import b3dsung as csu
+except ImportError:
+    csu = None
+
 
 class BinaryArrayBuilder:
     def __init__(self):
@@ -279,4 +284,9 @@ def create_mesh_manager():
 
 
 def create_binary_builder():
-    return BinaryArrayBuilder()
+    if csu is None:
+        print("Use Python implementation")
+        return BinaryArrayBuilder()
+    else:
+        print("Use C++ implementation")
+        return csu.BinaryBuilder()
