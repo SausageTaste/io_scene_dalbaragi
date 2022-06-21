@@ -4,6 +4,7 @@ from typing import Optional, Tuple, List, Dict
 
 import bpy
 
+from . import byteutils as byt
 from . import smalltype as smt
 from . import data_struct as dst
 
@@ -171,59 +172,6 @@ def __parse_transform(obj, output: smt.Transform):
     output.m_scale.x = obj.scale[0]
     output.m_scale.y = obj.scale[1]
     output.m_scale.z = obj.scale[2]
-
-
-def __parse_mesh(obj, mesh: dst.Mesh, skeleton: Optional[dst.Skeleton]):
-    obj_mesh = obj.data
-    assert isinstance(obj_mesh, bpy.types.Mesh)
-
-    obj_mesh.calc_loop_triangles()
-    if skeleton is not None:
-        joint_name_index_map = skeleton.make_name_index_map()
-        mesh.skeleton_name = skeleton.name
-    else:
-        joint_name_index_map = {}
-        mesh.skeleton_name = ""
-
-    mesh.name = obj_mesh.name
-
-    for tri in obj_mesh.loop_triangles:
-        try:
-            material_name = obj.data.materials[tri.material_index].name
-        except IndexError:
-            material_name = ""
-
-        for i in range(3):
-            # Vertex
-            vertex_index: int = tri.vertices[i]
-            vertex_data = obj_mesh.vertices[vertex_index].co
-            vertex = smt.Vec3(vertex_data[0], vertex_data[1], vertex_data[2])
-
-            # UV coord
-            if obj_mesh.uv_layers.active is not None:
-                uv_data = obj_mesh.uv_layers.active.data[tri.loops[i]].uv
-            else:
-                uv_data = (0.0, 0.0)
-            uv_coord = smt.Vec2(uv_data[0], uv_data[1])
-
-            # Normal
-            if tri.use_smooth:
-                normal_data = obj_mesh.vertices[vertex_index].normal
-            else:
-                normal_data = tri.normal
-            normal = smt.Vec3(normal_data[0], normal_data[1], normal_data[2])
-            normal.normalize()
-
-            dst_vertex = mesh.add_vertex(material_name, vertex, uv_coord, normal)
-
-            for g in obj.data.vertices[vertex_index].groups:
-                joint_name = str(obj.vertex_groups[g.group].name)
-                try:
-                    joint_index = joint_name_index_map[joint_name]
-                except KeyError:
-                    pass
-                else:
-                    dst_vertex.add_joint(joint_index, g.weight)
 
 
 def __parse_actor(obj, actor: dst.IActor):
@@ -441,11 +389,14 @@ def __parse_mesh_actor(obj, scene: dst.Scene):
     # Mesh
     # ------------------------------------------------------------------------------------------------------------------
 
-    try:
-        scene.find_mesh_by_name(actor.mesh_name)
-    except KeyError:
-        mesh = scene.new_mesh()
-        __parse_mesh(obj, mesh, skeleton)
+    if skeleton is not None:
+        joint_name_index_map = skeleton.make_name_index_map()
+        skeleton_name = skeleton.name
+    else:
+        joint_name_index_map = {}
+        skeleton_name = ""
+
+    scene.mesh_manager.add_bpy_mesh(obj, skeleton_name, joint_name_index_map)
 
 
 def __parse_light_base(obj, light: dst.ILight) -> None:
@@ -589,9 +540,9 @@ def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
     return scene
 
 
-def parse_scenes(configs: ParseConfigs) -> Tuple[List[dst.Scene], dst.BinaryArrayBuilder]:
+def parse_scenes(configs: ParseConfigs) -> Tuple[List[dst.Scene], byt.BinaryArrayBuilder]:
     output = []
-    bin_arr = dst.BinaryArrayBuilder()
+    bin_arr = byt.BinaryArrayBuilder()
 
     for bpy_scene in bpy.data.scenes:
         scene = __parse_scene(bpy_scene, configs)
@@ -600,7 +551,7 @@ def parse_scenes(configs: ParseConfigs) -> Tuple[List[dst.Scene], dst.BinaryArra
     return output, bin_arr
 
 
-def build_json(scenes: List[dst.Scene], bin_arr: dst.BinaryArrayBuilder, configs: ParseConfigs) -> Tuple[Dict, bytes]:
+def build_json(scenes: List[dst.Scene], bin_arr: byt.BinaryArrayBuilder, configs: ParseConfigs) -> Tuple[Dict, bytes]:
     output = {
         "scenes": [xx.make_json(bin_arr) for xx in scenes],
     }

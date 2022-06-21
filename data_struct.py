@@ -1,9 +1,9 @@
 import enum
-import array
-from typing import List, Dict, Union, Tuple, Any, Set
+from typing import List, Dict, Tuple, Any, Set
 
 from . import byteutils as byt
 from . import smalltype as smt
+from . import mesh_manager as mes
 
 
 class NameRegistry:
@@ -18,21 +18,6 @@ class NameRegistry:
                 return
         else:
             self.__registry[name] = obj
-
-
-class BinaryArrayBuilder:
-    def __init__(self):
-        self.__data = bytearray()
-
-    @property
-    def data(self):
-        return bytes(self.__data)
-
-    def add_bin_array(self, arr: Union[bytes, bytearray]):
-        start_index = len(self.__data)
-        self.__data += arr
-        end_index = len(self.__data)
-        return start_index, end_index - start_index
 
 
 class IActor:
@@ -107,166 +92,6 @@ class IActor:
     @hidden.setter
     def hidden(self, value: bool):
         self.__hidden = bool(value)
-
-
-class Vertex:
-    def __init__(self):
-        self.__pos = smt.Vec3()
-        self.__uv_coord = smt.Vec2()
-        self.__normal = smt.Vec3()
-        self.__joints: List[Tuple[float, int]] = []
-
-    def add_joint(self, joint_index: int, weight: float) -> None:
-        self.__joints.append((float(weight), int(joint_index)))
-
-    def sort_joints(self):
-        self.__joints.sort(reverse=True)
-
-    @property
-    def position(self):
-        return self.__pos
-
-    @position.setter
-    def position(self, value):
-        assert isinstance(value, smt.Vec3)
-        self.__pos = value
-
-    @property
-    def uv_coord(self):
-        return self.__uv_coord
-
-    @uv_coord.setter
-    def uv_coord(self, value):
-        assert isinstance(value, smt.Vec2)
-        self.__uv_coord = value
-
-    @property
-    def normal(self):
-        return self.__normal
-
-    @normal.setter
-    def normal(self, value):
-        assert isinstance(value, smt.Vec3)
-        self.__normal = value
-
-    @property
-    def joints(self):
-        return iter(self.__joints)
-
-    @property
-    def joint_count(self):
-        return len(self.__joints)
-
-
-class VertexBuffer:
-    def __init__(self):
-        self.__vertices: List[Vertex] = []
-
-    def make_json(self, output: Dict, bin_arr: BinaryArrayBuilder):
-        positions, uv_coordinates, normals = self.__make_arrays()
-        joints = self.__make_joints_binary_array()
-
-        binary_arrays = [
-            (positions.tobytes(), "vertices binary data"),
-            (uv_coordinates.tobytes(), "uv coordinates binary data"),
-            (normals.tobytes(), "normals binary data"),
-            (joints, "joints binary data"),
-        ]
-
-        output["vertex count"] = len(self.__vertices)
-        for binary_data, field_name in binary_arrays:
-            pos, size = bin_arr.add_bin_array(binary_data)
-            output[field_name] = {
-                "position": pos,
-                "size": size,
-            }
-
-    def add_vertex(self, position: smt.Vec3, uv_coord: smt.Vec2, normal: smt.Vec3):
-        vertex = Vertex()
-        vertex.position = position
-        vertex.uv_coord = uv_coord
-        vertex.normal = normal
-        self.__vertices.append(vertex)
-        return vertex
-
-    def __make_arrays(self):
-        positions = array.array("f")
-        uv_coordinates = array.array("f")
-        normals = array.array("f")
-
-        for v in self.__vertices:
-            positions.append(v.position.x)
-            positions.append(v.position.y)
-            positions.append(v.position.z)
-
-            uv_coordinates.append(v.uv_coord.x)
-            uv_coordinates.append(v.uv_coord.y)
-
-            normals.append(v.normal.x)
-            normals.append(v.normal.y)
-            normals.append(v.normal.z)
-
-        return positions, uv_coordinates, normals
-
-    def __make_joints_binary_array(self) -> bytearray:
-        output = bytearray()
-        for v in self.__vertices:
-            v.sort_joints()
-            output += byt.to_int32(v.joint_count)
-            for j_weight, j_index in v.joints:
-                output += byt.to_int32(j_index)
-                output += byt.to_float32(j_weight)
-        return output
-
-
-class Mesh:
-    def __init__(self):
-        self.__name = ""
-        self.__skeleton_name = ""
-        self.__vertices: Dict[str, VertexBuffer] = {}
-
-    def make_json(self, output: List[Dict], bin_arr: BinaryArrayBuilder):
-        for material_name, vertex_buffer in self.__vertices.items():
-            output.append({
-                "name": self.get_mangled_name(material_name),
-                "skeleton name": self.skeleton_name,
-            })
-            vertex_buffer.make_json(output[-1], bin_arr)
-
-    def add_vertex(self, material_name: str, position: smt.Vec3, uv_coord: smt.Vec2, normal: smt.Vec3):
-        if material_name not in self.__vertices.keys():
-            self.__vertices[material_name] = VertexBuffer()
-
-        return self.__vertices[material_name].add_vertex(position, uv_coord, normal)
-
-    def get_mangled_name(self, material_name: str):
-        if 1 == len(self.__vertices.keys()):
-            return self.name
-        else:
-            return self.__make_mangled_mesh_name(material_name)
-
-    @property
-    def vertex_buffers(self):
-        return self.__vertices.items()
-
-    @property
-    def name(self):
-        return self.__name
-
-    @name.setter
-    def name(self, value):
-        self.__name = str(value)
-
-    @property
-    def skeleton_name(self):
-        return self.__skeleton_name
-
-    @skeleton_name.setter
-    def skeleton_name(self, value: str):
-        self.__skeleton_name = str(value)
-
-    def __make_mangled_mesh_name(self, material_name: str):
-        return f"{self.name}+{material_name}"
 
 
 class Material:
@@ -623,7 +448,7 @@ class MeshActor(IActor):
 
         self.__mesh_name = ""
 
-    def make_json(self, meshes: List[Mesh]):
+    def make_json(self, meshes: mes.MeshManager):
         output = {}
         IActor.insert_json(self, output)
         output["render pairs"] = self.__make_render_pairs(meshes)
@@ -637,21 +462,14 @@ class MeshActor(IActor):
     def mesh_name(self, value):
         self.__mesh_name = str(value)
 
-    def __make_render_pairs(self, meshes: List[Mesh]) -> List[Dict]:
+    def __make_render_pairs(self, meshes: mes.MeshManager) -> List[Dict]:
         if "" == self.mesh_name:
             return []
 
-        for x in meshes:
-            if x.name == self.mesh_name:
-                selected_mesh = x
-                break
-        else:
-            raise RuntimeError(f'A mesh actor "{self.name}" failed to find a mesh named "{self.mesh_name}"')
-
         output: List[Dict] = []
-        for mat_name, vert_buf in selected_mesh.vertex_buffers:
+        for mesh_name, mat_name in meshes.get_mesh_mat_pairs(self.mesh_name):
             output.append({
-                "mesh name": selected_mesh.get_mangled_name(mat_name),
+                "mesh name": mesh_name,
                 "material name": mat_name,
             })
         return output
@@ -780,7 +598,7 @@ class WaterPlane(IActor):
 
         self.__mesh = Mesh()
 
-    def make_json(self, bin_arr: BinaryArrayBuilder):
+    def make_json(self, bin_arr: byt.BinaryArrayBuilder):
         output = {
             "mesh": []
         }
@@ -858,7 +676,7 @@ class Scene:
     def __init__(self):
         self.__name = ""
 
-        self.__meshes: List[Mesh] = []
+        self.__meshes = mes.MeshManager()
         self.__materials: List[Material] = []
         self.__skeletons: List[Skeleton] = []
         self.__animations: List[Animation] = []
@@ -878,12 +696,12 @@ class Scene:
     def ignored_objects(self):
         return self.__ignored
 
-    def make_json(self, bin_arr: BinaryArrayBuilder) -> Dict:
+    def make_json(self, bin_arr: byt.BinaryArrayBuilder) -> Dict:
         return {
             "name": self.name,
             "root transform": [1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
 
-            "meshes": self.__make_json_for_meshes(bin_arr),
+            "meshes": self.__meshes.make_json(bin_arr),
             "materials": [xx.make_json() for xx in self.__materials],
             "skeletons": [xx.make_json() for xx in self.__skeletons],
             "animations": [xx.make_json() for xx in self.__animations],
@@ -912,13 +730,6 @@ class Scene:
             pass
 
         return output
-
-    def find_mesh_by_name(self, name: str):
-        for mesh in self.__meshes:
-            if str(name) == mesh.name:
-                return mesh
-
-        raise KeyError(f"Mesh named '{name}' does not exist")
 
     def find_material_by_name(self, name: str):
         for material in self.__materials:
@@ -970,11 +781,6 @@ class Scene:
         self.__skeletons.append(x)
         return x
 
-    def new_mesh(self):
-        mesh = Mesh()
-        self.__meshes.append(mesh)
-        return mesh
-
     def new_animation(self, name: str, ticks_per_sec: float):
         x = Animation(name, ticks_per_sec)
         self.__animations.append(x)
@@ -1018,11 +824,9 @@ class Scene:
     def name(self, value):
         self.__name = str(value)
 
-    def __make_json_for_meshes(self, bin_arr: BinaryArrayBuilder):
-        output = []
-        for mesh in self.__meshes:
-            mesh.make_json(output, bin_arr)
-        return output
+    @property
+    def mesh_manager(self):
+        return self.__meshes
 
     def __find_mesh_actor_by_name(self, name: str):
         for x in self.__mesh_actors:

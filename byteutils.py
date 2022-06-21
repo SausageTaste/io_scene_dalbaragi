@@ -1,4 +1,5 @@
 import struct
+from typing import Union
 
 
 def to_bool1(v: bool) -> bytes:
@@ -28,3 +29,18 @@ def to_float32(v: float) -> bytes:
 
 def to_nullTerminated(v: str) -> bytes:
     return v.encode(encoding="utf8") + b'\0'
+
+
+class BinaryArrayBuilder:
+    def __init__(self):
+        self.__data = bytearray()
+
+    @property
+    def data(self):
+        return bytes(self.__data)
+
+    def add_bin_array(self, arr: Union[bytes, bytearray]):
+        start_index = len(self.__data)
+        self.__data += arr
+        end_index = len(self.__data)
+        return start_index, end_index - start_index

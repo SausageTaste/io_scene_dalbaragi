@@ -19,6 +19,7 @@ from . import modify_data as mfd
 from . import model_exporter as mex
 from . import map_data as mpd
 from . import map_exporter_lvl as mpx
+from . import mesh_manager as mes
 from . import data_struct as dst
 from . import data_exporter as dex
 from . import export_func as exp
@@ -293,6 +294,7 @@ modules = (
     mex,
     mpd,
     mpx,
+    mes,
     dst,
     dex,
     exp,
