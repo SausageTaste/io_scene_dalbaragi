@@ -1,4 +1,7 @@
 #include <vector>
+#include <optional>
+#include <stdexcept>
+#include <unordered_map>
 
 #include <fmt/format.h>
 
@@ -97,7 +100,66 @@ namespace BinaryBuilder {
 
 namespace {
 
+    class JointIndexMap {
 
+    private:
+        std::unordered_map<std::string, int32_t> data_;
+
+    public:
+        void set(std::string k, int32_t v) {
+            this->data_[k] = v;
+        }
+
+        std::optional<int32_t> get(const std::string& k) const {
+            const auto found = this->data_.find(k);
+            if (this->data_.end() != found) {
+                return found->second;
+            }
+            else {
+                return std::nullopt;
+            }
+        }
+
+        auto size() const {
+            return this->data_.size();
+        }
+
+    };
+
+
+    PyObject* get_py_attr(PyObject* obj, const char* const attr_name) {
+        const auto output = PyObject_GetAttrString(obj, attr_name);
+        if (nullptr == output)
+            throw std::runtime_error{""};
+        else
+            return output;
+    }
+
+    bool parse_mesh(b3dsung::Mesh& output, PyObject* const bpy_mesh, PyObject* const skeleton_name, const JointIndexMap& joint_index_map) {
+        const auto mesh_data_obj = ::get_py_attr(bpy_mesh, "data");
+        const auto mesh_name_obj = ::get_py_attr(mesh_data_obj, "name");
+
+        PyObject_CallMethodNoArgs(mesh_data_obj, PyUnicode_FromString("calc_loop_triangles"));
+
+        output.name_ = PyUnicode_AsUTF8(mesh_name_obj);
+        if (!PyUnicode_Check(skeleton_name))
+            throw std::runtime_error{""};
+        output.skeleton_name_ = PyUnicode_AsUTF8(skeleton_name);
+
+        const auto loop_tri_iter = PyObject_GetIter(::get_py_attr(mesh_data_obj, "loop_triangles"));
+        if (nullptr == loop_tri_iter)
+            throw std::runtime_error{""};
+
+        while (const auto tri = PyIter_Next(loop_tri_iter)) {
+
+            Py_DECREF(tri);
+        }
+
+        Py_DECREF(loop_tri_iter);
+
+
+        return true;
+    }
 
 }
 
@@ -151,8 +213,52 @@ namespace MeshManager {
         return Py_None;
     }
 
-    PyObject* add_bpy_mesh(ObjectDef* const self, PyObject* const args) {
-        return Py_None;
+    PyObject* add_bpy_mesh(ObjectDef* const self, PyObject* const args) try {
+        PyObject* bpy_mesh = nullptr;
+        PyObject* skeleton_name = nullptr;
+        PyObject* joint_name_index_map = nullptr;
+        if (!PyArg_ParseTuple(args, "OOO", &bpy_mesh, &skeleton_name, &joint_name_index_map))
+            return nullptr;
+
+        const auto mesh_data_obj = ::get_py_attr(bpy_mesh, "data");
+        const auto mesh_name_obj = ::get_py_attr(mesh_data_obj, "name");
+        std::string mesh_name = PyUnicode_AsUTF8(mesh_name_obj);
+
+        // Joint index map
+        ::JointIndexMap joint_index_map;
+        {
+            if (!PyDict_Check(joint_name_index_map))
+                return nullptr;
+
+            const auto keys = PyDict_Keys(joint_name_index_map);
+            const auto key_count = PyList_Size(keys);
+
+            for (Py_ssize_t i = 0; i < key_count; ++i) {
+                const auto key = PyList_GetItem(keys, i);
+                if (!PyUnicode_Check(key))
+                    return nullptr;
+
+                const auto value = PyDict_GetItem(joint_name_index_map, key);
+                if (!PyLong_Check(value))
+                    return nullptr;
+
+                joint_index_map.set(
+                    PyUnicode_AsUTF8(key),
+                    PyLong_AsLong(value)
+                );
+            }
+        }
+
+        if (!self->impl_.has_mesh(mesh_name.c_str())) {
+            const auto result = ::parse_mesh(self->impl_.new_mesh(mesh_name.c_str()), bpy_mesh, skeleton_name, joint_index_map);
+            if (!result)
+                return nullptr;
+        }
+
+        return mesh_name_obj;
+    }
+    catch (const std::runtime_error&) {
+        return nullptr;
     }
 
     PyObject* make_json(ObjectDef* const self, PyObject* const arg) {

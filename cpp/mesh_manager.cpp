@@ -36,6 +36,15 @@ namespace b3dsung {
     using namespace std;
 
 
+    bool MeshManager::has_mesh(const char* const name) const {
+        for (auto& mesh : this->meshes_) {
+            if (mesh.name_ == name) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     const Mesh* MeshManager::find_by_name(const char* const name) const {
         for (auto& mesh : this->meshes_) {
             if (mesh.name_ == name) {

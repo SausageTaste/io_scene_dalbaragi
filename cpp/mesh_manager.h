@@ -77,6 +77,8 @@ namespace b3dsung {
     public:
         const Mesh* find_by_name(const char* const name) const;
 
+        bool has_mesh(const char* const name) const;
+
         Mesh* find_by_name(const char* const name);
 
         Mesh& new_mesh(const char* const name);
