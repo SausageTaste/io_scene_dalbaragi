@@ -557,4 +557,4 @@ def build_json(scenes: List[dst.Scene], bin_arr: mes.BinaryArrayBuilder, configs
         "scenes": [xx.make_json(bin_arr) for xx in scenes],
     }
 
-    return output, bin_arr.data
+    return output, bin_arr.get_data()

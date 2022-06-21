@@ -9,8 +9,7 @@ class BinaryArrayBuilder:
     def __init__(self):
         self.__data = bytearray()
 
-    @property
-    def data(self):
+    def get_data(self):
         return bytes(self.__data)
 
     def add_bin_array(self, arr: Union[bytes, bytearray]):
