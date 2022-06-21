@@ -17,7 +17,11 @@ find_package(Python3 3.10 COMPONENTS Development)
 
 
 # Shared library definition
-add_library(b3dsung SHARED ./cpp/b3dsung.cpp)
+add_library(b3dsung SHARED
+    ./cpp/b3dsung.cpp
+    ./cpp/mesh_manager.cpp
+)
+
 target_compile_features(b3dsung PUBLIC cxx_std_17)
 target_include_directories(b3dsung PUBLIC ./cpp)
 target_link_libraries(b3dsung PUBLIC Python3::Python fmt::fmt)

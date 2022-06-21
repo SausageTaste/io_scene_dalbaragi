@@ -3,34 +3,14 @@
 #include <fmt/format.h>
 
 #include "include_python.h"
+#include "mesh_manager.h"
 
 
 // Type: BinaryBuilder
 namespace {
 namespace BinaryBuilder {
 
-    class ClassDef {
-
-    private:
-        std::vector<uint8_t> data_;
-
-    public:
-        auto data() const {
-            return this->data_.data();
-        }
-
-        auto size() const {
-            return this->data_.size();
-        }
-
-        std::pair<size_t, size_t> add_bin_array(const uint8_t* const buf, const size_t size) {
-            const auto start_index = this->data_.size();
-            this->data_.insert(this->data_.end(), buf, buf + size);
-            const auto end_index = this->data_.size();
-            return std::make_pair(start_index, end_index - start_index);
-        }
-
-    };
+    using ClassDef = b3dsung::BinaryBuilder;
 
 
     struct ObjectDef {
@@ -115,6 +95,99 @@ namespace BinaryBuilder {
 }
 
 
+namespace {
+
+
+
+}
+
+
+// Type: MeshManager
+namespace {
+namespace MeshManager {
+
+    using ClassDef = b3dsung::MeshManager;
+
+
+    struct ObjectDef {
+        PyObject_HEAD;
+        ClassDef impl_;
+    };
+
+
+    std::vector<PyMemberDef> members{
+        {nullptr}
+    };
+
+
+    // Magic methods
+
+    void magic_dealloc(ObjectDef* const self) {
+        self->impl_.~ClassDef();
+        Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
+    }
+
+    PyObject* magic_new(PyTypeObject* const type, PyObject* const args, PyObject* const kwds) {
+        const auto self = reinterpret_cast<ObjectDef*>(type->tp_alloc(type, 0));
+        if (nullptr == self)
+            return nullptr;
+
+        new (&self->impl_) ClassDef{};
+        return reinterpret_cast<PyObject*>(self);
+    }
+
+    int magic_init(ObjectDef* const self, PyObject* const args, PyObject* const kwds) {
+        return 0;
+    }
+
+    std::vector<PyGetSetDef> getsetters{
+        {nullptr}
+    };
+
+
+    // Methods
+
+    PyObject* get_mesh_mat_pairs(ObjectDef* const self, PyObject* const arg) {
+        return Py_None;
+    }
+
+    PyObject* add_bpy_mesh(ObjectDef* const self, PyObject* const args) {
+        return Py_None;
+    }
+
+    PyObject* make_json(ObjectDef* const self, PyObject* const arg) {
+        return Py_None;
+    }
+
+    std::vector<PyMethodDef> methods{
+        {"get_mesh_mat_pairs", reinterpret_cast<PyCFunction>(get_mesh_mat_pairs), METH_O, ""},
+        {"add_bpy_mesh", reinterpret_cast<PyCFunction>(add_bpy_mesh), METH_VARARGS, ""},
+        {"make_json", reinterpret_cast<PyCFunction>(make_json), METH_O, ""},
+        {nullptr}
+    };
+
+    // Definition
+
+    auto type = []() {
+        PyTypeObject output = {PyObject_HEAD_INIT(nullptr) 0};
+        output.tp_name = "b3dsung.MeshManager";
+        output.tp_doc = "MeshManager objects";
+        output.tp_basicsize = sizeof(ObjectDef);
+        output.tp_itemsize = 0;
+        output.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
+        output.tp_new = magic_new;
+        output.tp_init = reinterpret_cast<initproc>(magic_init);
+        output.tp_dealloc = reinterpret_cast<destructor>(magic_dealloc);
+        output.tp_members = members.data();
+        output.tp_methods = methods.data();
+        output.tp_getset = getsetters.data();
+        return output;
+    }();
+
+}
+}
+
+
 // Module definitions
 namespace {
 
@@ -135,12 +208,22 @@ namespace {
         if (nullptr == modu)
             return nullptr;
 
-        // Type
+        // Type: BinaryBuilder
         if (PyType_Ready(&::BinaryBuilder::type) < 0)
             return nullptr;
         Py_INCREF(&::BinaryBuilder::type);
         if (PyModule_AddObject(modu, "BinaryBuilder", reinterpret_cast<PyObject*>(&::BinaryBuilder::type)) < 0) {
             Py_DECREF(&::BinaryBuilder::type);
+            Py_DECREF(modu);
+            return nullptr;
+        }
+
+        // Type: MeshManager
+        if (PyType_Ready(&::MeshManager::type) < 0)
+            return nullptr;
+        Py_INCREF(&::MeshManager::type);
+        if (PyModule_AddObject(modu, "MeshManager", reinterpret_cast<PyObject*>(&::MeshManager::type)) < 0) {
+            Py_DECREF(&::MeshManager::type);
             Py_DECREF(modu);
             return nullptr;
         }
