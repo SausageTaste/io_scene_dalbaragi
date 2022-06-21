@@ -1,8 +1,23 @@
 import array
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 
 from . import byteutils as byt
 from . import smalltype as smt
+
+
+class BinaryArrayBuilder:
+    def __init__(self):
+        self.__data = bytearray()
+
+    @property
+    def data(self):
+        return bytes(self.__data)
+
+    def add_bin_array(self, arr: Union[bytes, bytearray]):
+        start_index = len(self.__data)
+        self.__data += arr
+        end_index = len(self.__data)
+        return start_index, end_index - start_index
 
 
 class _Vertex:
@@ -58,7 +73,7 @@ class _VertexBuffer:
     def __init__(self):
         self.__vertices: List[_Vertex] = []
 
-    def make_json(self, output: Dict, bin_arr: byt.BinaryArrayBuilder):
+    def make_json(self, output: Dict, bin_arr: BinaryArrayBuilder):
         positions, uv_coordinates, normals = self.__make_arrays()
         joints = self.__make_joints_binary_array()
 
@@ -121,7 +136,7 @@ class _Mesh:
         self.__skeleton_name = ""
         self.__vertices: Dict[str, _VertexBuffer] = {}
 
-    def make_json(self, output: List[Dict], bin_arr: byt.BinaryArrayBuilder):
+    def make_json(self, output: List[Dict], bin_arr: BinaryArrayBuilder):
         for material_name, vertex_buffer in self.__vertices.items():
             output.append({
                 "name": self.get_mangled_name(material_name),
@@ -193,7 +208,7 @@ class MeshManager:
 
         return mesh_name
 
-    def make_json(self, bin_arr: byt.BinaryArrayBuilder):
+    def make_json(self, bin_arr: BinaryArrayBuilder):
         output = []
         for mesh in self.__meshes:
             mesh.make_json(output, bin_arr)
@@ -262,3 +277,7 @@ class MeshManager:
 
 def create_mesh_manager():
     return MeshManager()
+
+
+def create_binary_builder():
+    return BinaryArrayBuilder()

@@ -541,9 +541,9 @@ def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
     return scene
 
 
-def parse_scenes(configs: ParseConfigs) -> Tuple[List[dst.Scene], byt.BinaryArrayBuilder]:
+def parse_scenes(configs: ParseConfigs) -> Tuple[List[dst.Scene], mes.BinaryArrayBuilder]:
     output = []
-    bin_arr = byt.BinaryArrayBuilder()
+    bin_arr = mes.create_binary_builder()
 
     for bpy_scene in bpy.data.scenes:
         scene = __parse_scene(bpy_scene, configs)
@@ -552,7 +552,7 @@ def parse_scenes(configs: ParseConfigs) -> Tuple[List[dst.Scene], byt.BinaryArra
     return output, bin_arr
 
 
-def build_json(scenes: List[dst.Scene], bin_arr: byt.BinaryArrayBuilder, configs: ParseConfigs) -> Tuple[Dict, bytes]:
+def build_json(scenes: List[dst.Scene], bin_arr: mes.BinaryArrayBuilder, configs: ParseConfigs) -> Tuple[Dict, bytes]:
     output = {
         "scenes": [xx.make_json(bin_arr) for xx in scenes],
     }

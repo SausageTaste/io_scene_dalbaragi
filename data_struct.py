@@ -708,7 +708,7 @@ class Scene:
     def ignored_objects(self):
         return self.__ignored
 
-    def make_json(self, bin_arr: byt.BinaryArrayBuilder) -> Dict:
+    def make_json(self, bin_arr: mes.BinaryArrayBuilder) -> Dict:
         return {
             "name": self.name,
             "root transform": [1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
