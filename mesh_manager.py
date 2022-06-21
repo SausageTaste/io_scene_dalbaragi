@@ -258,3 +258,7 @@ class MeshManager:
                         pass
                     else:
                         dst_vertex.add_joint(joint_index, g.weight)
+
+
+def create_mesh_manager():
+    return MeshManager()

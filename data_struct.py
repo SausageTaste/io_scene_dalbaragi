@@ -688,7 +688,7 @@ class Scene:
     def __init__(self):
         self.__name = ""
 
-        self.__meshes = mes.MeshManager()
+        self.__meshes = mes.create_mesh_manager()
         self.__materials: List[Material] = []
         self.__skeletons: List[Skeleton] = []
         self.__animations: List[Animation] = []
