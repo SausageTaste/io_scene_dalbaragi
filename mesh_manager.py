@@ -181,7 +181,8 @@ class MeshManager:
 
         return output
 
-    def add_bpy_mesh(self, bpy_mesh, skeleton_name: str, joint_name_index_map: Dict[str, int]):
+    # Returns mesh name
+    def add_bpy_mesh(self, bpy_mesh, skeleton_name: str, joint_name_index_map: Dict[str, int]) -> str:
         mesh_name = str(bpy_mesh.data.name)
 
         try:
@@ -189,6 +190,8 @@ class MeshManager:
         except KeyError:
             mesh = self.__new_mesh(mesh_name)
             self.__parse_mesh(bpy_mesh, mesh, skeleton_name, joint_name_index_map)
+
+        return mesh_name
 
     def make_json(self, bin_arr: byt.BinaryArrayBuilder):
         output = []

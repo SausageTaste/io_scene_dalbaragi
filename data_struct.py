@@ -596,20 +596,32 @@ class WaterPlane(IActor):
     def __init__(self, name_reg: NameRegistry):
         super().__init__(name_reg)
 
-        self.__mesh = Mesh()
+        self.__mesh_name = ""
 
-    def make_json(self, bin_arr: byt.BinaryArrayBuilder):
+    def make_json(self, meshes: mes.MeshManager):
         output = {
-            "mesh": []
+            "mesh names": self.__make_mesh_names(meshes)
         }
 
         IActor.insert_json(self, output)
-        self.__mesh.make_json(output["mesh"], bin_arr)
         return output
 
     @property
-    def mesh(self):
-        return self.__mesh
+    def mesh_name(self):
+        return self.__mesh_name
+
+    @mesh_name.setter
+    def mesh_name(self, value: str):
+        self.__mesh_name = str(value)
+
+    def __make_mesh_names(self, meshes: mes.MeshManager) -> List[str]:
+        if "" == self.mesh_name:
+            return []
+
+        output: List[str] = []
+        for mesh_name, mat_name in meshes.get_mesh_mat_pairs(self.mesh_name):
+            output.append(mesh_name)
+        return output
 
 
 class EnvironmentMap(IActor):
@@ -709,7 +721,7 @@ class Scene:
             "directional lights": [xx.make_json() for xx in self.__dlights],
             "point lights": [xx.make_json() for xx in self.__plights],
             "spotlights": [xx.make_json() for xx in self.__slights],
-            "water planes": [xx.make_json(bin_arr) for xx in self.__water_planes],
+            "water planes": [xx.make_json(self.__meshes) for xx in self.__water_planes],
             "environment maps": [xx.make_json() for xx in self.__env_maps],
 
             "ignored objects": self.ignored_objects.make_json(),

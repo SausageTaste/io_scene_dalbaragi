@@ -6,6 +6,7 @@ import bpy
 
 from . import byteutils as byt
 from . import smalltype as smt
+from . import mesh_manager as mes
 from . import data_struct as dst
 
 
@@ -444,9 +445,9 @@ def __parse_light_spot(obj, slight: dst.Spotlight):
     return slight
 
 
-def __parse_water_plane(obj, water_plane: dst.WaterPlane):
+def __parse_water_plane(obj, water_plane: dst.WaterPlane, meshes: mes.MeshManager):
     __parse_actor(obj, water_plane)
-    __parse_mesh(obj, water_plane.mesh, None)
+    water_plane.mesh_name = meshes.add_bpy_mesh(obj, "", {})
 
 
 def __parse_env_map(obj, env_map: dst.EnvironmentMap):
@@ -530,7 +531,7 @@ def __parse_scene(bpy_scene, configs: ParseConfigs) -> dst.Scene:
         elif obj_type == ObjType.spotlight:
             __parse_light_spot(obj, scene.new_slight())
         elif obj_type == ObjType.water_plane:
-            __parse_water_plane(obj, scene.new_water_plane())
+            __parse_water_plane(obj, scene.new_water_plane(), scene.mesh_manager)
         elif obj_type == ObjType.env_map:
             __parse_env_map(obj, scene.new_env_map())
 
