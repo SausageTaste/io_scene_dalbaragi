@@ -12,7 +12,7 @@
 
 namespace b3dsung {
 
-    using json_class = nlohmann::ordered_json;
+    using json_class = nlohmann::json;
 
 
     class BinaryBuilder {

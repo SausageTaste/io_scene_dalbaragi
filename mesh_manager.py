@@ -1,4 +1,5 @@
 import abc
+import json
 import array
 from typing import List, Dict, Tuple, Union
 
@@ -306,6 +307,8 @@ class _MeshManagerTester(_IMeshManager):
         output = None
         for x in self.__managers:
             output = x.get_mesh_mat_pairs(mesh_name)
+            print(output)
+        print()
         return output
 
     # Returns mesh name
@@ -317,23 +320,24 @@ class _MeshManagerTester(_IMeshManager):
 
     def make_json(self, bin_arr: BinaryArrayBuilder):
         output = None
-        for x in self.__managers:
+        for i, x in enumerate(self.__managers):
             output = x.make_json(bin_arr)
+            with open(r"C:\Users\woos8\Desktop\{}.json".format(i), "w", encoding="utf8") as file:
+                json.dump(output, file, indent=4)
         return output
 
 
 def create_mesh_manager() -> _IMeshManager:
-    output = _MeshManagerTester()
-    if csu is not None:
-        output.add_manager(csu.MeshManager())
-    output.add_manager(MeshManager())
-    return output
+    if csu is None:
+        print("Use Python implementation")
+        return MeshManager()
+    else:
+        print("Use C++ implementation")
+        return csu.MeshManager()
 
 
 def create_binary_builder():
     if csu is None:
-        print("Use Python implementation")
         return BinaryArrayBuilder()
     else:
-        print("Use C++ implementation")
         return csu.BinaryBuilder()

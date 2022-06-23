@@ -487,8 +487,20 @@ namespace MeshManager {
 
     // Methods
 
-    PyObject* get_mesh_mat_pairs(ObjectDef* const self, PyObject* const arg) {
-        return Py_None;
+    PyObject* get_mesh_mat_pairs(ObjectDef* const self, PyObject* const args) {
+        const char* mesh_name = nullptr;
+        if (!PyArg_ParseTuple(args, "s", &mesh_name))
+            return nullptr;
+
+        auto mesh = self->impl_.find_by_name(mesh_name);
+        auto output = PyList_New(0);
+
+        for (auto& [material_name, vert_buf] : mesh->vertex_buffers_) {
+            auto tuple = Py_BuildValue("(ss)", mesh->get_mangled_name(material_name.c_str()).c_str(), material_name.c_str());
+            PyList_Append(output, tuple);
+        }
+
+        return output;
     }
 
     PyObject* add_bpy_mesh(ObjectDef* const self, PyObject* const args) try {
@@ -567,7 +579,7 @@ namespace MeshManager {
     }
 
     std::vector<PyMethodDef> methods{
-        {"get_mesh_mat_pairs", reinterpret_cast<PyCFunction>(get_mesh_mat_pairs), METH_O, ""},
+        {"get_mesh_mat_pairs", reinterpret_cast<PyCFunction>(get_mesh_mat_pairs), METH_VARARGS, ""},
         {"add_bpy_mesh", reinterpret_cast<PyCFunction>(add_bpy_mesh), METH_VARARGS, ""},
         {"make_json", reinterpret_cast<PyCFunction>(make_json), METH_VARARGS, ""},
         {nullptr}

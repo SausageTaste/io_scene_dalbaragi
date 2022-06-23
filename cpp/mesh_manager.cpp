@@ -11,7 +11,7 @@ namespace b3dsung {
     }
 
     void Vertex::sort_joints() {
-        std::sort(this->joints_.begin(), this->joints_.end());
+        std::sort(this->joints_.begin(), this->joints_.end(), std::greater<>());
     }
 
 }
