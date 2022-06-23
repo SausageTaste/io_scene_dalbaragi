@@ -547,14 +547,29 @@ namespace MeshManager {
         return nullptr;
     }
 
-    PyObject* make_json(ObjectDef* const self, PyObject* const arg) {
-        return Py_None;
+    PyObject* make_json(ObjectDef* const self, PyObject* const args) {
+        PyObject* bin_array_obj = nullptr;
+        if (!PyArg_ParseTuple(args, "O", &bin_array_obj))
+            return nullptr;
+
+        if (!PyObject_IsInstance(bin_array_obj, (PyObject*)&::BinaryBuilder::type))
+            return nullptr;
+
+        auto bin_array = reinterpret_cast<::BinaryBuilder::ObjectDef*>(bin_array_obj);
+        const auto json_data = self->impl_.make_json(bin_array->impl_);
+        const auto json_str = json_data.dump();
+        const auto json_str_obj = PyUnicode_FromStringAndSize(json_str.c_str(), json_str.size());
+
+        auto json_module = PyImport_ImportModule("json");
+        auto loads = PyObject_GetAttrString(json_module, "loads");
+        auto py_json = PyObject_CallOneArg(loads, json_str_obj);
+        return py_json;
     }
 
     std::vector<PyMethodDef> methods{
         {"get_mesh_mat_pairs", reinterpret_cast<PyCFunction>(get_mesh_mat_pairs), METH_O, ""},
         {"add_bpy_mesh", reinterpret_cast<PyCFunction>(add_bpy_mesh), METH_VARARGS, ""},
-        {"make_json", reinterpret_cast<PyCFunction>(make_json), METH_O, ""},
+        {"make_json", reinterpret_cast<PyCFunction>(make_json), METH_VARARGS, ""},
         {nullptr}
     };
 
