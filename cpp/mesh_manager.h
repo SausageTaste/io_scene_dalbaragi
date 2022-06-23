@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 
+#include <glm/glm.hpp>
+
 
 namespace b3dsung {
 
@@ -31,21 +33,15 @@ namespace b3dsung {
     };
 
 
-    struct Vec3 {
-        float x = 0, y = 0, z = 0;
-    };
-
-
-    struct Vec2 {
-        float x = 0, y = 0;
-    };
-
-
     struct Vertex {
-        Vec3 pos_;
-        Vec3 normal_;
-        Vec2 uv_coord_;
+        glm::vec3 pos_;
+        glm::vec3 normal_;
+        glm::vec2 uv_coord_;
         std::vector<std::pair<float, int32_t>> joints_;
+
+        void add_joint(const int32_t joint_index, const float weight) {
+            this->joints_.emplace_back(weight, joint_index);
+        }
     };
 
 
@@ -64,7 +60,12 @@ namespace b3dsung {
     public:
         bool has_material(const char* const material_name) const;
 
+        Vertex& new_vertex(const char* const material_name);
+
         std::string get_mangled_name(const char* const material_name) const;
+
+    private:
+        VertexBuffer& get_vert_buf(const char* const material_name);
 
     };
 
