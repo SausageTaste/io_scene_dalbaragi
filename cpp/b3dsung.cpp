@@ -1,4 +1,6 @@
+#include <list>
 #include <vector>
+#include <future>
 #include <optional>
 #include <stdexcept>
 #include <unordered_map>
@@ -75,6 +77,7 @@ namespace BinaryBuilder {
         {"add_bin_array", reinterpret_cast<PyCFunction>(add_bin_array), METH_VARARGS, ""},
         {nullptr}
     };
+
 
     // Definition
 
@@ -354,20 +357,12 @@ namespace {
     };
 
 
-    PyObject* get_py_attr(PyObject* obj, const char* const attr_name) {
-        const auto output = PyObject_GetAttrString(obj, attr_name);
-        if (nullptr == output)
-            throw std::runtime_error{""};
-        else
-            return output;
-    }
-
-    bool parse_mesh(b3dsung::Mesh& output, PythonObject& bpy_mesh, PythonObject& skeleton_name, const JointIndexMap& joint_index_map) {
+    void parse_mesh(b3dsung::Mesh& output, PythonObject& bpy_mesh, const std::string& skeleton_name, const JointIndexMap& joint_index_map) {
         auto obj_mesh = bpy_mesh.get_attr("data");
 
         obj_mesh.call_method_noargs("calc_loop_triangles");
         output.name_ = obj_mesh.get_attr("name").as_str();
-        output.skeleton_name_ = skeleton_name.as_str();
+        output.skeleton_name_ = skeleton_name;
 
         auto loop_tri_iter = obj_mesh.get_attr("loop_triangles").get_iter();
         while (true) {
@@ -435,9 +430,93 @@ namespace {
                 }
             }
         }
-
-        return true;
     }
+
+
+    struct MeshRecord {
+        b3dsung::Mesh mesh_;
+        b3dsung::json_class json_data_;
+        std::future<void> future_;
+
+        ::PythonObject bpy_mesh;
+        ::JointIndexMap joint_index_map_;
+        std::string skeleton_name_;
+
+        void parse_mesh() {
+            ::parse_mesh(mesh_, bpy_mesh, skeleton_name_, joint_index_map_);
+        }
+
+        void build_flat() {
+            mesh_.build_flat();
+        }
+    };
+
+
+    void do_one_mesh(::MeshRecord* m) {
+        m->build_flat();
+    }
+
+
+    class AsyncMeshManager {
+
+    private:
+        std::list<MeshRecord> data_;
+
+    public:
+        // Returns mesh name as a str
+        std::string add_mesh(PyObject* bpy_mesh_ptr, ::PythonObject skeleton_name, const JointIndexMap& joint_index_map) {
+            Py_INCREF(bpy_mesh_ptr);
+            auto bpy_mesh = ::PythonObject{bpy_mesh_ptr, true};
+
+            const auto mesh_name_obj = bpy_mesh.get_attr("data").get_attr("name");
+            const auto mesh_name = mesh_name_obj.as_str();
+
+            auto found = this->find_record_by_name(mesh_name.c_str());
+            if (found != nullptr) {
+                return found->mesh_.name_;
+            }
+            else {
+                auto& added = this->data_.emplace_back();
+                added.mesh_.name_ = mesh_name;
+                added.joint_index_map_ = joint_index_map;
+                added.skeleton_name_ = skeleton_name.as_str();
+                added.bpy_mesh = std::move(bpy_mesh);
+                added.parse_mesh();
+                added.future_ = std::async(do_one_mesh, &added);
+                return added.mesh_.name_;
+            }
+        }
+
+        b3dsung::json_class make_json(b3dsung::BinaryBuilder& bin_array) {
+            auto output = b3dsung::json_class::array();
+            for (auto& mesh : this->data_) {
+                mesh.future_.wait();
+                mesh.mesh_.make_json(output, bin_array);
+            }
+            return output;
+        }
+
+        b3dsung::Mesh* find_by_name(const char* const name) {
+            for (auto& mesh : this->data_) {
+                if (mesh.mesh_.name_ == name) {
+                    mesh.future_.wait();
+                    return &mesh.mesh_;
+                }
+            }
+            return nullptr;
+        }
+
+    private:
+        MeshRecord* find_record_by_name(const char* const mesh_name) {
+            for (auto& x : this->data_) {
+                if (x.mesh_.name_ == mesh_name) {
+                    return &x;
+                }
+            }
+            return nullptr;
+        }
+
+    };
 
 }
 
@@ -446,7 +525,7 @@ namespace {
 namespace {
 namespace MeshManager {
 
-    using ClassDef = b3dsung::MeshManager;
+    using ClassDef = ::AsyncMeshManager;
 
 
     struct ObjectDef {
@@ -510,10 +589,6 @@ namespace MeshManager {
         if (!PyArg_ParseTuple(args, "OOO", &bpy_mesh, &skeleton_name, &joint_name_index_map))
             return nullptr;
 
-        const auto mesh_data_obj = ::get_py_attr(bpy_mesh, "data");
-        const auto mesh_name_obj = ::get_py_attr(mesh_data_obj, "name");
-        std::string mesh_name = PyUnicode_AsUTF8(mesh_name_obj);
-
         // Joint index map
         ::JointIndexMap joint_index_map;
         {
@@ -539,21 +614,8 @@ namespace MeshManager {
             }
         }
 
-        if (!self->impl_.has_mesh(mesh_name.c_str())) {
-            auto& mesh = self->impl_.new_mesh(mesh_name.c_str());
-
-            const auto result = ::parse_mesh(
-                mesh,
-                ::PythonObject{bpy_mesh},
-                ::PythonObject{skeleton_name},
-                joint_index_map
-            );
-
-            if (!result)
-                return nullptr;
-        }
-
-        return mesh_name_obj;
+        const auto mesh_name = self->impl_.add_mesh(bpy_mesh, skeleton_name, joint_index_map);
+        return PyUnicode_FromStringAndSize(mesh_name.c_str(), mesh_name.size());
     }
     catch (const std::runtime_error&) {
         return nullptr;
@@ -584,6 +646,7 @@ namespace MeshManager {
         {"make_json", reinterpret_cast<PyCFunction>(make_json), METH_VARARGS, ""},
         {nullptr}
     };
+
 
     // Definition
 

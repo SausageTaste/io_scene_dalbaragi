@@ -71,12 +71,26 @@ namespace b3dsung {
     };
 
 
+    class FlatVertexBuffer {
+
+    public:
+        size_t vertex_count_ = 0;
+        dal::parser::BinaryDataArray vertices_, uv_coords_, normals_, joints_;
+
+    public:
+        void set(VertexBuffer& vbuf);
+
+        void make_json(json_class& output, BinaryBuilder& bin_array);
+
+    };
+
+
     class Mesh {
 
     public:
         std::string name_;
         std::string skeleton_name_;
-        std::map<std::string, VertexBuffer> vertex_buffers_;
+        std::map<std::string, std::pair<VertexBuffer, FlatVertexBuffer>> vertex_buffers_;
 
     public:
         bool has_material(const char* const material_name) const;
@@ -85,32 +99,12 @@ namespace b3dsung {
 
         std::string get_mangled_name(const char* const material_name) const;
 
+        void build_flat();
+
         void make_json(json_class& output, BinaryBuilder& bin_array);
 
     private:
         VertexBuffer& get_vert_buf(const char* const material_name);
-
-    };
-
-
-    class MeshManager {
-
-    private:
-        std::vector<Mesh> meshes_;
-
-    public:
-        const Mesh* find_by_name(const char* const name) const;
-
-        bool has_mesh(const char* const name) const;
-
-        Mesh* find_by_name(const char* const name);
-
-        Mesh& new_mesh(const char* const name);
-
-        json_class make_json(BinaryBuilder& bin_array);
-
-        // Pair of mesh name, material name
-        std::vector<std::pair<std::string, std::string>> get_mesh_mat_pairs(const char* const mesh_name) const;
 
     };
 
