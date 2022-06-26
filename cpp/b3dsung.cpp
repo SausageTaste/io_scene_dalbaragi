@@ -275,6 +275,10 @@ namespace {
 
         // For float
 
+        float as_float() const {
+            return static_cast<float>(this->as_double());
+        }
+
         double as_double() const {
             this->assert_ready();
             const auto output = PyFloat_AsDouble(obj_);
@@ -446,17 +450,17 @@ namespace {
                 auto vertex_index = tri.get_attr("vertices").get_item(::PythonObject{i});
                 auto vertex_data = obj_mesh.get_attr("vertices").get_item(vertex_index).get_attr("co");
                 dst_vertex.pos_ = glm::vec3{
-                    vertex_data.get_item(0).as_double(),
-                    vertex_data.get_item(1).as_double(),
-                    vertex_data.get_item(2).as_double()
+                    vertex_data.get_item(0).as_float(),
+                    vertex_data.get_item(1).as_float(),
+                    vertex_data.get_item(2).as_float()
                 };
 
                 // UV coord
                 auto active_layers = obj_mesh.get_attr("uv_layers").get_attr("active");
                 if (!active_layers.is_none()) {
                     auto uv_data = active_layers.get_attr("data").get_item(tri.get_attr("loops").get_item(i)).get_attr("uv");
-                    dst_vertex.uv_coord_[0] = uv_data.get_item(0).as_double();
-                    dst_vertex.uv_coord_[1] = uv_data.get_item(1).as_double();
+                    dst_vertex.uv_coord_[0] = uv_data.get_item(0).as_float();
+                    dst_vertex.uv_coord_[1] = uv_data.get_item(1).as_float();
                 }
                 else {
                     dst_vertex.uv_coord_[0] = 0;
@@ -469,9 +473,9 @@ namespace {
                     tri.get_attr("normal");
 
                 dst_vertex.normal_ = glm::vec3{
-                    normal_data.get_item(0).as_double(),
-                    normal_data.get_item(1).as_double(),
-                    normal_data.get_item(2).as_double(),
+                    normal_data.get_item(0).as_float(),
+                    normal_data.get_item(1).as_float(),
+                    normal_data.get_item(2).as_float(),
                 };
                 dst_vertex.normal_ = glm::normalize(dst_vertex.normal_);
 
@@ -485,7 +489,7 @@ namespace {
                     auto joint_name = bpy_mesh.get_attr("vertex_groups").get_item(g.get_attr("group")).get_attr("name").as_str();
                     auto joint_index = joint_index_map.get(joint_name);
                     if (joint_index) {
-                        dst_vertex.add_joint(*joint_index, g.get_attr("weight").as_double());
+                        dst_vertex.add_joint(*joint_index, g.get_attr("weight").as_float());
                     }
                 }
             }
