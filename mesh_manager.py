@@ -200,6 +200,10 @@ class _IMeshManager(abc.ABC):
     def make_json(self, bin_arr: BinaryArrayBuilder):
         pass
 
+    @abc.abstractmethod
+    def terminate(self):
+        pass
+
 
 class MeshManager(_IMeshManager):
     def __init__(self) -> None:
@@ -234,6 +238,9 @@ class MeshManager(_IMeshManager):
         for mesh in self.__meshes:
             mesh.make_json(output, bin_arr)
         return output
+
+    def terminate(self):
+        pass
 
     def __new_mesh(self, name: str):
         mesh = _Mesh()
@@ -325,6 +332,10 @@ class _MeshManagerTester(_IMeshManager):
             with open(r"C:\Users\woos8\Desktop\{}.json".format(i), "w", encoding="utf8") as file:
                 json.dump(output, file, indent=4)
         return output
+
+    def terminate(self):
+        for i, x in enumerate(self.__managers):
+            x.terminate()
 
 
 def create_mesh_manager() -> _IMeshManager:

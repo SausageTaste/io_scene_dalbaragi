@@ -563,6 +563,13 @@ namespace {
             return nullptr;
         }
 
+        void join_terminate() {
+            for (auto& mesh : this->data_) {
+                mesh.future_.wait();
+            }
+            this->data_.clear();
+        }
+
     private:
         MeshRecord* find_record_by_name(const char* const mesh_name) {
             for (auto& x : this->data_) {
@@ -697,10 +704,16 @@ namespace MeshManager {
         return py_json;
     }
 
+    PyObject* terminate(ObjectDef* const self) {
+        self->impl_.join_terminate();
+        return Py_None;
+    }
+
     std::vector<PyMethodDef> methods{
         {"get_mesh_mat_pairs", reinterpret_cast<PyCFunction>(get_mesh_mat_pairs), METH_VARARGS, ""},
         {"add_bpy_mesh", reinterpret_cast<PyCFunction>(add_bpy_mesh), METH_VARARGS, ""},
         {"make_json", reinterpret_cast<PyCFunction>(make_json), METH_VARARGS, ""},
+        {"terminate", reinterpret_cast<PyCFunction>(terminate), METH_NOARGS, ""},
         {nullptr}
     };
 

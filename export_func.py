@@ -89,6 +89,9 @@ def export_json(
             ps.sort_stats("tottime")
             ps.print_stats()
 
+    for scene in scenes:
+        scene.mesh_manager.terminate()
+
 
 def __parse_args():
     parser = argparse.ArgumentParser(description="")
