@@ -225,6 +225,20 @@ namespace {
             this->need_dec_ref_ = v;
         }
 
+        // Ref count
+
+        void inc_ref() {
+            Py_INCREF(obj_);
+        }
+
+        void dec_ref() {
+            Py_DECREF(obj_);
+        }
+
+        auto get_ref_count() const {
+            return Py_REFCNT(obj_);
+        }
+
         // For simple types
 
         bool is_none() const {
@@ -246,14 +260,16 @@ namespace {
         long as_long() const {
             this->assert_ready();
             const auto output = PyLong_AsLong(obj_);
-            this->assert_no_py_error();
+            if (-1 == output)
+                this->assert_no_py_error();
             return output;
         }
 
         long long as_llong() const {
             this->assert_ready();
             const auto output = PyLong_AsLongLong(obj_);
-            this->assert_no_py_error();
+            if (-1 == output)
+                this->assert_no_py_error();
             return output;
         }
 
@@ -262,7 +278,8 @@ namespace {
         double as_double() const {
             this->assert_ready();
             const auto output = PyFloat_AsDouble(obj_);
-            this->assert_no_py_error();
+            if (-1.0 == output)
+                this->assert_no_py_error();
             return output;
         }
 
@@ -286,6 +303,41 @@ namespace {
             }
         }
 
+        // List
+
+        bool is_list() const {
+            if (!this->is_ready())
+                return false;
+            return PyList_Check(obj_);
+        }
+
+        auto get_list_size() {
+            this->assert_ready();
+            return PyList_Size(obj_);
+        }
+
+        PythonObject get_list_item(const Py_ssize_t index) {
+            this->assert_ready();
+            return PyList_GetItem(obj_, index);
+        }
+
+        // Dict
+
+        bool is_dict() const {
+            if (!this->is_ready())
+                return false;
+            return PyDict_Check(obj_);
+        }
+
+        PythonObject get_dict_keys() {
+            this->assert_ready();
+            return PythonObject{ PyDict_Keys(obj_), true };
+        }
+
+        PythonObject get_dict_item(PythonObject& key) {
+            return PyDict_GetItem(obj_, *key);
+        }
+
         // For iter
 
         PythonObject iter_next() {
@@ -306,12 +358,12 @@ namespace {
 
         PythonObject get_attr(const char* const attr_name) {
             this->assert_ready();
-            return PythonObject{PyObject_GetAttrString(this->obj_, attr_name)};
+            return PythonObject{ PyObject_GetAttrString(this->obj_, attr_name), true };
         }
 
         PythonObject get_item(PythonObject& key) {
             this->assert_ready();
-            return PyObject_GetItem(obj_, *key);
+            return PythonObject{ PyObject_GetItem(obj_, *key), true };
         }
 
         PythonObject get_item(const char* const key) {
@@ -472,10 +524,7 @@ namespace {
 
     public:
         // Returns mesh name as a str
-        std::string add_mesh(PyObject* bpy_mesh_ptr, ::PythonObject skeleton_name, const JointIndexMap& joint_index_map) {
-            Py_INCREF(bpy_mesh_ptr);
-            auto bpy_mesh = ::PythonObject{bpy_mesh_ptr, true};
-
+        std::string add_mesh(::PythonObject&& bpy_mesh, const char* const skeleton_name, const JointIndexMap& joint_index_map) {
             const auto mesh_name_obj = bpy_mesh.get_attr("data").get_attr("name");
             const auto mesh_name = mesh_name_obj.as_str();
 
@@ -487,7 +536,7 @@ namespace {
                 auto& added = this->data_.emplace_back();
                 added.mesh_.name_ = mesh_name;
                 added.joint_index_map_ = joint_index_map;
-                added.skeleton_name_ = skeleton_name.as_str();
+                added.skeleton_name_ = skeleton_name;
                 added.bpy_mesh = std::move(bpy_mesh);
                 added.parse_mesh();
                 added.future_ = std::async(do_one_mesh, &added);
@@ -597,32 +646,32 @@ namespace MeshManager {
         if (!PyArg_ParseTuple(args, "OsO", bpy_mesh.out_ptr(), &skeleton_name, joint_name_index_map.out_ptr()))
             return nullptr;
 
+        bpy_mesh.inc_ref();
+        bpy_mesh.set_dec_ref_in_dtor(true);
+
         // Joint index map
         ::JointIndexMap joint_index_map;
         {
-            if (!PyDict_Check(*joint_name_index_map))
+            if (!joint_name_index_map.is_dict())
                 return nullptr;
 
-            const auto keys = PyDict_Keys(*joint_name_index_map);
-            const auto key_count = PyList_Size(keys);
+            auto keys = joint_name_index_map.get_dict_keys();
+            const auto key_count = keys.get_list_size();
 
             for (Py_ssize_t i = 0; i < key_count; ++i) {
-                const auto key = PyList_GetItem(keys, i);
-                if (!PyUnicode_Check(key))
+                auto key = keys.get_list_item(i);
+                if (!key.is_str())
                     return nullptr;
 
-                const auto value = PyDict_GetItem(*joint_name_index_map, key);
-                if (!PyLong_Check(value))
+                auto value = joint_name_index_map.get_dict_item(key);
+                if (!value.is_int())
                     return nullptr;
 
-                joint_index_map.set(
-                    PyUnicode_AsUTF8(key),
-                    PyLong_AsLong(value)
-                );
+                joint_index_map.set(key.as_str(), value.as_long());
             }
         }
 
-        const auto mesh_name = self->impl_.add_mesh(*bpy_mesh, skeleton_name, joint_index_map);
+        const auto mesh_name = self->impl_.add_mesh(std::move(bpy_mesh), skeleton_name, joint_index_map);
         return PyUnicode_FromStringAndSize(mesh_name.c_str(), mesh_name.size());
     }
     catch (const std::runtime_error&) {
