@@ -201,6 +201,10 @@ namespace {
             return this->obj_;
         }
 
+        PyObject** out_ptr() {
+            return &this->obj_;
+        }
+
         bool is_ready() const {
             return nullptr != this->obj_;
         }
@@ -215,6 +219,10 @@ namespace {
             if (nullptr != PyErr_Occurred()) {
                 throw std::runtime_error{ "A Python exception occurred" };
             }
+        }
+
+        void set_dec_ref_in_dtor(const bool v) {
+            this->need_dec_ref_ = v;
         }
 
         // For simple types
@@ -583,19 +591,19 @@ namespace MeshManager {
     }
 
     PyObject* add_bpy_mesh(ObjectDef* const self, PyObject* const args) try {
-        PyObject* bpy_mesh = nullptr;
-        PyObject* skeleton_name = nullptr;
-        PyObject* joint_name_index_map = nullptr;
-        if (!PyArg_ParseTuple(args, "OOO", &bpy_mesh, &skeleton_name, &joint_name_index_map))
+        ::PythonObject bpy_mesh;
+        const char* skeleton_name = nullptr;
+        ::PythonObject joint_name_index_map;
+        if (!PyArg_ParseTuple(args, "OsO", bpy_mesh.out_ptr(), &skeleton_name, joint_name_index_map.out_ptr()))
             return nullptr;
 
         // Joint index map
         ::JointIndexMap joint_index_map;
         {
-            if (!PyDict_Check(joint_name_index_map))
+            if (!PyDict_Check(*joint_name_index_map))
                 return nullptr;
 
-            const auto keys = PyDict_Keys(joint_name_index_map);
+            const auto keys = PyDict_Keys(*joint_name_index_map);
             const auto key_count = PyList_Size(keys);
 
             for (Py_ssize_t i = 0; i < key_count; ++i) {
@@ -603,7 +611,7 @@ namespace MeshManager {
                 if (!PyUnicode_Check(key))
                     return nullptr;
 
-                const auto value = PyDict_GetItem(joint_name_index_map, key);
+                const auto value = PyDict_GetItem(*joint_name_index_map, key);
                 if (!PyLong_Check(value))
                     return nullptr;
 
@@ -614,7 +622,7 @@ namespace MeshManager {
             }
         }
 
-        const auto mesh_name = self->impl_.add_mesh(bpy_mesh, skeleton_name, joint_index_map);
+        const auto mesh_name = self->impl_.add_mesh(*bpy_mesh, skeleton_name, joint_index_map);
         return PyUnicode_FromStringAndSize(mesh_name.c_str(), mesh_name.size());
     }
     catch (const std::runtime_error&) {
