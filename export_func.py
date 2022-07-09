@@ -101,6 +101,8 @@ def __parse_args():
         help=""
     )
 
+    parser.add_argument('--texture', action=argparse.BooleanOptionalAction)
+
     if sys.argv.count("--"):
         args = sys.argv[sys.argv.index("--") + 1:]
     else:
@@ -135,7 +137,7 @@ def __cmd_export():
             False,
             True,
             True,
-            True,
+            bool(args.texture),
         )
 
 
