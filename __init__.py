@@ -205,28 +205,28 @@ class EmportDalJson(Operator, ExportHelper):
 
     option_copy_images: BoolProperty(
         name="Copy textures",
-        description="Copy textures to same path as exported file.",
+        description="Copy textures along with the exported file.",
         default=False,
     )
 
     option_compress_binary: BoolProperty(
         name="Compress binary",
-        description="Reduce the size of generated binary data",
+        description="Compress binary data block using zlib.",
         default=True,
     )
 
     option_embed_binary: BoolProperty(
         name="Embed binary data",
-        description="Store binary data in JSON file using Base64",
+        description="Store binary data as Base64 within JSON file.",
         default=True,
     )
 
     option_enum_exclude_hidden: EnumProperty(
         name="Exclude hidden",
-        description="Choose between two items",
+        description="Select whether to export hidden objects or not",
         items=(
-            ('OPT_1', "None", "All hidden objects will be included in final output"),
-            ('OPT_2', "Meshes", "Only hidden meshes will be excluded"),
+            ('OPT_1', "None", "All objects will be exported, including hidden ones"),
+            ('OPT_2', "Meshes", "Hidden meshes will be excluded"),
             ('OPT_3', "All", "All types of hidden objects will be excluded"),
         ),
         default='OPT_1',
@@ -234,7 +234,7 @@ class EmportDalJson(Operator, ExportHelper):
 
     option_do_profile: BoolProperty(
         name="Generate profile result",
-        description="",
+        description="Run with profiler enabled and export the result as a text file.",
         default=False,
     )
 
