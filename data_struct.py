@@ -713,12 +713,10 @@ class PointLight(IActor, ILight):
         ILight.__init__(self)
 
         self.__max_distance = 0.0
-        self.__half_intense_distance = 0.0
 
     def make_json(self) -> Dict:
         output = {
            "max distance": self.max_distance,
-           "half intense distance": self.half_intense_distance,
         }
 
         IActor.insert_json(self, output)
@@ -732,14 +730,6 @@ class PointLight(IActor, ILight):
     @max_distance.setter
     def max_distance(self, value: float):
         self.__max_distance = float(value)
-
-    @property
-    def half_intense_distance(self):
-        return self.__half_intense_distance
-
-    @half_intense_distance.setter
-    def half_intense_distance(self, value: float):
-        self.__half_intense_distance = float(value)
 
 
 class Spotlight(PointLight):

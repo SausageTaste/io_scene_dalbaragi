@@ -473,11 +473,9 @@ def __parse_light_point(obj, plight: dst.PointLight):
     __parse_light_base(obj, plight)
 
     if not obj.data.use_custom_distance:
-        # print("[DAL] WARN::custom distance is not enabled for light \"{}\"".format(plight.name))
-        pass
-
-    plight.max_distance = float(obj.data.cutoff_distance)
-    plight.half_intense_distance = float(obj.data.distance)
+        plight.max_distance = float(obj.data.cutoff_distance)
+    else:
+        plight.max_distance = 0
 
     return plight
 
