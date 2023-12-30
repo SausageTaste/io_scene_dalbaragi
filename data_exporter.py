@@ -276,7 +276,15 @@ class _TimePointDict:
         assert isinstance(channel, int)
         assert isinstance(time_point, float)
 
-        return self.__data[time_point][channel]
+        try:
+            channels = self.__data[time_point]
+        except KeyError:
+            raise KeyError(f"Time point '{time_point}' not found in _TimePointDict{self.__data}")
+
+        try:
+            return channels[channel]
+        except KeyError:
+            raise KeyError(f"Channel '{channel}' not found in time point '{time_point}': {channels}")
 
     def get_extended(self, time_point: float, channel: int) -> float:
         assert isinstance(channel, int)
