@@ -61,7 +61,7 @@ def export_json(
         json_data["binary data"]["base64 size"] = len(encoded)
         json_data["binary data"]["base64"] = encoded
     else:
-        with open(os.path.splitext(file_path)[0], "wb") as file:
+        with open(os.path.splitext(file_path)[0] + ".bin", "wb") as file:
             file.write(bin_data)
 
     with open(file_path, "w", encoding="utf8") as file:
