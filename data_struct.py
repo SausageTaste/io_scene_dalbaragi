@@ -1,5 +1,6 @@
 import enum
 import array
+import struct
 from typing import List, Dict, Union, Tuple, Any, Set
 
 from . import byteutils as byt
@@ -27,6 +28,24 @@ class BinaryArrayBuilder:
     @property
     def data(self):
         return bytes(self.__data)
+
+    @property
+    def size(self):
+        return len(self.__data)
+
+    def add_int16(self, value: int):
+        self.__data += struct.pack("<h", int(value))
+
+    def add_int32(self, value: int):
+        self.__data += struct.pack("<i", int(value))
+
+    def add_float32(self, value: float):
+        self.__data += struct.pack("<f", float(value))
+
+    # Null terminated string
+    def add_str(self, value: str):
+        self.__data += value.encode("utf-8")
+        self.__data += b"\0"
 
     def add_bin_array(self, arr: Union[bytes, bytearray]):
         start_index = len(self.__data)
@@ -469,14 +488,17 @@ class _TimePointDict:
     def __init__(self):
         self.__data: Dict[float, Dict[int, float]] = {}
 
-    def make_json(self):
-        output = []
+    def get_triplet_count(self):
+        count = 0
         for time_point, channels in self.__data.items():
-            output.append({
-                "time point": time_point,
-                "channels": channels,
-            })
-        return output
+            count += len(channels)
+        return count
+
+    # (time_point, channel, value)
+    def iter_triplets(self):
+        for time_point, channels in self.__data.items():
+            for ch, v in channels.items():
+                yield time_point, ch, v
 
     def add(self, time_point: float, channel: int, value: float):
         assert isinstance(time_point, float)
@@ -495,13 +517,6 @@ class AnimJoint:
         self.__positions = _TimePointDict()
         self.__rotations = _TimePointDict()
         self.__scales = _TimePointDict()
-
-    def make_json(self):
-        return {
-            "positions": self.__positions.make_json(),
-            "rotations": self.__rotations.make_json(),
-            "scales": self.__scales.make_json(),
-        }
 
     @property
     def positions(self):
@@ -522,15 +537,35 @@ class Animation:
         self.__ticks_per_sec = float(ticks_per_sec)
         self.__joints: Dict[str, AnimJoint] = {}
 
-    def make_json(self):
-        joints = {}
+    def make_json(self, bin_arr: BinaryArrayBuilder):
+        begin = bin_arr.size
         for joint_name, joint in self.__joints.items():
-            joints[joint_name] = joint.make_json()
+            bin_arr.add_str(joint_name)
+
+            bin_arr.add_int32(joint.positions.get_triplet_count())
+            for time_point, channel, value in joint.positions.iter_triplets():
+                bin_arr.add_float32(time_point)
+                bin_arr.add_int16(channel)
+                bin_arr.add_float32(value)
+
+            bin_arr.add_int32(joint.rotations.get_triplet_count())
+            for time_point, channel, value in joint.rotations.iter_triplets():
+                bin_arr.add_float32(time_point)
+                bin_arr.add_int16(channel)
+                bin_arr.add_float32(value)
+
+            bin_arr.add_int32(joint.scales.get_triplet_count())
+            for time_point, channel, value in joint.scales.iter_triplets():
+                bin_arr.add_float32(time_point)
+                bin_arr.add_int16(channel)
+                bin_arr.add_float32(value)
+        end = bin_arr.size
 
         return {
             "name": self.name,
             "ticks per seconds": self.__ticks_per_sec,
-            "joints": joints,
+            "joints data loc": begin,
+            "joints data size": end - begin,
         }
 
     def add(self, joint_name: str, var_name: str, time_point: float, channel: int, value: float):
@@ -813,7 +848,7 @@ class Scene:
             "meshes": self.__make_json_for_meshes(bin_arr),
             "materials": [xx.make_json() for xx in self.__materials],
             "skeletons": [xx.make_json() for xx in self.__skeletons],
-            "animations": [xx.make_json() for xx in self.__animations],
+            "animations": [xx.make_json(bin_arr) for xx in self.__animations],
             "mesh actors": [xx.make_json(self.__meshes) for xx in self.__mesh_actors],
             "directional lights": [xx.make_json() for xx in self.__dlights],
             "point lights": [xx.make_json() for xx in self.__plights],
