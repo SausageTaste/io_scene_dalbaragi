@@ -293,12 +293,30 @@ class _TimePointDict:
         try:
             return self.__data[time_point][channel]
         except KeyError:
-            requested_index = self.__convert_time_point_to_index(time_point)
-            prev_index = requested_index - 1
-            if prev_index < 0:
-                raise RuntimeError("[DAL] First keyframe need all its channels with a value.")
-            prev_time_point = self.__convert_index_to_time_point(prev_index)
-            return self.get(prev_time_point, channel)
+            pass
+
+        data_tp = self.__make_sorted_timepoints()
+        prev_value = None
+        next_value = None
+
+        for tp in data_tp:
+            channels = self.__data[tp]
+            if channel not in channels.keys():
+                continue
+            ch_value = channels[channel]
+
+            if tp < time_point:
+                prev_value = ch_value
+            elif tp > time_point:
+                next_value = ch_value
+                break
+
+        if prev_value is not None:
+            return prev_value
+        elif next_value is not None:
+            return next_value
+        else:
+            raise KeyError(f"Channel '{channel}' not found in extended time point '{time_point}'")
 
     def iter_timepoints(self) -> iter:
         return iter(self.__make_sorted_timepoints())
@@ -394,22 +412,25 @@ def __parse_animation(bpy_action, anim: dst.Animation):
         for tp in j_data.positions.iter_timepoints():
             joint_keyframes.add_position(
                 tp,
-                j_data.positions.get(tp, 0),
-                j_data.positions.get(tp, 1),
-                j_data.positions.get(tp, 2),
+                j_data.positions.get_extended(tp, 0),
+                j_data.positions.get_extended(tp, 1),
+                j_data.positions.get_extended(tp, 2),
             )
 
         for tp in j_data.rotations.iter_timepoints():
             joint_keyframes.add_rotation(
                 tp,
-                j_data.rotations.get(tp, 0),
-                j_data.rotations.get(tp, 1),
-                j_data.rotations.get(tp, 2),
-                j_data.rotations.get(tp, 3),
+                j_data.rotations.get_extended(tp, 0),
+                j_data.rotations.get_extended(tp, 1),
+                j_data.rotations.get_extended(tp, 2),
+                j_data.rotations.get_extended(tp, 3),
             )
 
         for tp in j_data.scales.iter_timepoints():
-            average_scale = (j_data.scales.get(tp, 0) + j_data.scales.get(tp, 1) + j_data.scales.get(tp, 2)) / 3
+            scale_x = j_data.scales.get_extended(tp, 0)
+            scale_y = j_data.scales.get_extended(tp, 1)
+            scale_z = j_data.scales.get_extended(tp, 2)
+            average_scale = (scale_x + scale_y + scale_z) / 3
             joint_keyframes.add_scale(tp, average_scale)
 
     return anim
