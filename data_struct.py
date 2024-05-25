@@ -465,152 +465,89 @@ class Skeleton:
         return False
 
 
+class _TimePointDict:
+    def __init__(self):
+        self.__data: Dict[float, Dict[int, float]] = {}
+
+    def make_json(self):
+        output = []
+        for time_point, channels in self.__data.items():
+            output.append({
+                "time point": time_point,
+                "channels": channels,
+            })
+        return output
+
+    def add(self, time_point: float, channel: int, value: float):
+        assert isinstance(time_point, float)
+        assert isinstance(channel, int)
+        assert isinstance(value, float)
+
+        if time_point not in self.__data.keys():
+            self.__data[time_point] = {}
+        self.__data[time_point][channel] = value
+
+
 class AnimJoint:
-    def __init__(self, name: str):
-        self.__name = str(name)
-        self.__positions: List[Tuple[float, smt.Vec3]] = []
-        self.__rotations: List[Tuple[float, smt.Quat]] = []
-        self.__scales: List[Tuple[float, float]] = []
+    def __init__(self):
+        # Channels for a pos and scale are x=0, y=1, z=2
+        # For a quat, w=0, x=1, y=2, z=3
+        self.__positions = _TimePointDict()
+        self.__rotations = _TimePointDict()
+        self.__scales = _TimePointDict()
 
     def make_json(self):
         return {
-            "name": self.name,
-            "positions": self.__make_json_positions(),
-            "rotations": self.__make_json_rotations(),
-            "scales": self.__make_json_scales(),
+            "positions": self.__positions.make_json(),
+            "rotations": self.__rotations.make_json(),
+            "scales": self.__scales.make_json(),
         }
 
-    def add_position(self, time_point: float, x, y, z) -> None:
-        data = (float(time_point), smt.Vec3(x, y, z))
-        self.__positions.append(data)
-
-    def add_rotation(self, time_point: float, w, x, y, z) -> None:
-        data = (float(time_point), smt.Quat(w, x, y, z))
-        self.__rotations.append(data)
-
-    def add_scale(self, time_point: float, v: float):
-        data = (float(time_point), float(v))
-        self.__scales.append(data)
-
-    def remove_redundant_data(self) -> None:
-        # Positions
-        # --------------------------------------------------------------------------------------------------------------
-
-        poses_new = self.__positions[:]
-
-        poses_new.sort()
-        poses_new: List[Tuple[float, smt.Vec3]] = self.__remove_duplicate_keyframes(poses_new)
-        if 1 == len(poses_new) and poses_new[0][1].isDefault():
-            poses_new.clear()
-
-        # Rotations
-        # --------------------------------------------------------------------------------------------------------------
-
-        rotates_new = self.__rotations[:]
-
-        rotates_new.sort()
-        rotates_new: List[Tuple[float, smt.Quat]] = self.__remove_duplicate_keyframes(rotates_new)
-        if 1 == len(rotates_new) and rotates_new[0][1].isDefault():
-            rotates_new.clear()
-
-        # Scales
-        # --------------------------------------------------------------------------------------------------------------
-
-        scales_new = self.__scales[:]
-
-        scales_new.sort()
-        scales_new: List[Tuple[float, float]] = self.__remove_duplicate_keyframes(scales_new)
-        if 1 == len(scales_new) and smt.isFloatNear(scales_new[0][1], 1):
-            scales_new.clear()
-
-        # Apply changes
-        # --------------------------------------------------------------------------------------------------------------
-
-        self.__positions = poses_new
-        self.__rotations = rotates_new
-        self.__scales = scales_new
-
-    def is_useless(self) -> bool:
-        if len(self.__positions):
-            return False
-        elif len(self.__rotations):
-            return False
-        elif len(self.__scales):
-            return False
-        else:
-            return True
+    @property
+    def positions(self):
+        return self.__positions
 
     @property
-    def name(self):
-        return self.__name
+    def rotations(self):
+        return self.__rotations
 
-    def __make_json_positions(self):
-        output = []
-        for time_point, value in self.__positions:
-            output.append({
-                "time point": time_point,
-                "value": value.xyz,
-            })
-        return output
-
-    def __make_json_rotations(self):
-        output = []
-        for time_point, value in self.__rotations:
-            output.append({
-                "time point": time_point,
-                "value": value.wxyz,
-            })
-        return output
-
-    def __make_json_scales(self):
-        output = []
-        for time_point, value in self.__scales:
-            output.append({
-                "time point": time_point,
-                "value": value,
-            })
-        return output
-
-    @staticmethod
-    def __remove_duplicate_keyframes(arr: List[Tuple[float, Any]]):
-        arr_size = len(arr)
-        if 0 == arr_size:
-            return []
-
-        new_arr = [arr[0]]
-        for i in range(1, arr_size):
-            if arr[i][1] != new_arr[-1][1]:
-                new_arr.append(arr[i])
-        return new_arr
+    @property
+    def scales(self):
+        return self.__scales
 
 
 class Animation:
     def __init__(self, name: str, ticks_per_sec: float):
         self.__name = str(name)
         self.__ticks_per_sec = float(ticks_per_sec)
-        self.__joints: List[AnimJoint] = []
+        self.__joints: Dict[str, AnimJoint] = {}
 
     def make_json(self):
+        joints = {}
+        for joint_name, joint in self.__joints.items():
+            joints[joint_name] = joint.make_json()
+
         return {
             "name": self.name,
             "ticks per seconds": self.__ticks_per_sec,
-            "joints": [xx.make_json() for xx in self.__joints],
+            "joints": joints,
         }
 
-    def new_joint(self, joint_name: str) -> AnimJoint:
-        joint = AnimJoint(joint_name)
-        self.__joints.append(joint)
-        return joint
+    def add(self, joint_name: str, var_name: str, time_point: float, channel: int, value: float):
+        joint_name = str(joint_name)
+        var_name = str(var_name)
 
-    def clean_up(self):
-        new_list = []
+        if joint_name not in self.__joints.keys():
+            self.__joints[joint_name] = AnimJoint()
 
-        for j in self.__joints:
-            j.remove_redundant_data()
-            if not j.is_useless():
-                new_list.append(j)
-
-        self.__joints = new_list
+        if "location" == var_name:
+            self.__joints[joint_name].positions.add(time_point, channel, value)
+        elif "rotation_quaternion" == var_name:
+            self.__joints[joint_name].rotations.add(time_point, channel, value)
+        elif "scale" == var_name:
+            self.__joints[joint_name].scales.add(time_point, channel, value)
+        else:
+            raise RuntimeError(f'[DAL] WARN::Unknown variable for a joint: "{var_name}"')
 
     @property
     def name(self):
