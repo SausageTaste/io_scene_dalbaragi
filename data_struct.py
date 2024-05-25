@@ -539,6 +539,8 @@ class Animation:
 
     def make_json(self, bin_arr: BinaryArrayBuilder):
         begin = bin_arr.size
+
+        bin_arr.add_int32(len(self.__joints))
         for joint_name, joint in self.__joints.items():
             bin_arr.add_str(joint_name)
 
@@ -559,6 +561,7 @@ class Animation:
                 bin_arr.add_float32(time_point)
                 bin_arr.add_int16(channel)
                 bin_arr.add_float32(value)
+
         end = bin_arr.size
 
         return {
