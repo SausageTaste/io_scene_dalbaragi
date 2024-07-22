@@ -1,0 +1,13 @@
+schema_version = "1.0.0"
+
+id = "io_scene_dalbaragi"
+version = "1.0.0"
+name = "Dalbaragi Model Exporter"
+tagline = "Export scene data for DalbaragiTools"
+maintainer = "Sungmin Woo <woos8899@gmail.com>"
+
+type = "add-on"
+tags = ["Import-Export"]
+
+blender_version_min = "4.0.0"
+license = ["SPDX:MIT"]
