@@ -53,7 +53,7 @@ class EmportDalJson(Operator, ExportHelper):
     option_embed_binary: BoolProperty(
         name="Embed binary data",
         description="Store binary data as Base64 within JSON file.",
-        default=True,
+        default=False,
     )
 
     option_enum_exclude_hidden: EnumProperty(
@@ -64,7 +64,7 @@ class EmportDalJson(Operator, ExportHelper):
             ('OPT_2', "Meshes", "Hidden meshes will be excluded"),
             ('OPT_3', "All", "All types of hidden objects will be excluded"),
         ),
-        default='OPT_1',
+        default='OPT_2',
     )
 
     option_do_profile: BoolProperty(
