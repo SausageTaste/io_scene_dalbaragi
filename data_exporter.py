@@ -68,15 +68,13 @@ class _MaterialParser:
         except IndexError:
             return None
 
-        alpha_blend_enabled = True if blender_material.blend_method != cls.__BLEND_OPAQUE else False
-
         if cls.__NODE_BSDF == linked_shader.bl_idname:
-            return cls.__parse_principled_bsdf(linked_shader, alpha_blend_enabled)
+            return cls.__parse_principled_bsdf(linked_shader)
         elif cls.__NODE_HOLDOUT == linked_shader.bl_idname:
             return None
         elif cls.__NODE_GROUP == linked_shader.bl_idname:
             if "XPS Shader" == linked_shader.node_tree.name_full:
-                return cls.__parse_xps_shader(linked_shader, alpha_blend_enabled)
+                return cls.__parse_xps_shader(linked_shader)
             else:
                 print("Not supported shader type: {}".format(linked_shader.node_tree.name_full))
                 return None
@@ -111,13 +109,12 @@ class _MaterialParser:
         return None
 
     @classmethod
-    def __parse_principled_bsdf(cls, bsdf, alpha_blend: bool) -> dst.Material:
+    def __parse_principled_bsdf(cls, bsdf) -> dst.Material:
         material = dst.Material()
 
         node_roughness = bsdf.inputs["Roughness"]
         node_metallic = bsdf.inputs["Metallic"]
 
-        material.transparency = alpha_blend
         image_node = cls.__find_node_recur_named(cls.__NODE_TEX_IMAGE, bsdf.inputs["Base Color"])
         if image_node is not None:
             material.albedo_map = image_node.image.name
@@ -145,10 +142,8 @@ class _MaterialParser:
         return material
 
     @classmethod
-    def __parse_xps_shader(cls, linked_shader, alpha_blend: bool) -> dst.Material:
+    def __parse_xps_shader(cls, linked_shader) -> dst.Material:
         material = dst.Material()
-
-        material.transparency = alpha_blend
 
         image_node = cls.__find_node_recur_named(cls.__NODE_TEX_IMAGE, linked_shader.inputs["Diffuse"])
         if image_node is not None:

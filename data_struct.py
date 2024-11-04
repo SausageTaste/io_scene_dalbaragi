@@ -294,7 +294,6 @@ class Material:
 
         self.__roughness = 0.5
         self.__metallic = 0.0
-        self.__transparency = False
 
         self.__albedo_map = ""
         self.__roughness_map = ""
@@ -350,11 +349,7 @@ class Material:
 
     @property
     def transparency(self):
-        return self.__transparency
-
-    @transparency.setter
-    def transparency(self, value):
-        self.__transparency = bool(value)
+        return False
 
     @property
     def albedo_map(self):
