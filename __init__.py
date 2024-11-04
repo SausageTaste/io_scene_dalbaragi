@@ -1,5 +1,4 @@
-import os
-import shutil
+import time
 import importlib
 
 import bpy
@@ -74,6 +73,7 @@ class EmportDalJson(Operator, ExportHelper):
     )
 
     def execute(self, context):
+        st = time.time()
         configs = self.__parse_config()
 
         exp.export_json(
@@ -85,7 +85,9 @@ class EmportDalJson(Operator, ExportHelper):
             self.option_copy_images,
         )
 
-        self.report({'INFO'}, "Done exporting Dalbaragi scene")
+        elapsed = time.time() - st
+        print(f"[DAL] Finished exporting Dalbaragi scene ({elapsed:.3f})")
+        self.report({'INFO'}, "Finished exporting Dalbaragi scene")
         return {'FINISHED'}
 
     def __parse_config(self):
