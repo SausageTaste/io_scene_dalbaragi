@@ -195,23 +195,25 @@ def __parse_mesh(obj, mesh: dst.Mesh, skeleton: Optional[dst.Skeleton]):
             material_name = ""
 
         for i in range(3):
+            loop_index: int = tri.loops[i]
+            mesh_loop = obj_mesh.loops[loop_index]
+            if tri.vertices[i] != mesh_loop.vertex_index:
+                raise RuntimeError("Invalid loop triangle data")
+
             # Vertex
-            vertex_index: int = tri.vertices[i]
+            vertex_index: int = mesh_loop.vertex_index
             vertex_data = obj_mesh.vertices[vertex_index].co
             vertex = smt.Vec3(vertex_data[0], vertex_data[1], vertex_data[2])
 
             # UV coord
             if obj_mesh.uv_layers.active is not None:
-                uv_data = obj_mesh.uv_layers.active.data[tri.loops[i]].uv
+                uv_data = obj_mesh.uv_layers.active.data[loop_index].uv
             else:
                 uv_data = (0.0, 0.0)
             uv_coord = smt.Vec2(uv_data[0], uv_data[1])
 
             # Normal
-            if tri.use_smooth:
-                normal_data = obj_mesh.vertices[vertex_index].normal
-            else:
-                normal_data = tri.normal
+            normal_data = mesh_loop.normal
             normal = smt.Vec3(normal_data[0], normal_data[1], normal_data[2])
             normal.normalize()
 
