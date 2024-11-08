@@ -178,7 +178,9 @@ def __parse_mesh(obj, mesh: dst.Mesh, skeleton: Optional[dst.Skeleton]):
     obj_mesh = obj.data
     assert isinstance(obj_mesh, bpy.types.Mesh)
 
+    obj_mesh.calc_tangents()
     obj_mesh.calc_loop_triangles()
+
     if skeleton is not None:
         joint_name_index_map = skeleton.make_name_index_map()
         mesh.skeleton_name = skeleton.name
@@ -195,6 +197,8 @@ def __parse_mesh(obj, mesh: dst.Mesh, skeleton: Optional[dst.Skeleton]):
             material_name = ""
 
         for i in range(3):
+            dst_vertex = mesh.new_vertex(material_name)
+
             loop_index: int = tri.loops[i]
             mesh_loop = obj_mesh.loops[loop_index]
             if tri.vertices[i] != mesh_loop.vertex_index:
@@ -203,21 +207,29 @@ def __parse_mesh(obj, mesh: dst.Mesh, skeleton: Optional[dst.Skeleton]):
             # Vertex
             vertex_index: int = mesh_loop.vertex_index
             vertex_data = obj_mesh.vertices[vertex_index].co
-            vertex = smt.Vec3(vertex_data[0], vertex_data[1], vertex_data[2])
+            dst_vertex.position.x = vertex_data[0]
+            dst_vertex.position.y = vertex_data[1]
+            dst_vertex.position.z = vertex_data[2]
 
             # UV coord
             if obj_mesh.uv_layers.active is not None:
                 uv_data = obj_mesh.uv_layers.active.data[loop_index].uv
             else:
                 uv_data = (0.0, 0.0)
-            uv_coord = smt.Vec2(uv_data[0], uv_data[1])
+            dst_vertex.uv_coord.x = uv_data[0]
+            dst_vertex.uv_coord.y = uv_data[1]
 
             # Normal
             normal_data = mesh_loop.normal
-            normal = smt.Vec3(normal_data[0], normal_data[1], normal_data[2])
-            normal.normalize()
+            dst_vertex.normal.x = normal_data[0]
+            dst_vertex.normal.y = normal_data[1]
+            dst_vertex.normal.z = normal_data[2]
 
-            dst_vertex = mesh.add_vertex(material_name, vertex, uv_coord, normal)
+            # Tangent
+            dst_vertex.tangent.x = mesh_loop.tangent[0]
+            dst_vertex.tangent.y = mesh_loop.tangent[1]
+            dst_vertex.tangent.z = mesh_loop.tangent[2]
+            dst_vertex.bitangent_sign = mesh_loop.bitangent_sign
 
             for g in obj.data.vertices[vertex_index].groups:
                 joint_name = str(obj.vertex_groups[g.group].name)

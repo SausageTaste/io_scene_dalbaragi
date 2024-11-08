@@ -133,6 +133,8 @@ class Vertex:
         self.__pos = smt.Vec3()
         self.__uv_coord = smt.Vec2()
         self.__normal = smt.Vec3()
+        self.__tangent = smt.Vec3()
+        self.__bitangent_sign = 1.0
         self.__joints: List[Tuple[float, int]] = []
 
     def add_joint(self, joint_index: int, weight: float) -> None:
@@ -145,28 +147,25 @@ class Vertex:
     def position(self):
         return self.__pos
 
-    @position.setter
-    def position(self, value):
-        assert isinstance(value, smt.Vec3)
-        self.__pos = value
-
     @property
     def uv_coord(self):
         return self.__uv_coord
-
-    @uv_coord.setter
-    def uv_coord(self, value):
-        assert isinstance(value, smt.Vec2)
-        self.__uv_coord = value
 
     @property
     def normal(self):
         return self.__normal
 
-    @normal.setter
-    def normal(self, value):
-        assert isinstance(value, smt.Vec3)
-        self.__normal = value
+    @property
+    def tangent(self):
+        return self.__tangent
+
+    @property
+    def bitangent_sign(self):
+        return self.__bitangent_sign
+
+    @bitangent_sign.setter
+    def bitangent_sign(self, value: float):
+        self.__bitangent_sign = float(value)
 
     @property
     def joints(self):
@@ -182,13 +181,14 @@ class VertexBuffer:
         self.__vertices: List[Vertex] = []
 
     def make_json(self, output: Dict, bin_arr: BinaryArrayBuilder):
-        positions, uv_coordinates, normals = self.__make_arrays()
+        positions, uv_coordinates, normals, tangents = self.__make_arrays()
         joints = self.__make_joints_binary_array()
 
         binary_arrays = [
             (positions.tobytes(), "vertices binary data"),
             (uv_coordinates.tobytes(), "uv coordinates binary data"),
             (normals.tobytes(), "normals binary data"),
+            (tangents.tobytes(), "tangents binary data"),
             (joints, "joints binary data"),
         ]
 
@@ -200,11 +200,8 @@ class VertexBuffer:
                 "size": size,
             }
 
-    def add_vertex(self, position: smt.Vec3, uv_coord: smt.Vec2, normal: smt.Vec3):
+    def new_vertex(self):
         vertex = Vertex()
-        vertex.position = position
-        vertex.uv_coord = uv_coord
-        vertex.normal = normal
         self.__vertices.append(vertex)
         return vertex
 
@@ -212,6 +209,7 @@ class VertexBuffer:
         positions = array.array("f")
         uv_coordinates = array.array("f")
         normals = array.array("f")
+        tangents = array.array("f")
 
         for v in self.__vertices:
             positions.append(v.position.x)
@@ -225,7 +223,12 @@ class VertexBuffer:
             normals.append(v.normal.y)
             normals.append(v.normal.z)
 
-        return positions, uv_coordinates, normals
+            tangents.append(v.tangent.x)
+            tangents.append(v.tangent.y)
+            tangents.append(v.tangent.z)
+            tangents.append(v.bitangent_sign)
+
+        return positions, uv_coordinates, normals, tangents
 
     def __make_joints_binary_array(self) -> bytearray:
         output = bytearray()
@@ -252,11 +255,11 @@ class Mesh:
             })
             vertex_buffer.make_json(output[-1], bin_arr)
 
-    def add_vertex(self, material_name: str, position: smt.Vec3, uv_coord: smt.Vec2, normal: smt.Vec3):
+    def new_vertex(self, material_name: str):
         if material_name not in self.__vertices.keys():
             self.__vertices[material_name] = VertexBuffer()
 
-        return self.__vertices[material_name].add_vertex(position, uv_coord, normal)
+        return self.__vertices[material_name].new_vertex()
 
     def get_mangled_name(self, material_name: str):
         if 1 == len(self.__vertices.keys()):
