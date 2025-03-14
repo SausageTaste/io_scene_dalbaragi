@@ -275,6 +275,9 @@ def __parse_armature(obj, skeleton: dst.Skeleton):
 
 
 # var_name is either location, rotation_quaternion or scale
+# The `path` looks something like these:
+#   pose.bones["bip001-r-hand"].location
+#   pose.bones["bip001-r-hand"].rotation_quaternion
 def __split_fcu_data_path(path: str) -> Tuple[str, str]:
     pass1 = path.split('"')
     bone_name = pass1[1]
@@ -289,7 +292,12 @@ def __parse_animation(bpy_action, anim: dst.Animation):
     assert isinstance(bpy_action, bpy.types.Action)
 
     for fcu in bpy_action.fcurves:
-        joint_name, var_name = __split_fcu_data_path(fcu.data_path)
+        try:
+            joint_name, var_name = __split_fcu_data_path(fcu.data_path)
+        except IndexError:
+            print(f"Failed to parse FCU data path: {fcu.data_path}")
+            continue
+
         # channel stands for x, y, z for locations, w, x, y, z for quat, x, y, z for scale.
         channel = fcu.array_index
 
