@@ -178,7 +178,11 @@ def __parse_mesh(obj, mesh: dst.Mesh, skeleton: Optional[dst.Skeleton]):
     obj_mesh = obj.data
     assert isinstance(obj_mesh, bpy.types.Mesh)
 
-    obj_mesh.calc_tangents()
+    try:
+        obj_mesh.calc_tangents()
+    except RuntimeError:
+        print(f"Failed to calculate tangents for mesh '{obj_mesh.name}'")
+
     obj_mesh.calc_loop_triangles()
 
     if skeleton is not None:
@@ -193,7 +197,7 @@ def __parse_mesh(obj, mesh: dst.Mesh, skeleton: Optional[dst.Skeleton]):
     for tri in obj_mesh.loop_triangles:
         try:
             material_name = obj.data.materials[tri.material_index].name
-        except IndexError:
+        except (IndexError, AttributeError):
             material_name = ""
 
         for i in range(3):
@@ -329,6 +333,8 @@ def __parse_mesh_actor(obj, scene: dst.Scene):
     # ------------------------------------------------------------------------------------------------------------------
 
     for bpy_mat in obj.data.materials:
+        if bpy_mat is None:
+            continue
         if scene.has_material(bpy_mat.name):
             continue
         material = _MaterialParser.parse(bpy_mat)
