@@ -116,28 +116,30 @@ class _MaterialParser:
         node_metallic = bsdf.inputs["Metallic"]
 
         image_node = cls.__find_node_recur_named(cls.__NODE_TEX_IMAGE, bsdf.inputs["Base Color"])
-        if image_node is not None:
+        try:
             material.albedo_map = image_node.image.filepath
+        except AttributeError:
+            material.albedo_map = ""
 
         image_node = cls.__find_node_recur_named(cls.__NODE_TEX_IMAGE, node_roughness)
-        if image_node is None:
-            material.roughness = node_roughness.default_value
-        else:
-            material.roughness = 1
+        try:
             material.roughness_map = image_node.image.filepath
+            material.roughness = 1
+        except AttributeError:
+            material.roughness = node_roughness.default_value
 
         image_node = cls.__find_node_recur_named(cls.__NODE_TEX_IMAGE, node_metallic)
-        if image_node is None:
-            material.metallic = node_metallic.default_value
-        else:
-            material.metallic = 1
+        try:
             material.metallic_map = image_node.image.filepath
+            material.metallic = 1
+        except AttributeError:
+            material.metallic = node_metallic.default_value
 
         image_node = cls.__find_node_recur_named(cls.__NODE_TEX_IMAGE, bsdf.inputs["Normal"])
-        if image_node is None:
-            material.normal_map = ""
-        else:
+        try:
             material.normal_map = image_node.image.filepath
+        except AttributeError:
+            material.normal_map = ""
 
         return material
 
